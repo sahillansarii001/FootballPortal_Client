@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Eye } from 'lucide-react';
+import { Eye, Users } from 'lucide-react';
 import { Team } from '@/types';
 import { getCaptainDisplayName } from '@/utils/formatters';
 
@@ -105,6 +105,44 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
               </span>
             ))}
           </div>
+        </div>
+
+        {/* Squad Players Roster */}
+        <div className="mb-4 pt-3 border-t border-surface-container">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold flex items-center gap-1">
+              <Users className="w-3 h-3 text-primary-container" />
+              <span>Squad Players ({Array.isArray(team.players) ? team.players.length : 0})</span>
+            </span>
+          </div>
+
+          {Array.isArray(team.players) && team.players.length > 0 ? (
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              {team.players.map((p: any) => {
+                const pObj = typeof p === 'object' && p ? p : { name: String(p), jerseyNumber: '?', position: 'Forward' };
+                return (
+                  <div
+                    key={pObj._id || pObj.name}
+                    className="flex items-center justify-between bg-surface-container-low px-2 py-1 rounded-lg border border-surface-container text-xs"
+                  >
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="w-5 h-5 rounded bg-primary-container/15 text-primary-container font-black text-[10px] flex items-center justify-center shrink-0">
+                        #{pObj.jerseyNumber ?? '?'}
+                      </span>
+                      <span className="font-bold text-on-surface truncate">{pObj.name}</span>
+                    </div>
+                    <span className="text-[10px] font-medium text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded shrink-0">
+                      {pObj.position || 'Forward'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-[11px] text-on-surface-variant italic py-1 text-center bg-surface-container-low/50 rounded-lg">
+              No players enrolled yet
+            </p>
+          )}
         </div>
       </div>
 

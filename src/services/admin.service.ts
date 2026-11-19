@@ -112,6 +112,10 @@ export const adminService = {
     }
   },
 
+  async startPenaltyShootout(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    return this.advanceStage(matchId);
+  },
+
   async resetTimer(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/reset`, {

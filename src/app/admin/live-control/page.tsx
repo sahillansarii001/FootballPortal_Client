@@ -211,7 +211,64 @@ export default function AdminLiveControlPage() {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
           // When stage timer reaches 0
-          if (currentStage.includes('Second') || currentStage.includes('Extra')) {
+          if (currentStage.includes('Extra')) {
+            // 2-Minute Tie Timer (Extra Time) completed!
+            if (scoreA === scoreB) {
+              setTimerRunning(false);
+              setCurrentStage('Penalty Shootout');
+              setCompletedStages((all) =>
+                Array.from(new Set([...all, 'First Half', 'Half-Time Break', 'Second Half', 'Extra Time (Draw Decider)']))
+              );
+              if (selectedMatch) {
+                adminService.startPenaltyShootout(selectedMatch._id).catch(() => {});
+                setSelectedMatch((m) =>
+                  m
+                    ? {
+                        ...m,
+                        status: 'Penalty Shootout',
+                        shootout: {
+                          ...(m.shootout || {}),
+                          isShootout: true,
+                          round: 1,
+                          teamAPenaltyScore: 0,
+                          teamBPenaltyScore: 0,
+                        },
+                      }
+                    : null
+                );
+              }
+              showNotification(
+                `⏱️ 2-Minute Extra Time period ended in a draw (${scoreA} - ${scoreB})! Penalty Shootout has now opened. Take 3 regulation kicks per team.`
+              );
+              setTimeout(() => {
+                document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
+              }, 150);
+              return 0;
+            } else {
+              setTimerRunning(false);
+              setCurrentStage('Completed');
+              if (selectedMatch) {
+                adminService.finalizeMatch(selectedMatch._id).then(() => {
+                  setSelectedMatch((m) =>
+                    m
+                      ? {
+                          ...m,
+                          status: 'Completed',
+                          matchResult: scoreA > scoreB ? `${teamAName} won` : `${teamBName} won`,
+                        }
+                      : null
+                  );
+                  setMatches((all) =>
+                    all.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m))
+                  );
+                });
+                showNotification(
+                  `Extra Time whistle! Match has concluded: ${teamAName} ${scoreA} - ${scoreB} ${teamBName}. Marked as Completed.`
+                );
+              }
+              return 0;
+            }
+          } else if (currentStage.includes('Second')) {
             if (scoreA !== scoreB) {
               setTimerRunning(false);
               setCurrentStage('Completed');
@@ -414,11 +471,38 @@ export default function AdminLiveControlPage() {
       } else {
         await handleFinalizeMatch();
       }
-    } else if (currentStage.includes('Extra Time')) {
+    } else if (currentStage.includes('Extra Time') || currentStage.includes('Extra')) {
       if (scoreA === scoreB) {
-        showNotification(
-          `Still tied (${scoreA} - ${scoreB}) after 2-minute Extra Time! 3-kick Penalty Shootout unlocked.`
+        setTimerRunning(false);
+        setRemainingSeconds(0);
+        setCurrentStage('Penalty Shootout');
+        setCompletedStages((all) =>
+          Array.from(new Set([...all, 'First Half', 'Half-Time Break', 'Second Half', 'Extra Time (Draw Decider)']))
         );
+        if (selectedMatch) {
+          adminService.startPenaltyShootout(selectedMatch._id).catch(() => {});
+          setSelectedMatch((m) =>
+            m
+              ? {
+                  ...m,
+                  status: 'Penalty Shootout',
+                  shootout: {
+                    ...(m.shootout || {}),
+                    isShootout: true,
+                    round: 1,
+                    teamAPenaltyScore: 0,
+                    teamBPenaltyScore: 0,
+                  },
+                }
+              : null
+          );
+        }
+        showNotification(
+          `Still tied (${scoreA} - ${scoreB}) after 2-minute Extra Time! Penalty Shootout has opened.`
+        );
+        setTimeout(() => {
+          document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
       } else {
         await handleFinalizeMatch();
       }
@@ -906,18 +990,23 @@ export default function AdminLiveControlPage() {
               Fixture:
             </label>
             <select
+              disabled={matches.length === 0}
               value={selectedMatch?._id || ''}
               onChange={(e) => {
                 const found = matches.find((m) => m._id === e.target.value);
                 if (found) selectMatch(found);
               }}
-              className="bg-surface-container-lowest text-xs font-bold text-on-surface px-3 py-2 rounded-xl border border-surface-container-high shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer max-w-[220px] truncate"
+              className="bg-surface-container-lowest text-xs font-bold text-on-surface px-3 py-2 rounded-xl border border-surface-container-high shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer max-w-[220px] truncate disabled:opacity-50"
             >
-              {matches.map((m) => (
-                <option key={m._id} value={m._id}>
-                  {m.teamA?.name} vs {m.teamB?.name} ({m.status})
-                </option>
-              ))}
+              {matches.length === 0 ? (
+                <option value="">No fixtures scheduled</option>
+              ) : (
+                matches.map((m) => (
+                  <option key={m._id} value={m._id}>
+                    {m.teamA?.name} vs {m.teamB?.name} ({m.status})
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -974,8 +1063,56 @@ export default function AdminLiveControlPage() {
         </div>
       )}
 
-      {/* Main Scoreboard & Official Clock Hero */}
-      <div className="bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xl p-6 sm:p-8 flex flex-col gap-6">
+      {/* Dynamic Match Controller View: If no match exists or is selected, show clean empty state */}
+      {loading ? (
+        <div className="p-16 text-center flex flex-col items-center justify-center gap-3 bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xs">
+          <RefreshCw className="w-8 h-8 text-primary-container animate-spin" />
+          <p className="text-xs text-on-surface-variant font-medium">Loading match telemetry...</p>
+        </div>
+      ) : matches.length === 0 ? (
+        <div className="bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xl p-16 text-center flex flex-col items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface-variant">
+            <Calendar className="w-8 h-8 text-on-surface-variant/50" />
+          </div>
+          <div>
+            <h3 className="font-headline-md text-xl font-black text-on-surface">No Match Available</h3>
+            <p className="text-xs text-on-surface-variant font-medium mt-1 max-w-md mx-auto">
+              There is currently no match scheduled in the tournament. Once a match is scheduled, the live scoreboard, official clock, and protocol controls will appear here.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowQuickSchedule(true)}
+            className="flex items-center gap-2 bg-primary-container hover:bg-primary text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Schedule Match</span>
+          </button>
+        </div>
+      ) : !selectedMatch ? (
+        <div className="bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xl p-16 text-center flex flex-col items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-primary-container">
+            <Zap className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="font-headline-md text-xl font-black text-on-surface">No Match Selected</h3>
+            <p className="text-xs text-on-surface-variant font-medium mt-1 max-w-md mx-auto">
+              Please choose a scheduled fixture from the dropdown above or click below to choose a match to control.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowMatchPickerModal(true)}
+            className="flex items-center gap-2 bg-primary-container hover:bg-primary text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            <Play className="w-4 h-4 fill-white" />
+            <span>Choose Match to Start</span>
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Main Scoreboard & Official Clock Hero */}
+          <div className="bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xl p-6 sm:p-8 flex flex-col gap-6">
         {/* Match Info & Current Stage Badge */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-surface-container-high">
           <div className="flex items-center gap-2">
@@ -1503,8 +1640,8 @@ export default function AdminLiveControlPage() {
         </div>
 
         {/* Right Column (5 cols): 3-Kick Penalty Shootout + Sudden Death Coin Toss (Conditional Tie-Breaker) */}
-        {(Boolean(selectedMatch?.shootout?.isShootout) || currentStage.includes('Penalty') || ((isSecondHalfDone || isExtraTimeDone) && scoreA === scoreB)) ? (
-          <div className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4 animate-in fade-in">
+        {(Boolean(selectedMatch?.shootout?.isShootout) || currentStage.includes('Penalty') || (isExtraTimeDone && scoreA === scoreB)) ? (
+          <div id="penalty-shootout-console" className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4 animate-in fade-in">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary-container" />
@@ -1859,6 +1996,8 @@ export default function AdminLiveControlPage() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Goal Recorder Modal - Shows ONLY the Scoring Team's Players */}
       {showGoalModal && (

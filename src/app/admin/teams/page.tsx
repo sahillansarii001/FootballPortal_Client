@@ -31,6 +31,8 @@ export default function AdminTeamsPage() {
   const [name, setName] = useState('');
   const [captain, setCaptain] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Edit Team Modal state
@@ -104,8 +106,18 @@ export default function AdminTeamsPage() {
   const handleSaveEditTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTeam) return;
-    if (!editName.trim()) {
+    const trimmedName = editName.trim();
+    if (!trimmedName) {
       setEditError('Team name is required');
+      return;
+    }
+
+    // Client-side uniqueness check
+    const isDuplicate = teams.some(
+      (t) => t._id !== editingTeam._id && t.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (isDuplicate) {
+      setEditError(`A team named "${trimmedName}" already exists. Team names must be unique.`);
       return;
     }
 
@@ -113,39 +125,45 @@ export default function AdminTeamsPage() {
     setEditError(null);
     try {
       const res = await adminService.updateTeam(editingTeam._id, {
-        name: editName.trim(),
+        name: trimmedName,
         logo: editLogo.trim(),
         captain: editCaptain.trim(),
       });
 
       if (res.success || !res.error) {
-        setTeams((prev) =>
-          prev.map((t) =>
-            t._id === editingTeam._id
-              ? {
+        // Fetch fresh teams to guarantee consistent populated data
+        const freshTeams = await teamService.getAllTeams();
+        if (freshTeams && freshTeams.length > 0) {
+          setTeams(freshTeams);
+        } else {
+          setTeams((prev) =>
+            prev.map((t) =>
+              t._id === editingTeam._id
+                ? {
                   ...t,
-                  name: editName.trim(),
+                  name: trimmedName,
                   logo: editLogo.trim(),
                   captain: editCaptain.trim(),
                 }
-              : t
-          )
-        );
+                : t
+            )
+          );
+        }
 
         if (selectedTeam?._id === editingTeam._id) {
           setSelectedTeam((prev) =>
             prev
               ? {
-                  ...prev,
-                  name: editName.trim(),
-                  logo: editLogo.trim(),
-                  captain: editCaptain.trim(),
-                }
+                ...prev,
+                name: trimmedName,
+                logo: editLogo.trim(),
+                captain: editCaptain.trim(),
+              }
               : null
           );
         }
 
-        setSuccessMsg(`Team "${editName}" updated successfully!`);
+        setSuccessMsg(`Team "${trimmedName}" updated successfully!`);
         setTimeout(() => setSuccessMsg(null), 4000);
         setEditingTeam(null);
       } else {
@@ -160,51 +178,98 @@ export default function AdminTeamsPage() {
 
   const handleAddTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setAddError('Team name is required');
+      return;
+    }
+
+    // Client-side uniqueness check
+    const isDuplicate = teams.some(
+      (t) => t.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (isDuplicate) {
+      setAddError(`A team named "${trimmedName}" already exists. Team names must be unique.`);
+      return;
+    }
+
+    setAddLoading(true);
+    setAddError(null);
 
     try {
       const res = await adminService.createTeam({
-        name: name.trim(),
+        name: trimmedName,
         captain: captain.trim() || undefined,
         logo: logoUrl.trim() || undefined,
-        description: `Varsity Collegiate Football Team`,
+        description: 'Varsity Collegiate Football Team',
       });
 
       if (res.success && res.data) {
-        setTeams((prev) => [res.data, ...prev]);
-      } else {
+        // Immediately fetch the authoritative list of teams from server to reflect in UI
         const freshTeams = await teamService.getAllTeams();
-        setTeams(freshTeams);
-      }
-    } catch (err) {
-      const freshTeams = await teamService.getAllTeams();
-      setTeams(freshTeams);
-    }
+        if (freshTeams && freshTeams.length > 0) {
+          setTeams(freshTeams);
+        } else {
+          setTeams((prev) => [res.data, ...prev]);
+        }
 
-    setShowModal(false);
-    const createdName = name;
-    setName('');
-    setCaptain('');
-    setLogoUrl('');
-    setSuccessMsg(`Team "${createdName}" registered successfully in database!`);
-    setTimeout(() => setSuccessMsg(null), 4000);
+        setShowModal(false);
+        const createdName = trimmedName;
+        setName('');
+        setCaptain('');
+        setLogoUrl('');
+        setSuccessMsg(`Team "${createdName}" registered and saved in database!`);
+        setTimeout(() => setSuccessMsg(null), 4000);
+      } else {
+        // Keep modal open and display exact error
+        setAddError(res.error || 'Failed to register team in database');
+      }
+    } catch (err: any) {
+      setAddError(err.message || 'Error registering team');
+    } finally {
+      setAddLoading(false);
+    }
   };
 
   const handleCreatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeam) return;
-    if (!newPlayerName.trim()) {
+    const trimmedPlayerName = newPlayerName.trim();
+    if (!trimmedPlayerName) {
       setPlayerActionError('Player name is required');
       return;
     }
+
     if (!newPlayerJersey || Number(newPlayerJersey) < 1 || Number(newPlayerJersey) > 99) {
       setPlayerActionError('Valid jersey number between 1 and 99 is required');
       return;
     }
 
+    // Check duplicate player name in team
+    const isDuplicateName = teamPlayers.some(
+      (p) => p.name.trim().toLowerCase() === trimmedPlayerName.toLowerCase()
+    );
+    if (isDuplicateName) {
+      setPlayerActionError(
+        `A player named "${trimmedPlayerName}" already exists in ${selectedTeam.name}. Player names must be unique.`
+      );
+      return;
+    }
+
+    // Check duplicate jersey number in team
+    const isDuplicateJersey = teamPlayers.some(
+      (p) => p.jerseyNumber === Number(newPlayerJersey)
+    );
+    if (isDuplicateJersey) {
+      setPlayerActionError(
+        `Jersey number #${newPlayerJersey} is already assigned in ${selectedTeam.name}.`
+      );
+      return;
+    }
+
     try {
       const res = await adminService.createPlayer({
-        name: newPlayerName.trim(),
+        name: trimmedPlayerName,
         club: newPlayerClub.trim() || 'Independent Athletic Club',
         jerseyNumber: Number(newPlayerJersey),
         position: newPlayerPosition,
@@ -213,31 +278,21 @@ export default function AdminTeamsPage() {
 
       if (res.success && res.data) {
         setTeamPlayers((prev) => [...prev, res.data]);
-        setPlayerActionMsg(`Athlete "${newPlayerName}" [Club: ${newPlayerClub || 'Independent'}] enrolled into ${selectedTeam.name}!`);
+        setPlayerActionMsg(
+          `Athlete "${trimmedPlayerName}" [Club: ${newPlayerClub || 'Independent'}] enrolled into ${selectedTeam.name}!`
+        );
         setNewPlayerName('');
         setNewPlayerClub('');
         setNewPlayerJersey('');
         setShowAddPlayer(false);
         setPlayerActionError(null);
+
+        // Refresh teams list so all team cards reflect the new player
+        teamService.getAllTeams().then((fresh) => {
+          if (fresh && fresh.length > 0) setTeams(fresh);
+        });
       } else {
-        // Fallback local update if offline or simulated ID
-        const localPlayer: Player = {
-          _id: `p-${Date.now()}`,
-          name: newPlayerName.trim(),
-          club: newPlayerClub.trim() || 'Independent Athletic Club',
-          jerseyNumber: Number(newPlayerJersey),
-          position: newPlayerPosition,
-          team: selectedTeam._id,
-          matchesPlayed: 0,
-          goals: 0,
-        };
-        setTeamPlayers((prev) => [...prev, localPlayer]);
-        setPlayerActionMsg(`Athlete "${newPlayerName}" [Club: ${newPlayerClub || 'Independent'}] enrolled into ${selectedTeam.name}!`);
-        setNewPlayerName('');
-        setNewPlayerClub('');
-        setNewPlayerJersey('');
-        setShowAddPlayer(false);
-        setPlayerActionError(null);
+        setPlayerActionError(res.error || 'Failed to create athlete in database');
       }
     } catch (err: any) {
       setPlayerActionError(err.message || 'Failed to create athlete');
@@ -368,12 +423,63 @@ export default function AdminTeamsPage() {
                   </div>
                 </div>
 
+                {/* All Players of the Team displayed on card */}
+                <div className="mt-3 pt-3 border-t border-surface-container">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-label-caps text-[10px] font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1">
+                      <Users className="w-3 h-3 text-primary-container" />
+                      <span>All Players ({Array.isArray(team.players) ? team.players.length : 0})</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectTeam(team);
+                        setShowAddPlayer(true);
+                      }}
+                      className="text-[10px] font-bold text-primary-container hover:underline flex items-center gap-0.5"
+                      title="Quick enroll player"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>+ Add Player</span>
+                    </button>
+                  </div>
+
+                  {Array.isArray(team.players) && team.players.length > 0 ? (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {team.players.map((p: any) => {
+                        const pObj = typeof p === 'object' && p ? p : { name: String(p), jerseyNumber: '?', position: 'Forward' };
+                        return (
+                          <div
+                            key={pObj._id || pObj.name}
+                            className="flex items-center justify-between bg-surface-container-low px-2 py-1 rounded-lg border border-surface-container text-[11px]"
+                          >
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="w-4 h-4 rounded bg-primary-container/15 text-primary-container font-black text-[9px] flex items-center justify-center shrink-0">
+                                #{pObj.jerseyNumber ?? '?'}
+                              </span>
+                              <span className="font-bold text-on-surface truncate">{pObj.name}</span>
+                            </div>
+                            <span className="text-[9px] font-semibold text-on-surface-variant bg-surface-container px-1 py-0.5 rounded shrink-0">
+                              {pObj.position || 'Forward'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="bg-surface-container-low/60 rounded-lg p-2 text-center text-[10px] text-on-surface-variant italic border border-dashed border-surface-container">
+                      No players registered yet
+                    </div>
+                  )}
+                </div>
+
                 <div className="pt-3 mt-3 border-t border-surface-container-high flex items-center justify-between text-xs">
-                  <span className="text-on-surface-variant font-medium">
-                    {Array.isArray(team.players) ? `${team.players.length} Athletes` : 'Active Roster'}
+                  <span className="text-on-surface-variant text-[11px] font-medium">
+                    Click to manage roster
                   </span>
                   <span className="text-primary-container font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                    <span>View Roster</span>
+                    <span>Manage Roster</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
@@ -754,10 +860,24 @@ export default function AdminTeamsPage() {
               <h3 className="font-headline-md text-base font-black text-on-surface">
                 Register University Team
               </h3>
-              <button onClick={() => setShowModal(false)} className="text-on-surface-variant font-bold">
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setAddError(null);
+                }}
+                className="text-on-surface-variant font-bold hover:text-on-surface"
+              >
                 ✕
               </button>
             </div>
+
+            {/* Error banner inside Add Team Modal */}
+            {addError && (
+              <div className="bg-rose-50 border border-rose-300 text-rose-900 rounded-xl p-3 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0" />
+                <span>{addError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleAddTeam} className="space-y-3.5">
               <div>
@@ -768,7 +888,10 @@ export default function AdminTeamsPage() {
                   type="text"
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (addError) setAddError(null);
+                  }}
                   placeholder="e.g. Stanford Cardinal"
                   className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
                 />
@@ -803,13 +926,24 @@ export default function AdminTeamsPage() {
               <div className="flex items-center gap-2 pt-3">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all"
+                  disabled={addLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  Register Team Roster
+                  {addLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Saving to Database...</span>
+                    </>
+                  ) : (
+                    <span>Register Team Roster</span>
+                  )}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setAddError(null);
+                  }}
                   className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-all"
                 >
                   Cancel
