@@ -9,6 +9,7 @@ import { SearchBar } from '@/components/common/SearchBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/common/PageHeader';
+import { getCaptainDisplayName } from '@/utils/formatters';
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -34,7 +35,8 @@ export default function TeamsPage() {
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const match = `${t.name} ${t.coach || ''} ${t.captain || ''}`.toLowerCase();
+      const captainName = getCaptainDisplayName(t.captain);
+      const match = `${t.name} ${t.coach || ''} ${captainName}`.toLowerCase();
       if (!match.includes(q)) return false;
     }
     return true;

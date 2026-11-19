@@ -24,10 +24,17 @@ export interface Team {
   logo?: string;
   description?: string;
   coach?: string;
-  captain?: string;
+  captain?: string | { _id: string; name: string; jerseyNumber?: number; position?: string };
   conference?: string;
   seed?: string | number;
   players?: Player[] | string[];
+  matchesPlayed?: number;
+  matchesWon?: number;
+  matchesLost?: number;
+  goalsScored?: number;
+  goalsConceded?: number;
+  goalDifference?: number;
+  totalPoints?: number;
   stats?: {
     matchesPlayed: number;
     matchesWon: number;

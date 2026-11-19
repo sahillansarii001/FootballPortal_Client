@@ -70,7 +70,19 @@ export default function TeamDetailPage() {
       <TeamHeader team={team} />
 
       {/* Season Stats Grid */}
-      {team.stats && <TeamStatsGrid stats={team.stats} />}
+      <TeamStatsGrid
+        stats={
+          team.stats || {
+            matchesPlayed: team.matchesPlayed || 0,
+            matchesWon: team.matchesWon || 0,
+            matchesLost: team.matchesLost || 0,
+            goalsScored: team.goalsScored || 0,
+            goalsConceded: team.goalsConceded || 0,
+            goalDifference: team.goalDifference || 0,
+            totalPoints: team.totalPoints || 0,
+          }
+        }
+      />
 
       {/* Squad Roster */}
       <TeamRoster players={players} />

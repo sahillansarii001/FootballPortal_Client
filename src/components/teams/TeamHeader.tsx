@@ -1,12 +1,15 @@
 import React from 'react';
 import { Team } from '@/types';
 import { Trophy, Shield, User, Award } from 'lucide-react';
+import { getCaptainDisplayName } from '@/utils/formatters';
 
 interface TeamHeaderProps {
   team: Team;
 }
 
 export const TeamHeader: React.FC<TeamHeaderProps> = ({ team }) => {
+  const captainName = getCaptainDisplayName(team.captain);
+  const rosterCount = Array.isArray(team.players) ? `${team.players.length} Athletes` : '24 Athletes';
   return (
     <div className="relative bg-surface-container-lowest rounded-2xl p-6 sm:p-8 shadow-md border border-surface-container-high overflow-hidden mb-8">
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl pointer-events-none" />
@@ -43,11 +46,11 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({ team }) => {
             </div>
             <div className="flex items-center gap-1.5">
               <Award className="w-4 h-4 text-primary-container" />
-              <span>Captain: <strong className="text-on-surface font-semibold">{team.captain || 'Team Captain'}</strong></span>
+              <span>Captain: <strong className="text-on-surface font-semibold">{captainName}</strong></span>
             </div>
             <div className="flex items-center gap-1.5">
               <Shield className="w-4 h-4 text-primary-container" />
-              <span>Active Squad: <strong className="text-on-surface font-semibold">24 Athletes</strong></span>
+              <span>Active Squad: <strong className="text-on-surface font-semibold">{rosterCount}</strong></span>
             </div>
           </div>
         </div>

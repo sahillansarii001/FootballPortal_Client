@@ -44,3 +44,27 @@ export function getStageDisplay(stage: string | undefined): { label: string; sho
   if (lower.includes('completed') || lower.includes('ft')) return { label: 'Full Time', short: 'FT', isLive: false };
   return { label: stage, short: stage.slice(0, 3).toUpperCase(), isLive: false };
 }
+
+export function getCaptainDisplayName(captain?: unknown): string {
+  if (!captain) return 'Unassigned';
+  if (typeof captain === 'string') return captain;
+  if (typeof captain === 'object' && captain !== null) {
+    const c = captain as { name?: string; jerseyNumber?: number };
+    if (c.name) {
+      return c.jerseyNumber ? `${c.name} (#${c.jerseyNumber})` : c.name;
+    }
+  }
+  return 'Team Captain';
+}
+
+export function getTeamName(team?: unknown): string {
+  if (!team) return 'Team';
+  if (typeof team === 'string') return team;
+  if (typeof team === 'object' && team !== null) {
+    const t = team as { name?: string };
+    if (t.name) return t.name;
+  }
+  return 'Team';
+}
+
+

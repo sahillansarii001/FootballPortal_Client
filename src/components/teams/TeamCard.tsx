@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Eye } from 'lucide-react';
 import { Team } from '@/types';
+import { getCaptainDisplayName } from '@/utils/formatters';
 
 interface TeamCardProps {
   team: Team;
@@ -9,14 +10,17 @@ interface TeamCardProps {
 
 export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
   const stats = team.stats || {
-    matchesPlayed: 7,
-    matchesWon: 5,
-    matchesLost: 2,
-    goalsScored: 12,
-    goalsConceded: 6,
-    goalDifference: 6,
-    totalPoints: 15,
+    matchesPlayed: team.matchesPlayed ?? 0,
+    matchesWon: team.matchesWon ?? 0,
+    matchesLost: team.matchesLost ?? 0,
+    goalsScored: team.goalsScored ?? 0,
+    goalsConceded: team.goalsConceded ?? 0,
+    goalDifference: team.goalDifference ?? 0,
+    totalPoints: team.totalPoints ?? 0,
   };
+
+  const captainName = getCaptainDisplayName(team.captain);
+  const rosterCount = Array.isArray(team.players) ? `${team.players.length} Athletes` : 'Squad Roster';
 
   return (
     <article className="bg-surface-container-lowest rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between border border-surface-container-high group">
@@ -52,13 +56,13 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
           <div className="flex justify-between">
             <span>Team Captain:</span>
             <span className="text-on-surface font-label-ui text-label-ui font-semibold">
-              {team.captain || 'Captain'}
+              {captainName}
             </span>
           </div>
           <div className="flex justify-between">
             <span>Active Roster:</span>
             <span className="text-primary-container font-label-ui text-label-ui font-bold">
-              24 Athletes
+              {rosterCount}
             </span>
           </div>
         </div>
