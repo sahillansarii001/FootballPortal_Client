@@ -11,7 +11,7 @@ interface AppShellProps {
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const pathname = usePathname();
-  const isAuthPage = pathname === '/login' || pathname === '/admin-login';
+  const isAuthPage = pathname === '/login';
 
   if (isAuthPage) {
     return (

@@ -2,6 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   optimizeFonts: false,
+  async redirects() {
+    return [
+      {
+        source: '/admin-login',
+        destination: '/login',
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

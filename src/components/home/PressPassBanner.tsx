@@ -20,7 +20,7 @@ export const PressPassBanner: React.FC = () => {
       </div>
       <div className="flex items-center gap-3 shrink-0 z-10">
         <Link
-          href="/admin-login"
+          href="/login"
           className="inline-flex items-center gap-2 bg-surface text-primary-container font-headline-sm text-headline-sm px-6 py-3 rounded-xl hover:bg-surface-container transition-all shadow-md active:scale-95 group font-bold"
         >
           <ShieldCheck className="w-5 h-5 text-primary-container" />
