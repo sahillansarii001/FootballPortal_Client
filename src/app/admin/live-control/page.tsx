@@ -51,6 +51,9 @@ export default function AdminLiveControlPage() {
   // Penalty Shootout state
   const [penaltyKicks, setPenaltyKicks] = useState<{ team: 'A' | 'B'; round: number; outcome: 'scored' | 'saved' | 'missed' }[]>([]);
 
+  const teamAName = selectedMatch?.teamA?.name || 'Home Team';
+  const teamBName = selectedMatch?.teamB?.name || 'Away Team';
+
   useEffect(() => {
     async function loadMatches() {
       setLoading(true);
@@ -85,14 +88,41 @@ export default function AdminLiveControlPage() {
     }
   };
 
-  // Local ticker countdown
+  // Local ticker countdown with automatic match completion
   useEffect(() => {
     if (!timerRunning) return;
     const interval = setInterval(() => {
-      setRemainingSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          // When stage timer reaches 0
+          if (currentStage.includes('Second') || currentStage.includes('Extra')) {
+            if (scoreA !== scoreB) {
+              setTimerRunning(false);
+              setCurrentStage('Completed');
+              if (selectedMatch) {
+                adminService.finalizeMatch(selectedMatch._id).then(() => {
+                  setSelectedMatch((m) => m ? { ...m, status: 'Completed', matchResult: scoreA > scoreB ? `${teamAName} won` : `${teamBName} won` } : null);
+                  setMatches((all) => all.map((m) => m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m));
+                });
+                showNotification(`Full Time whistle! Match has concluded: ${teamAName} ${scoreA} - ${scoreB} ${teamBName}. Marked as Completed.`);
+              }
+              return 0;
+            } else {
+              setTimerRunning(false);
+              showNotification(`Time expired at ${scoreA} - ${scoreB} draw! Proceed to Extra Time or Penalty Shootout.`);
+              return 0;
+            }
+          } else {
+            setTimerRunning(false);
+            showNotification(`${currentStage} time expired! Please advance to the next stage.`);
+            return 0;
+          }
+        }
+        return prev - 1;
+      });
     }, 1000);
     return () => clearInterval(interval);
-  }, [timerRunning]);
+  }, [timerRunning, currentStage, scoreA, scoreB, selectedMatch, teamAName, teamBName]);
 
   const showNotification = (msg: string) => {
     setActionMessage(msg);
@@ -106,16 +136,16 @@ export default function AdminLiveControlPage() {
     setTimeout(() => setActionError(null), 5000);
   };
 
-  // Direct Score Dropdown Change Handler
-  const handleScoreDropdownChange = async (team: 'A' | 'B', newScore: number) => {
+  // Direct Score Adjustment Handlers (No dropdowns)
+  const handleScoreAdjust = async (team: 'A' | 'B', delta: number) => {
     let nextA = scoreA;
     let nextB = scoreB;
     if (team === 'A') {
-      nextA = newScore;
-      setScoreA(newScore);
+      nextA = Math.max(0, scoreA + delta);
+      setScoreA(nextA);
     } else {
-      nextB = newScore;
-      setScoreB(newScore);
+      nextB = Math.max(0, scoreB + delta);
+      setScoreB(nextB);
     }
 
     if (selectedMatch) {
@@ -298,14 +328,20 @@ export default function AdminLiveControlPage() {
     if (!confirm) return;
 
     setTimerRunning(false);
-    setCurrentStage('Full Time');
+    setCurrentStage('Completed');
     setRemainingSeconds(0);
-    await adminService.advanceStage(selectedMatch._id);
-    showNotification(`Match finalized! Winner declared and tournament leaderboard updated.`);
-  };
+    
+    // Call backend authoritative finalize
+    await adminService.finalizeMatch(selectedMatch._id);
 
-  const teamAName = selectedMatch?.teamA?.name || 'Home Team';
-  const teamBName = selectedMatch?.teamB?.name || 'Away Team';
+    const winnerName = scoreA > scoreB ? teamAName : scoreB > scoreA ? teamBName : null;
+    const resultStr = winnerName ? `${winnerName} Victory` : 'Full Time Draw';
+
+    setSelectedMatch((prev) => prev ? { ...prev, status: 'Completed', matchResult: resultStr } : null);
+    setMatches((prev) => prev.map((m) => m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m));
+
+    showNotification(`Match is officially OVER! Marked as Completed (${scoreA} - ${scoreB}). Standings updated.`);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-6 select-none">
@@ -381,7 +417,29 @@ export default function AdminLiveControlPage() {
           </div>
         </div>
 
-        {/* Central Score Display with Interactive Dropdowns */}
+        {/* Completion Alert Banner if match is over */}
+        {selectedMatch?.status === 'Completed' && (
+          <div className="bg-slate-900 text-white rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg border border-slate-800 animate-in fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-lg">
+                ✓
+              </div>
+              <div>
+                <div className="font-headline-md text-sm font-black tracking-wide text-emerald-400 uppercase">
+                  MATCH FINISHED & OVER (FULL TIME)
+                </div>
+                <div className="text-xs text-slate-300">
+                  Final Result: <strong className="text-white">{teamAName} {scoreA} - {scoreB} {teamBName}</strong> • {selectedMatch.matchResult || (scoreA > scoreB ? `${teamAName} Win` : scoreB > scoreA ? `${teamBName} Win` : 'Draw')}
+                </div>
+              </div>
+            </div>
+            <span className="font-label-caps text-xs px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full font-bold">
+              OFFICIALLY COMPLETED
+            </span>
+          </div>
+        )}
+
+        {/* Central Score Display (Clean Scoreboard - No Dropdowns) */}
         <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-6">
           {/* Team A */}
           <div className="md:col-span-4 flex items-center gap-4">
@@ -398,44 +456,64 @@ export default function AdminLiveControlPage() {
             </div>
           </div>
 
-          {/* Middle: Scoreboard Dropdown & Match Timer */}
+          {/* Middle: Official Score & Match Timer */}
           <div className="md:col-span-4 flex flex-col items-center justify-center text-center p-4 bg-surface-container-low rounded-2xl border border-surface-container shadow-inner">
             <span className="font-label-caps text-[10px] text-primary-container font-extrabold uppercase mb-2 tracking-wider bg-primary-container/10 px-3 py-0.5 rounded-full border border-primary-container/20">
-              Scoreboard Dropdowns
+              Official Match Score
             </span>
 
-            <div className="flex items-center justify-center gap-3">
-              {/* Score Dropdown Team A */}
-              <select
-                value={scoreA}
-                onChange={(e) => handleScoreDropdownChange('A', Number(e.target.value))}
-                className="bg-surface-container-lowest text-on-surface font-display-score text-4xl sm:text-5xl font-black px-3 py-1.5 rounded-xl border border-surface-container-high cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-container shadow-sm hover:border-primary-container transition-all text-center"
-                aria-label={`${teamAName} Score Dropdown`}
-                title={`Select ${teamAName} Score`}
-              >
-                {[...Array(16)].map((_, i) => (
-                  <option key={i} value={i} className="text-base font-bold bg-surface">
-                    {i}
-                  </option>
-                ))}
-              </select>
+            <div className="flex items-center justify-center gap-4">
+              {/* Score Team A */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleScoreAdjust('A', -1)}
+                  disabled={selectedMatch?.status === 'Completed'}
+                  className="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-sm disabled:opacity-30 transition-all active:scale-95"
+                  title="Decrease Team A score"
+                >
+                  -
+                </button>
+                <div className="bg-surface-container-lowest text-on-surface font-display-score text-4xl sm:text-5xl font-black min-w-16 py-1 px-3 rounded-xl border border-surface-container-high shadow-xs text-center tabular-nums">
+                  {scoreA}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleScoreAdjust('A', 1)}
+                  disabled={selectedMatch?.status === 'Completed'}
+                  className="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-sm disabled:opacity-30 transition-all active:scale-95"
+                  title="Increase Team A score"
+                >
+                  +
+                </button>
+              </div>
 
               <span className="text-on-surface-variant/40 font-display-score text-3xl font-light">:</span>
 
-              {/* Score Dropdown Team B */}
-              <select
-                value={scoreB}
-                onChange={(e) => handleScoreDropdownChange('B', Number(e.target.value))}
-                className="bg-surface-container-lowest text-on-surface font-display-score text-4xl sm:text-5xl font-black px-3 py-1.5 rounded-xl border border-surface-container-high cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-container shadow-sm hover:border-primary-container transition-all text-center"
-                aria-label={`${teamBName} Score Dropdown`}
-                title={`Select ${teamBName} Score`}
-              >
-                {[...Array(16)].map((_, i) => (
-                  <option key={i} value={i} className="text-base font-bold bg-surface">
-                    {i}
-                  </option>
-                ))}
-              </select>
+              {/* Score Team B */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleScoreAdjust('B', -1)}
+                  disabled={selectedMatch?.status === 'Completed'}
+                  className="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-sm disabled:opacity-30 transition-all active:scale-95"
+                  title="Decrease Team B score"
+                >
+                  -
+                </button>
+                <div className="bg-surface-container-lowest text-on-surface font-display-score text-4xl sm:text-5xl font-black min-w-16 py-1 px-3 rounded-xl border border-surface-container-high shadow-xs text-center tabular-nums">
+                  {scoreB}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleScoreAdjust('B', 1)}
+                  disabled={selectedMatch?.status === 'Completed'}
+                  className="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-sm disabled:opacity-30 transition-all active:scale-95"
+                  title="Increase Team B score"
+                >
+                  +
+                </button>
+              </div>
             </div>
 
             <div className="font-stat-numeral text-2xl font-black text-primary-container tabular-nums mt-2 tracking-tight">
@@ -465,7 +543,12 @@ export default function AdminLiveControlPage() {
         {/* Primary Action Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
           {/* Timer Toggle */}
-          {timerRunning ? (
+          {selectedMatch?.status === 'Completed' ? (
+            <div className="py-3 px-4 rounded-xl bg-surface-container-high/60 text-on-surface-variant font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-surface-container-high cursor-not-allowed">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Full Time (Over)</span>
+            </div>
+          ) : timerRunning ? (
             <button
               onClick={handlePause}
               className="py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs"
@@ -486,7 +569,8 @@ export default function AdminLiveControlPage() {
           {/* Goal Team A */}
           <button
             onClick={() => handleOpenGoalModal('A')}
-            className="py-3 px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-all shadow-xs"
+            disabled={selectedMatch?.status === 'Completed'}
+            className="py-3 px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-40"
           >
             <Plus className="w-4 h-4 text-primary-container" />
             <span>+ Goal ({teamAName})</span>
@@ -495,20 +579,28 @@ export default function AdminLiveControlPage() {
           {/* Goal Team B */}
           <button
             onClick={() => handleOpenGoalModal('B')}
-            className="py-3 px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-all shadow-xs"
+            disabled={selectedMatch?.status === 'Completed'}
+            className="py-3 px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-40"
           >
             <Plus className="w-4 h-4 text-primary-container" />
             <span>+ Goal ({teamBName})</span>
           </button>
 
           {/* Finalize Match */}
-          <button
-            onClick={handleFinalizeMatch}
-            className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Finalize Match</span>
-          </button>
+          {selectedMatch?.status === 'Completed' ? (
+            <div className="py-3 px-4 rounded-xl bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs cursor-default">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Match Completed</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleFinalizeMatch}
+              className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>Finalize Match</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -776,7 +868,7 @@ export default function AdminLiveControlPage() {
                   <option value="">-- Select Athlete --</option>
                   {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
                     <option key={p._id} value={p.name}>
-                      #{p.jerseyNumber} - {p.name} ({p.position})
+                      #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''} ({p.position})
                     </option>
                   ))}
                 </select>

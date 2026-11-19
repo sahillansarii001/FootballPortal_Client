@@ -185,6 +185,39 @@ export const adminService = {
     }
   },
 
+  async finalizeMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/finalize`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async createPlayer(payload: {
+    name: string;
+    jerseyNumber: number;
+    club?: string;
+    position?: string;
+    team: string;
+  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/players`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
   // Match Scheduling
   async scheduleMatch(payload: {
     tournamentId: string;

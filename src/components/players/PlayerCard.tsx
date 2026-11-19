@@ -25,15 +25,23 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
               </span>
               <h2 className="font-headline-sm text-headline-sm text-on-surface font-extrabold group-hover:text-primary-container transition-colors leading-tight">
                 {player.name}
+                {player.club && (
+                  <span className="block text-[11px] font-semibold text-primary-container mt-0.5">
+                    ({player.club})
+                  </span>
+                )}
               </h2>
             </div>
           </div>
         </div>
 
         {/* Team affiliation */}
-        <p className="font-body-sm text-body-sm text-on-surface-variant font-medium mb-4 pb-3 border-b border-surface-container-high">
-          {teamName}
-        </p>
+        <div className="flex items-center justify-between text-xs text-on-surface-variant font-medium mb-4 pb-3 border-b border-surface-container-high">
+          <span>{teamName}</span>
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            {player.club || 'Independent Club'}
+          </span>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 bg-surface-container-low p-2.5 rounded-xl mb-4 text-center border border-surface-container">

@@ -51,6 +51,7 @@ export interface Player {
   _id: string;
   name: string;
   jerseyNumber: number;
+  club?: string;
   position: 'Goalkeeper' | 'Defender' | 'Midfielder' | 'Forward' | string;
   team: Team | string;
   avatar?: string;

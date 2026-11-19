@@ -40,7 +40,8 @@ export default function PlayersPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const tName = typeof p.team === 'object' && p.team ? p.team.name.toLowerCase() : '';
-      if (!p.name.toLowerCase().includes(q) && !tName.includes(q)) return false;
+      const cName = p.club ? p.club.toLowerCase() : '';
+      if (!p.name.toLowerCase().includes(q) && !tName.includes(q) && !cName.includes(q)) return false;
     }
     return true;
   });

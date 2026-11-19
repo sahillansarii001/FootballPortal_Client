@@ -34,18 +34,30 @@ export const PlayerProfileHeader: React.FC<PlayerProfileHeaderProps> = ({ player
 
           <h1 className="font-display-score text-3xl sm:text-4xl text-on-surface font-black tracking-tight mb-2">
             {player.name}
+            {player.club && (
+              <span className="block text-base sm:text-lg font-bold text-primary-container mt-1">
+                Club: {player.club}
+              </span>
+            )}
           </h1>
 
-          <div className="flex items-center justify-center md:justify-start gap-2 text-sm text-on-surface-variant font-medium mb-4">
-            <Shield className="w-4 h-4 text-primary-container" />
-            <span>Club:</span>
-            {teamId ? (
-              <Link href={`/teams/${teamId}`} className="text-primary-container font-bold hover:underline">
-                {teamName}
-              </Link>
-            ) : (
-              <span className="text-on-surface font-semibold">{teamName}</span>
-            )}
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-on-surface-variant font-medium mb-4">
+            <div className="flex items-center gap-1.5">
+              <Shield className="w-4 h-4 text-primary-container" />
+              <span>Team:</span>
+              {teamId ? (
+                <Link href={`/teams/${teamId}`} className="text-primary-container font-bold hover:underline">
+                  {teamName}
+                </Link>
+              ) : (
+                <span className="text-on-surface font-semibold">{teamName}</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">
+              <Medal className="w-3.5 h-3.5 text-primary-container" />
+              <span>Origin Club: {player.club || 'Independent Club'}</span>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-semibold text-on-surface-variant">

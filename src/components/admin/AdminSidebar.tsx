@@ -46,11 +46,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Calendar className="w-5 h-5" />,
   },
   {
-    label: 'Tournaments',
-    href: '/admin/tournaments',
-    icon: <Trophy className="w-5 h-5" />,
-  },
-  {
     label: 'Teams & Rosters',
     href: '/admin/teams',
     icon: <Shield className="w-5 h-5" />,

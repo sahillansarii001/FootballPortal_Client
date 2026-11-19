@@ -53,6 +53,9 @@ export const TeamRoster: React.FC<TeamRosterProps> = ({ players }) => {
                         <span className="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-primary-container transition-colors">
                           {player.name}
                         </span>
+                        <span className="text-[11px] font-bold text-primary-container">
+                          Club: {player.club || 'Independent Club'}
+                        </span>
                         <span className="font-body-sm text-xs text-on-surface-variant">
                           {player.goals} Goals • {player.matchesPlayed} Apps
                         </span>
