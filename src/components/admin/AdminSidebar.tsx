@@ -51,6 +51,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Shield className="w-5 h-5" />,
   },
   {
+    label: 'Top Scorers',
+    href: '/admin/top-scorers',
+    icon: <Trophy className="w-5 h-5 text-amber-500" />,
+    badge: 'GOLDEN BOOT',
+  },
+  {
     label: 'Point Table',
     href: '/admin/standings',
     icon: <TableProperties className="w-5 h-5" />,

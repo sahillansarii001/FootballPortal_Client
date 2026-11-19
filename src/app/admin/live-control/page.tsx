@@ -215,9 +215,18 @@ export default function AdminLiveControlPage() {
   const handleStartOrResume = async () => {
     if (!selectedMatch) return;
     setTimerRunning(true);
-    const res = await adminService.resumeMatch(selectedMatch._id);
-    if (res.success) {
-      showNotification('Timer resumed and broadcasted across live match rooms.');
+    let res;
+    if (selectedMatch.status === 'Upcoming' || !selectedMatch.timer?.isRunning) {
+      res = await adminService.startMatch(selectedMatch._id);
+    } else {
+      res = await adminService.resumeMatch(selectedMatch._id);
+    }
+    setSelectedMatch((prev) => (prev ? { ...prev, status: 'Live' } : null));
+    setMatches((prev) =>
+      prev.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Live' } : m))
+    );
+    if (res?.success) {
+      showNotification('Match started! Live telemetry synchronized with Live Match Center.');
     } else {
       showNotification('Timer active (authoritative live clock running).');
     }
@@ -227,8 +236,11 @@ export default function AdminLiveControlPage() {
     if (!selectedMatch) return;
     setTimerRunning(false);
     const res = await adminService.pauseMatch(selectedMatch._id);
-    if (res.success) {
-      showNotification('Timer paused and authoritative state saved.');
+    setSelectedMatch((prev) =>
+      prev ? { ...prev, timer: prev.timer ? { ...prev.timer, isPaused: true } : undefined } : null
+    );
+    if (res?.success) {
+      showNotification('Timer paused and authoritative state broadcasted to Live viewers.');
     } else {
       showNotification('Timer paused locally.');
     }
@@ -790,8 +802,8 @@ export default function AdminLiveControlPage() {
           </div>
         </div>
 
-        {/* Primary Action Bar with Pause & Time Add Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+        {/* Primary Action Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
           {/* Pause / Resume Clock Button */}
           {selectedMatch?.status === 'Completed' ? (
             <div className="py-3 px-4 rounded-xl bg-surface-container-high/60 text-on-surface-variant font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-surface-container-high cursor-not-allowed">
@@ -812,20 +824,9 @@ export default function AdminLiveControlPage() {
               className="py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95"
             >
               <Play className="w-4 h-4" />
-              <span>Resume Clock</span>
+              <span>{selectedMatch?.status === 'Upcoming' ? 'Start Match' : 'Resume Clock'}</span>
             </button>
           )}
-
-          {/* Time Add Button (+2m Extra Time) */}
-          <button
-            onClick={() => handleAddTime(120)}
-            disabled={selectedMatch?.status === 'Completed'}
-            className="py-3 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface border border-surface-container-high font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 disabled:opacity-40"
-            title="Add 2 minutes to the match timer"
-          >
-            <Hourglass className="w-4 h-4 text-primary-container" />
-            <span>+2m Time Add</span>
-          </button>
 
           {/* Goal Team A */}
           <button
@@ -847,19 +848,19 @@ export default function AdminLiveControlPage() {
             <span>+ Goal ({teamBName.split(' ')[0]})</span>
           </button>
 
-          {/* Finalize Match */}
+          {/* Finalize / Stop Match */}
           {selectedMatch?.status === 'Completed' ? (
-            <div className="py-3 px-4 rounded-xl bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs cursor-default col-span-2 sm:col-span-1">
+            <div className="py-3 px-4 rounded-xl bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs cursor-default">
               <CheckCircle2 className="w-4 h-4" />
               <span>Completed</span>
             </div>
           ) : (
             <button
               onClick={handleFinalizeMatch}
-              className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs col-span-2 sm:col-span-1"
+              className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Finalize</span>
+              <span>Finalize Match</span>
             </button>
           )}
         </div>

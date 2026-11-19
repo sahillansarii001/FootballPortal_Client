@@ -232,6 +232,24 @@ export const adminService = {
     }
   },
 
+  // Team Management: Edit Team Name & Logo
+  async updateTeam(
+    teamId: string,
+    payload: { name?: string; logo?: string; coach?: string; conference?: string; description?: string }
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
   // Match Scheduling
   async scheduleMatch(payload: {
     tournamentId: string;

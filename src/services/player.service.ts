@@ -5,7 +5,7 @@ import { MOCK_PLAYERS } from './mockData';
 export const playerService = {
   async getAllPlayers(): Promise<Player[]> {
     const res = await fetchApi<Player[]>('/players');
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data;
     }
     return MOCK_PLAYERS;
@@ -20,9 +20,9 @@ export const playerService = {
     return found || MOCK_PLAYERS[0];
   },
 
-  async getTopScorers(limit = 5): Promise<Player[]> {
+  async getTopScorers(limit = 10): Promise<Player[]> {
     const res = await fetchApi<Player[]>(`/leaderboard/top-scorers?limit=${limit}`);
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data;
     }
     return [...MOCK_PLAYERS].sort((a, b) => b.goals - a.goals).slice(0, limit);

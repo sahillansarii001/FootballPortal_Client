@@ -475,13 +475,21 @@ export default function AdminOverviewPage() {
                       </div>
                     </div>
                   </div>
-                  <Link
-                    href={`/players/${topScorer._id}`}
-                    className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1"
-                  >
-                    <span>Profile</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/players/${topScorer._id}`}
+                      className="text-xs font-bold text-on-surface-variant hover:text-on-surface"
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      href="/admin/top-scorers"
+                      className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20"
+                    >
+                      <span>Leaderboard</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}

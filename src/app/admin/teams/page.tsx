@@ -1,7 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Users, Award, CheckCircle2, X, ChevronRight, UserPlus, Shirt, Sparkles, Building2 } from 'lucide-react';
+import {
+  Shield,
+  Plus,
+  Users,
+  Award,
+  CheckCircle2,
+  X,
+  ChevronRight,
+  UserPlus,
+  Shirt,
+  Sparkles,
+  Building2,
+  Pencil,
+  Image as ImageIcon,
+  Loader2
+} from 'lucide-react';
 import { teamService } from '@/services/team.service';
 import { adminService } from '@/services/admin.service';
 import { getCaptainDisplayName } from '@/utils/formatters';
@@ -10,13 +25,23 @@ import { Team, Player } from '@/types';
 export default function AdminTeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Register Team Modal state
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [conference, setConference] = useState('Pacific Division');
   const [coach, setCoach] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Edit Team Modal state
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editLogo, setEditLogo] = useState('');
+  const [editCoach, setEditCoach] = useState('');
+  const [editConference, setEditConference] = useState('Pacific Division');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Selected Team Squad Roster Modal state
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
@@ -66,6 +91,78 @@ export default function AdminTeamsPage() {
     setPlayerActionError(null);
   };
 
+  // Open Edit Modal for a specific team
+  const handleOpenEditModal = (team: Team, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingTeam(team);
+    setEditName(team.name);
+    setEditLogo(team.logo || '');
+    setEditCoach(team.coach || '');
+    setEditConference(team.conference || 'Pacific Division');
+    setEditError(null);
+  };
+
+  // Submit Edit Team
+  const handleSaveEditTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeam) return;
+    if (!editName.trim()) {
+      setEditError('Team name is required');
+      return;
+    }
+
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const res = await adminService.updateTeam(editingTeam._id, {
+        name: editName.trim(),
+        logo: editLogo.trim(),
+        coach: editCoach.trim(),
+        conference: editConference.trim(),
+      });
+
+      if (res.success || !res.error) {
+        setTeams((prev) =>
+          prev.map((t) =>
+            t._id === editingTeam._id
+              ? {
+                  ...t,
+                  name: editName.trim(),
+                  logo: editLogo.trim(),
+                  coach: editCoach.trim(),
+                  conference: editConference.trim(),
+                }
+              : t
+          )
+        );
+
+        if (selectedTeam?._id === editingTeam._id) {
+          setSelectedTeam((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  name: editName.trim(),
+                  logo: editLogo.trim(),
+                  coach: editCoach.trim(),
+                  conference: editConference.trim(),
+                }
+              : null
+          );
+        }
+
+        setSuccessMsg(`Team "${editName}" updated successfully!`);
+        setTimeout(() => setSuccessMsg(null), 4000);
+        setEditingTeam(null);
+      } else {
+        setEditError(res.error || 'Failed to update team details');
+      }
+    } catch (err: any) {
+      setEditError(err.message || 'Error updating team');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const handleAddTeam = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -73,6 +170,7 @@ export default function AdminTeamsPage() {
     const newTeam: Team = {
       _id: `team-${Date.now()}`,
       name,
+      logo: logoUrl.trim() || undefined,
       conference,
       coach: coach || 'Head Coach',
       captain: 'Team Captain (#10)',
@@ -92,6 +190,7 @@ export default function AdminTeamsPage() {
     setShowModal(false);
     setName('');
     setCoach('');
+    setLogoUrl('');
     setSuccessMsg(`Team "${name}" registered in ${conference}!`);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
@@ -114,7 +213,7 @@ export default function AdminTeamsPage() {
         club: newPlayerClub.trim() || 'Independent Athletic Club',
         jerseyNumber: Number(newPlayerJersey),
         position: newPlayerPosition,
-        team: selectedTeam._id
+        team: selectedTeam._id,
       });
 
       if (res.success && res.data) {
@@ -135,7 +234,7 @@ export default function AdminTeamsPage() {
           position: newPlayerPosition,
           team: selectedTeam._id,
           matchesPlayed: 0,
-          goals: 0
+          goals: 0,
         };
         setTeamPlayers((prev) => [...prev, localPlayer]);
         setPlayerActionMsg(`Athlete "${newPlayerName}" [Club: ${newPlayerClub || 'Independent'}] enrolled into ${selectedTeam.name}!`);
@@ -162,7 +261,7 @@ export default function AdminTeamsPage() {
             </h1>
           </div>
           <p className="text-xs text-on-surface-variant font-medium mt-0.5">
-            Click any team to inspect its full athlete roster, view players&apos; origin clubs, and register new athletes.
+            Click any team to inspect athlete rosters, view origin clubs, or click <Pencil className="w-3 h-3 inline mx-0.5 text-primary-container" /> to edit team names and logos.
           </p>
         </div>
 
@@ -177,7 +276,7 @@ export default function AdminTeamsPage() {
 
       {/* Success Notification */}
       {successMsg && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3.5 flex items-center gap-2 text-xs font-bold shadow-xs">
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3.5 flex items-center gap-2 text-xs font-bold shadow-xs animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-primary-container shrink-0" />
           <span>{successMsg}</span>
         </div>
@@ -200,16 +299,30 @@ export default function AdminTeamsPage() {
             <div
               key={team._id}
               onClick={() => handleSelectTeam(team)}
-              className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs hover:shadow-lg hover:border-primary-container/40 transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
+              className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs hover:shadow-lg hover:border-primary-container/40 transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] relative"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-primary-container flex items-center justify-center font-black text-lg border border-emerald-200 shadow-inner group-hover:scale-105 transition-transform">
-                    {team.name.slice(0, 2).toUpperCase()}
+                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-primary-container flex items-center justify-center font-black text-lg border border-emerald-200 shadow-inner group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+                    {team.logo ? (
+                      <img src={team.logo} alt={team.name} className="w-full h-full object-cover" />
+                    ) : (
+                      team.name.slice(0, 2).toUpperCase()
+                    )}
                   </div>
-                  <span className="font-label-caps text-[10px] text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-full font-bold">
-                    {team.conference || 'Pac-West'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenEditModal(team, e)}
+                      className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary-container transition-colors shadow-2xs"
+                      title="Edit Team Name & Logo"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="font-label-caps text-[10px] text-primary-container bg-emerald-50 px-2 py-0.5 rounded-full font-bold">
+                      {team.conference || 'Pac-West'}
+                    </span>
+                  </div>
                 </div>
 
                 <h2 className="font-headline-sm text-base font-black text-on-surface leading-tight mb-1 group-hover:text-primary-container transition-colors">
@@ -260,8 +373,12 @@ export default function AdminTeamsPage() {
             {/* Modal Header */}
             <div className="bg-surface-container-high/40 p-6 border-b border-surface-container-high flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-2xl border border-primary-container/30 shadow-inner">
-                  {selectedTeam.name.slice(0, 2).toUpperCase()}
+                <div className="w-14 h-14 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-2xl border border-primary-container/30 shadow-inner overflow-hidden shrink-0">
+                  {selectedTeam.logo ? (
+                    <img src={selectedTeam.logo} alt={selectedTeam.name} className="w-full h-full object-cover" />
+                  ) : (
+                    selectedTeam.name.slice(0, 2).toUpperCase()
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -279,6 +396,15 @@ export default function AdminTeamsPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditModal(selectedTeam)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-bold shadow-2xs transition-all active:scale-95"
+                  title="Edit team details"
+                >
+                  <Pencil className="w-3.5 h-3.5 text-primary-container" />
+                  <span>Edit Team</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowAddPlayer(!showAddPlayer)}
@@ -421,7 +547,9 @@ export default function AdminTeamsPage() {
                 <div className="py-12 text-center rounded-2xl bg-surface-container-low border border-surface-container">
                   <Users className="w-8 h-8 text-on-surface-variant/40 mx-auto mb-2" />
                   <p className="text-xs font-bold text-on-surface">No athletes registered yet for this team.</p>
-                  <p className="text-[11px] text-on-surface-variant mt-1">Use the &quot;+ Add Athlete&quot; button above to enroll players with their respective clubs.</p>
+                  <p className="text-[11px] text-on-surface-variant mt-1">
+                    Use the &quot;+ Add Athlete&quot; button above to enroll players with their respective clubs.
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -480,6 +608,149 @@ export default function AdminTeamsPage() {
         </div>
       )}
 
+      {/* Edit Team Modal (Name & Logo) */}
+      {editingTeam && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-md w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-primary-container" />
+                <h3 className="font-headline-md text-base font-black text-on-surface">
+                  Edit Team Details
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingTeam(null)}
+                className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-xs font-bold flex items-center gap-2">
+                <X className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEditTeam} className="space-y-3.5">
+              {/* Logo Preview */}
+              <div className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl border border-surface-container">
+                <div className="w-14 h-14 rounded-xl bg-surface-container-lowest border border-surface-container-high flex items-center justify-center font-black text-lg text-primary-container overflow-hidden shrink-0 shadow-inner">
+                  {editLogo.trim() ? (
+                    <img
+                      src={editLogo}
+                      alt="Logo preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    editName.slice(0, 2).toUpperCase() || 'TM'
+                  )}
+                </div>
+                <div>
+                  <span className="font-label-caps text-[10px] uppercase font-bold text-on-surface-variant block">
+                    Team Badge Preview
+                  </span>
+                  <span className="text-xs font-bold text-on-surface">
+                    {editName || 'Unnamed Team'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Team Name */}
+              <div>
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                  Team Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="e.g. Stanford Cardinal"
+                  className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                />
+              </div>
+
+              {/* Team Logo URL */}
+              <div>
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                  Team Logo URL
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={editLogo}
+                    onChange={(e) => setEditLogo(e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                  />
+                  <ImageIcon className="w-4 h-4 text-on-surface-variant absolute left-3 top-3" />
+                </div>
+                <span className="text-[10px] text-on-surface-variant mt-1 block">
+                  Paste any public image link or CDN badge URL
+                </span>
+              </div>
+
+              {/* Head Coach */}
+              <div>
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                  Head Coach
+                </label>
+                <input
+                  type="text"
+                  value={editCoach}
+                  onChange={(e) => setEditCoach(e.target.value)}
+                  placeholder="e.g. Marcus Henderson"
+                  className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                />
+              </div>
+
+              {/* Conference */}
+              <div>
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                  Conference Division
+                </label>
+                <select
+                  value={editConference}
+                  onChange={(e) => setEditConference(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                >
+                  <option value="Pac-12 Varsity">Pac-12 Varsity</option>
+                  <option value="Big Ten Varsity">Big Ten Varsity</option>
+                  <option value="Pacific Division">Pacific Division</option>
+                  <option value="Ivy Collegiate">Ivy Collegiate</option>
+                  <option value="Atlantic Athletic">Atlantic Athletic</option>
+                  <option value="Midwest Conference">Midwest Conference</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 pt-3">
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  <span>Save Team Changes</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingTeam(null)}
+                  className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Add Team Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -496,7 +767,7 @@ export default function AdminTeamsPage() {
             <form onSubmit={handleAddTeam} className="space-y-3.5">
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                  University Team Name
+                  University Team Name *
                 </label>
                 <input
                   type="text"
@@ -510,6 +781,19 @@ export default function AdminTeamsPage() {
 
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                  Team Logo URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://example.com/logo.png"
+                  className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
                   Conference Division
                 </label>
                 <select
@@ -517,6 +801,8 @@ export default function AdminTeamsPage() {
                   onChange={(e) => setConference(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
                 >
+                  <option value="Pac-12 Varsity">Pac-12 Varsity</option>
+                  <option value="Big Ten Varsity">Big Ten Varsity</option>
                   <option value="Pacific Division">Pacific Division</option>
                   <option value="Ivy Collegiate">Ivy Collegiate</option>
                   <option value="Atlantic Athletic">Atlantic Athletic</option>

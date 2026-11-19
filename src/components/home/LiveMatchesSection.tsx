@@ -140,7 +140,7 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
           <div className="flex flex-wrap items-center gap-4 text-on-surface-variant font-body-sm text-body-sm">
             <span className="inline-flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-primary-container" />
-              Possession: <strong className="text-on-surface font-bold">54% - 46%</strong>
+              Match Status: <strong className="text-on-surface font-bold">{liveMatch.timer?.isPaused ? 'Paused' : 'Active Live'}</strong>
             </span>
             <span className="text-outline-variant">•</span>
             <span className="inline-flex items-center gap-1">

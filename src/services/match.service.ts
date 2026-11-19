@@ -20,7 +20,7 @@ function normalizeMatch(match: any): Match {
 export const matchService = {
   async getAllMatches(): Promise<Match[]> {
     const res = await fetchApi<Match[]>('/matches');
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data.map(normalizeMatch);
     }
     return MOCK_MATCHES.map(normalizeMatch);
@@ -28,7 +28,7 @@ export const matchService = {
 
   async getUpcomingMatches(): Promise<Match[]> {
     const res = await fetchApi<Match[]>('/matches/upcoming');
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data.map(normalizeMatch);
     }
     return MOCK_MATCHES.filter((m) => m.status === 'Upcoming').map(normalizeMatch);
@@ -36,7 +36,7 @@ export const matchService = {
 
   async getLiveMatches(): Promise<Match[]> {
     const res = await fetchApi<Match[]>('/matches/live');
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data.map(normalizeMatch);
     }
     return MOCK_MATCHES.filter(
@@ -46,7 +46,7 @@ export const matchService = {
 
   async getCompletedMatches(): Promise<Match[]> {
     const res = await fetchApi<Match[]>('/matches/completed');
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data.map(normalizeMatch);
     }
     return MOCK_MATCHES.filter((m) => m.status === 'Completed').map(normalizeMatch);

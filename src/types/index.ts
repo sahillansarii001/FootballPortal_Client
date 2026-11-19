@@ -55,6 +55,7 @@ export interface Player {
   position: 'Goalkeeper' | 'Defender' | 'Midfielder' | 'Forward' | string;
   team: Team | string;
   avatar?: string;
+  isCaptain?: boolean;
   matchesPlayed: number;
   goals: number;
   assists?: number;
