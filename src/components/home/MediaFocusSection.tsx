@@ -6,8 +6,8 @@ export const MediaFocusSection: React.FC = () => {
   const stories = [
     {
       category: 'Tactical Analysis',
-      title: "How Stanford's Overlapping Midfield Blueprint Dismantled the Bruins' Defensive Block",
-      excerpt: "Coach Henderson's 3-4-2-1 hybrid system is forcing opposing center-backs into uncomfortable wide clearances.",
+      title: "Overlapping Midfield Blueprint: Tactical Analysis of Modern Formations",
+      excerpt: "Modern 3-4-2-1 hybrid tactical setups are dominating possession metrics and offensive clearances.",
       image: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&q=80',
     },
     {

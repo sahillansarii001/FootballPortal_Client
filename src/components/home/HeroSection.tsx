@@ -66,29 +66,29 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ stats }) => {
         {/* Statistics Ribbon */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-6 border-t border-surface-container-highest/20">
           <div className="flex flex-col p-3 rounded-xl bg-surface/10 backdrop-blur-md border border-surface/10 hover:border-surface/20 transition-all">
-            <span className="font-stat-numeral text-stat-numeral text-primary-fixed">{stats.totalTeams}</span>
+            <span className="font-stat-numeral text-stat-numeral text-primary-fixed">{stats?.totalTeams ?? 0}</span>
             <span className="font-label-caps text-label-caps text-inverse-on-surface/70 uppercase mt-0.5">Total Teams</span>
           </div>
           <div className="flex flex-col p-3 rounded-xl bg-surface/10 backdrop-blur-md border border-surface/10 hover:border-surface/20 transition-all">
-            <span className="font-stat-numeral text-stat-numeral text-on-primary">{stats.totalPlayers}</span>
+            <span className="font-stat-numeral text-stat-numeral text-on-primary">{stats?.totalPlayers ?? 0}</span>
             <span className="font-label-caps text-label-caps text-inverse-on-surface/70 uppercase mt-0.5">Total Players</span>
           </div>
           <div className="flex flex-col p-3 rounded-xl bg-surface/10 backdrop-blur-md border border-surface/10 hover:border-surface/20 transition-all">
-            <span className="font-stat-numeral text-stat-numeral text-on-primary">{stats.totalMatches}</span>
+            <span className="font-stat-numeral text-stat-numeral text-on-primary">{stats?.totalMatches ?? 0}</span>
             <span className="font-label-caps text-label-caps text-inverse-on-surface/70 uppercase mt-0.5">Total Matches</span>
           </div>
           <div className="flex flex-col p-3 rounded-xl bg-surface/10 backdrop-blur-md border border-surface/10 hover:border-surface/20 transition-all">
-            <span className="font-stat-numeral text-stat-numeral text-secondary-fixed">{stats.completedMatches}</span>
+            <span className="font-stat-numeral text-stat-numeral text-secondary-fixed">{stats?.completedMatches ?? 0}</span>
             <span className="font-label-caps text-label-caps text-inverse-on-surface/70 uppercase mt-0.5">Completed</span>
           </div>
           <div className="flex flex-col p-3 rounded-xl bg-surface/10 backdrop-blur-md border border-surface/10 hover:border-surface/20 transition-all">
-            <span className="font-stat-numeral text-stat-numeral text-primary-fixed-dim">{stats.upcomingMatches}</span>
+            <span className="font-stat-numeral text-stat-numeral text-primary-fixed-dim">{stats?.upcomingMatches ?? 0}</span>
             <span className="font-label-caps text-label-caps text-inverse-on-surface/70 uppercase mt-0.5">Upcoming</span>
           </div>
           <div className="flex flex-col p-3 rounded-xl bg-surface/10 backdrop-blur-md border border-surface/10 hover:border-surface/20 transition-all">
             <div className="flex items-baseline gap-1">
-              <span className="font-stat-numeral text-stat-numeral text-secondary-fixed">{stats.totalGoals}</span>
-              <span className="font-body-sm text-body-sm text-secondary-fixed-dim">({stats.goalsPerMatch}/m)</span>
+              <span className="font-stat-numeral text-stat-numeral text-secondary-fixed">{stats?.totalGoals ?? 0}</span>
+              <span className="font-body-sm text-body-sm text-secondary-fixed-dim">({stats?.goalsPerMatch ?? '0.00'}/m)</span>
             </div>
             <span className="font-label-caps text-label-caps text-inverse-on-surface/70 uppercase mt-0.5">Total Goals</span>
           </div>

@@ -165,9 +165,9 @@ export default function LiveMatchesPage() {
                   <div className="md:col-span-4 flex items-center gap-4">
                     <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center font-black text-primary-container text-2xl border border-surface-container-high shrink-0 overflow-hidden shadow-xs relative">
                       <span className="absolute inset-0 flex items-center justify-center font-black text-xl text-primary-container">
-                        {match.teamA.name.slice(0, 2).toUpperCase()}
+                        {(match.teamA?.name || 'T').slice(0, 2).toUpperCase()}
                       </span>
-                      {match.teamA.logo && (
+                      {match.teamA?.logo && (
                         <img
                           src={match.teamA.logo}
                           alt=""
@@ -180,10 +180,10 @@ export default function LiveMatchesPage() {
                     </div>
                     <div className="min-w-0">
                       <span className="font-label-caps text-[10px] text-primary-container font-bold uppercase">
-                        {match.teamA.seed || 'HOST TEAM'}
+                        {match.teamA?.seed || 'HOST TEAM'}
                       </span>
                       <h3 className="font-headline-lg text-xl sm:text-2xl text-on-surface font-extrabold truncate">
-                        {match.teamA.name}
+                        {match.teamA?.name || 'Team A'}
                       </h3>
                       {match.goals && match.goals.length > 0 && (
                         <p className="text-xs text-on-surface-variant truncate mt-0.5">
@@ -191,8 +191,8 @@ export default function LiveMatchesPage() {
                           {match.goals
                             .filter(
                               (g) =>
-                                (g.team as any)?._id === match.teamA._id ||
-                                (g.team as any)?.name === match.teamA.name
+                                (g.team as any)?._id === match.teamA?._id ||
+                                (g.team as any)?.name === match.teamA?.name
                             )
                             .map((g) => `${g.player?.name || 'Athlete'} (${g.matchTime})`)
                             .join(', ')}
@@ -234,10 +234,10 @@ export default function LiveMatchesPage() {
                   <div className="md:col-span-4 flex items-center justify-start md:justify-end gap-4 text-left md:text-right">
                     <div className="min-w-0 order-2 md:order-1">
                       <span className="font-label-caps text-[10px] text-secondary font-bold uppercase">
-                        {match.teamB.seed || 'VISITING TEAM'}
+                        {match.teamB?.seed || 'VISITING TEAM'}
                       </span>
                       <h3 className="font-headline-lg text-xl sm:text-2xl text-on-surface font-extrabold truncate">
-                        {match.teamB.name}
+                        {match.teamB?.name || 'Team B'}
                       </h3>
                       {match.goals && match.goals.length > 0 && (
                         <p className="text-xs text-on-surface-variant truncate mt-0.5">
@@ -245,8 +245,8 @@ export default function LiveMatchesPage() {
                           {match.goals
                             .filter(
                               (g) =>
-                                (g.team as any)?._id === match.teamB._id ||
-                                (g.team as any)?.name === match.teamB.name
+                                (g.team as any)?._id === match.teamB?._id ||
+                                (g.team as any)?.name === match.teamB?.name
                             )
                             .map((g) => `${g.player?.name || 'Athlete'} (${g.matchTime})`)
                             .join(', ')}
@@ -255,9 +255,9 @@ export default function LiveMatchesPage() {
                     </div>
                     <div className="w-16 h-16 rounded-2xl bg-surface-container-high text-secondary flex items-center justify-center font-black text-2xl border border-surface-container shrink-0 order-1 md:order-2 overflow-hidden shadow-xs relative">
                       <span className="absolute inset-0 flex items-center justify-center font-black text-xl text-secondary">
-                        {match.teamB.name.slice(0, 2).toUpperCase()}
+                        {(match.teamB?.name || 'T').slice(0, 2).toUpperCase()}
                       </span>
-                      {match.teamB.logo && (
+                      {match.teamB?.logo && (
                         <img
                           src={match.teamB.logo}
                           alt=""

@@ -17,7 +17,7 @@ export const teamService = {
       return res.data;
     }
     const found = MOCK_TEAMS.find((t) => t._id === id || t.name.toLowerCase().includes(id.toLowerCase()));
-    return found || MOCK_TEAMS[0];
+    return found || null;
   },
 
   async getTeamPlayers(teamId: string): Promise<Player[]> {
@@ -39,6 +39,14 @@ export const teamService = {
       return res.data;
     }
     const team = await this.getTeamById(teamId);
-    return team?.stats || MOCK_TEAMS[0].stats;
+    return team?.stats || {
+      matchesPlayed: 0,
+      matchesWon: 0,
+      matchesLost: 0,
+      goalsScored: 0,
+      goalsConceded: 0,
+      goalDifference: 0,
+      totalPoints: 0,
+    };
   },
 };

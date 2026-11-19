@@ -13,12 +13,21 @@ import { TopScorers } from '@/components/home/TopScorers';
 import { FeaturedTeams } from '@/components/home/FeaturedTeams';
 import { MediaFocusSection } from '@/components/home/MediaFocusSection';
 import { PressPassBanner } from '@/components/home/PressPassBanner';
+import { MOCK_OVERVIEW_STATS } from '@/services/mockData';
 
 export const revalidate = 10; // Incremental static regeneration every 10 seconds
 
 export default async function HomePage() {
-  const [stats, liveMatches, upcomingMatches, completedMatches, teams, scorers, standings] =
-    await Promise.all([
+  let stats = MOCK_OVERVIEW_STATS;
+  let liveMatches: any[] = [];
+  let upcomingMatches: any[] = [];
+  let completedMatches: any[] = [];
+  let teams: any[] = [];
+  let scorers: any[] = [];
+  let standings: any[] = [];
+
+  try {
+    const results = await Promise.allSettled([
       tournamentService.getOverviewStats(),
       matchService.getLiveMatches(),
       matchService.getUpcomingMatches(),
@@ -28,7 +37,18 @@ export default async function HomePage() {
       standingsService.getStandings(),
     ]);
 
-  const activeLiveMatch = liveMatches.length > 0 ? liveMatches[0] : null;
+    if (results[0].status === 'fulfilled' && results[0].value) stats = results[0].value;
+    if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) liveMatches = results[1].value;
+    if (results[2].status === 'fulfilled' && Array.isArray(results[2].value)) upcomingMatches = results[2].value;
+    if (results[3].status === 'fulfilled' && Array.isArray(results[3].value)) completedMatches = results[3].value;
+    if (results[4].status === 'fulfilled' && Array.isArray(results[4].value)) teams = results[4].value;
+    if (results[5].status === 'fulfilled' && Array.isArray(results[5].value)) scorers = results[5].value;
+    if (results[6].status === 'fulfilled' && Array.isArray(results[6].value)) standings = results[6].value;
+  } catch (err) {
+    console.error('Error fetching home page data:', err);
+  }
+
+  const activeLiveMatch = Array.isArray(liveMatches) && liveMatches.length > 0 ? liveMatches[0] : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

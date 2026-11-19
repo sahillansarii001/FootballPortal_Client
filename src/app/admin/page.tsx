@@ -43,40 +43,14 @@ export default function AdminOverviewPage() {
   const [topScorer, setTopScorer] = useState<Player | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [auditLogs, setAuditLogs] = useState([
-    {
-      id: '1',
-      title: 'Goal Validated: Mateo Vance',
-      minute: "28'",
-      desc: 'Stanford Cardinal • Club: Bay Area Elite SC • Pitch Log',
-      official: 'Ref: FIFA Official',
-      type: 'goal',
-    },
-    {
-      id: '2',
-      title: 'Goal Validated: Aaron Chen',
-      minute: "75'",
-      desc: 'Stanford Cardinal • Club: Silicon Valley FC • Pitch Log',
-      official: 'Ref: FIFA Official',
-      type: 'goal',
-    },
-    {
-      id: '3',
-      title: 'Goal Validated: Julian Morales',
-      minute: "41'",
-      desc: 'UCLA Bruins • Club: SoCal Gunners FC • Open play strike',
-      official: 'Ref: FIFA Official',
-      type: 'goal',
-    },
-    {
-      id: '4',
-      title: 'Authoritative Whistle Blown',
-      minute: "45'",
-      desc: 'Authoritative server clock resumed without desync',
-      official: 'System Sync #104',
-      type: 'timer',
-    },
-  ]);
+  const [auditLogs, setAuditLogs] = useState<{
+    id: string;
+    title: string;
+    minute: string;
+    desc: string;
+    official: string;
+    type: string;
+  }[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -507,48 +481,54 @@ export default function AdminOverviewPage() {
             </div>
 
             <div className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4">
-              {auditLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-start gap-3 pb-3 border-b border-surface-container-high last:border-0 last:pb-0"
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                      log.type === 'goal'
-                        ? 'bg-emerald-100 text-primary-container'
-                        : log.type === 'card'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-surface-container text-on-surface'
-                    }`}
-                  >
-                    {log.type === 'goal' ? '⚽' : log.type === 'card' ? '🟨' : '⏱️'}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-on-surface truncate">
-                        {log.title}
-                      </span>
-                      <span className="text-[11px] text-on-surface-variant font-semibold shrink-0 ml-2">
-                        {log.minute}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-on-surface-variant mt-0.5 truncate">
-                      {log.desc}
-                    </p>
-                    <div className="flex items-center justify-between mt-1 text-[10px] text-on-surface-variant">
-                      <span>{log.official}</span>
-                      <button
-                        onClick={() => handleUndoEvent(log.id)}
-                        className="text-error hover:underline flex items-center gap-0.5 font-bold"
-                      >
-                        <Undo2 className="w-3 h-3" />
-                        <span>Undo</span>
-                      </button>
-                    </div>
-                  </div>
+              {auditLogs.length === 0 ? (
+                <div className="py-8 text-center text-xs text-on-surface-variant font-medium">
+                  No match events recorded in the audit feed yet.
                 </div>
-              ))}
+              ) : (
+                auditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="flex items-start gap-3 pb-3 border-b border-surface-container-high last:border-0 last:pb-0"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                        log.type === 'goal'
+                          ? 'bg-emerald-100 text-primary-container'
+                          : log.type === 'card'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-surface-container text-on-surface'
+                      }`}
+                    >
+                      {log.type === 'goal' ? '⚽' : log.type === 'card' ? '🟨' : '⏱️'}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-on-surface truncate">
+                          {log.title}
+                        </span>
+                        <span className="text-[11px] text-on-surface-variant font-semibold shrink-0 ml-2">
+                          {log.minute}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant mt-0.5 truncate">
+                        {log.desc}
+                      </p>
+                      <div className="flex items-center justify-between mt-1 text-[10px] text-on-surface-variant">
+                        <span>{log.official}</span>
+                        <button
+                          onClick={() => handleUndoEvent(log.id)}
+                          className="text-error hover:underline flex items-center gap-0.5 font-bold"
+                        >
+                          <Undo2 className="w-3 h-3" />
+                          <span>Undo</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

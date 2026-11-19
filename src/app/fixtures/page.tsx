@@ -46,7 +46,7 @@ export default function FixturesPage() {
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchName = `${m.teamA.name} ${m.teamB.name} ${m.venue || ''}`.toLowerCase();
+      const matchName = `${m.teamA?.name || ''} ${m.teamB?.name || ''} ${m.venue || ''}`.toLowerCase();
       if (!matchName.includes(q)) return false;
     }
 
@@ -58,7 +58,9 @@ export default function FixturesPage() {
     // Team filter
     if (selectedTeam) {
       const t = selectedTeam.toLowerCase();
-      if (!m.teamA.name.toLowerCase().includes(t) && !m.teamB.name.toLowerCase().includes(t)) {
+      const teamAName = (m.teamA?.name || '').toLowerCase();
+      const teamBName = (m.teamB?.name || '').toLowerCase();
+      if (!teamAName.includes(t) && !teamBName.includes(t)) {
         return false;
       }
     }

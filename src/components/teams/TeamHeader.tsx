@@ -26,9 +26,6 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({ team }) => {
             <span className="px-3 py-1 rounded-full bg-secondary-container/50 text-on-secondary-container font-label-caps text-label-caps font-bold">
               {team.seed || '#1 SEED'}
             </span>
-            <span className="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps font-semibold">
-              {team.conference || 'Pac-West Collegiate'}
-            </span>
           </div>
 
           <h1 className="font-display-score text-3xl sm:text-4xl text-on-surface font-black tracking-tight mb-2">
@@ -40,10 +37,6 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({ team }) => {
 
           {/* Leaders */}
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm text-on-surface-variant font-medium">
-            <div className="flex items-center gap-1.5">
-              <User className="w-4 h-4 text-primary-container" />
-              <span>Head Coach: <strong className="text-on-surface font-semibold">{team.coach || 'Head Coach'}</strong></span>
-            </div>
             <div className="flex items-center gap-1.5">
               <Award className="w-4 h-4 text-primary-container" />
               <span>Captain: <strong className="text-on-surface font-semibold">{captainName}</strong></span>

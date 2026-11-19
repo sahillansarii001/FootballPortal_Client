@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/common/PageHeader';
 export default function StandingsPage() {
   const [standings, setStandings] = useState<TournamentStandingRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeDivision, setActiveDivision] = useState('all');
 
   useEffect(() => {
     async function fetchStandings() {
@@ -23,22 +22,6 @@ export default function StandingsPage() {
     }
     fetchStandings();
   }, []);
-
-  const divisions = [
-    { id: 'all', label: 'All Conferences' },
-    { id: 'pacific', label: 'Pacific Division' },
-    { id: 'ivy', label: 'Ivy Collegiate' },
-    { id: 'atlantic', label: 'Atlantic Athletic' },
-  ];
-
-  const filteredStandings = standings.filter((row) => {
-    if (activeDivision === 'all') return true;
-    const conf = row.team.conference?.toLowerCase() || '';
-    if (activeDivision === 'pacific') return conf.includes('pacific') || conf.includes('pac');
-    if (activeDivision === 'ivy') return conf.includes('ivy');
-    if (activeDivision === 'atlantic') return conf.includes('atlantic');
-    return true;
-  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -56,23 +39,6 @@ export default function StandingsPage() {
         }
       />
 
-      {/* Division Switcher */}
-      <div className="flex items-center gap-2 overflow-x-auto p-1 bg-surface-container-high rounded-xl w-max mb-6 shadow-inner">
-        {divisions.map((div) => (
-          <button
-            key={div.id}
-            onClick={() => setActiveDivision(div.id)}
-            className={`px-4 py-2 rounded-lg font-label-ui text-label-ui text-xs font-bold transition-all ${
-              activeDivision === div.id
-                ? 'bg-surface-container-lowest text-primary-container shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            {div.label}
-          </button>
-        ))}
-      </div>
-
       {/* Qualification Legend Strip */}
       <QualificationLegend />
 
@@ -80,7 +46,7 @@ export default function StandingsPage() {
       {loading ? (
         <LoadingState message="Calculating official league standings..." />
       ) : (
-        <StandingsTable standings={filteredStandings} />
+        <StandingsTable standings={standings} />
       )}
     </div>
   );

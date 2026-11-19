@@ -15,7 +15,7 @@ import { ArrowLeft, Calendar, Trophy } from 'lucide-react';
 
 export default function TeamDetailPage() {
   const params = useParams();
-  const teamId = (params?.id as string) || 'team-stanford';
+  const teamId = (params?.id as string) || '';
 
   const [team, setTeam] = useState<Team | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -24,6 +24,10 @@ export default function TeamDetailPage() {
 
   useEffect(() => {
     async function loadTeamData() {
+      if (!teamId) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       const [t, p, m] = await Promise.all([
         teamService.getTeamById(teamId),
@@ -34,7 +38,7 @@ export default function TeamDetailPage() {
       setPlayers(p);
       // Filter matches involving this team
       const teamMatches = m.filter(
-        (match) => match.teamA._id === teamId || match.teamB._id === teamId || match.teamA.name === t?.name || match.teamB.name === t?.name
+        (match) => match.teamA?._id === teamId || match.teamB?._id === teamId || match.teamA?.name === t?.name || match.teamB?.name === t?.name
       );
       setMatches(teamMatches);
       setLoading(false);
@@ -42,10 +46,22 @@ export default function TeamDetailPage() {
     loadTeamData();
   }, [teamId]);
 
-  if (loading || !team) {
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <LoadingState message="Loading varsity team records..." />
+        <LoadingState message="Loading team records..." />
+      </div>
+    );
+  }
+
+  if (!team) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h2 className="text-xl font-bold text-on-surface">Team Not Found</h2>
+        <p className="text-xs text-on-surface-variant mt-2">The requested team could not be found.</p>
+        <Link href="/teams" className="mt-4 inline-block px-4 py-2 bg-primary-container text-on-primary rounded-xl text-xs font-bold">
+          Back to Teams Directory
+        </Link>
       </div>
     );
   }

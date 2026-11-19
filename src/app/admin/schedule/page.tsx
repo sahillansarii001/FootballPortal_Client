@@ -4,13 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Trophy, Shield, MapPin, Clock, CheckCircle2, AlertCircle, Pencil, Trash2 } from 'lucide-react';
 import { matchService } from '@/services/match.service';
 import { teamService } from '@/services/team.service';
+import { tournamentService } from '@/services/tournament.service';
 import { adminService } from '@/services/admin.service';
 import { formatDate } from '@/utils/formatters';
-import { Match, Team } from '@/types';
+import { Match, Team, Tournament } from '@/types';
 
 export default function AdminSchedulePage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [currentTournamentId, setCurrentTournamentId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -38,9 +41,17 @@ export default function AdminSchedulePage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const [m, t] = await Promise.all([matchService.getAllMatches(), teamService.getAllTeams()]);
+      const [m, t, tourns] = await Promise.all([
+        matchService.getAllMatches(),
+        teamService.getAllTeams(),
+        tournamentService.getTournaments(),
+      ]);
       setMatches(m);
       setTeams(t);
+      setTournaments(tourns);
+      if (tourns && tourns.length > 0 && tourns[0]._id) {
+        setCurrentTournamentId(tourns[0]._id);
+      }
       if (t.length >= 2) {
         setTeamA(t[0]._id);
         setTeamB(t[1]._id);
@@ -57,36 +68,39 @@ export default function AdminSchedulePage() {
       return;
     }
 
+    const tId = currentTournamentId || (tournaments[0] ? tournaments[0]._id : undefined);
+
+    let cleanDate = matchDate;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(cleanDate)) {
+      const [d, m, y] = cleanDate.split('-');
+      cleanDate = `${y}-${m}-${d}`;
+    }
+
     const res = await adminService.scheduleMatch({
-      tournamentId: 'tourn-2026-spring',
+      tournament: tId,
+      tournamentId: tId,
       teamA,
       teamB,
-      matchDate,
+      matchDate: cleanDate,
       matchTime,
       venue,
       stage,
+      matchNumber: matches.length + 1,
     });
+
+    if (!res.success) {
+      alert(res.error || res.message || 'Failed to schedule match on server');
+      return;
+    }
+
+    // Refresh directly from database to ensure persistence
+    const updated = await matchService.getAllMatches();
+    setMatches(updated);
+    setShowModal(false);
 
     const teamAObj = teams.find((t) => t._id === teamA);
     const teamBObj = teams.find((t) => t._id === teamB);
-
-    const newMatch: Match = {
-      _id: `match-new-${Date.now()}`,
-      tournament: 'tourn-2026-spring',
-      matchNumber: matches.length + 1,
-      teamA: teamAObj || { _id: teamA, name: 'Team A' },
-      teamB: teamBObj || { _id: teamB, name: 'Team B' },
-      matchDate,
-      matchTime,
-      venue,
-      stage,
-      status: 'Upcoming',
-      score: { teamA: 0, teamB: 0 },
-    };
-
-    setMatches((prev) => [newMatch, ...prev]);
-    setShowModal(false);
-    setSuccessMsg(`Fixture scheduled: ${teamAObj?.name} vs ${teamBObj?.name} on ${matchDate} at ${matchTime}!`);
+    setSuccessMsg(`Fixture scheduled: ${teamAObj?.name || 'Team A'} vs ${teamBObj?.name || 'Team B'} on ${cleanDate} at ${matchTime}!`);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
 
@@ -113,10 +127,16 @@ export default function AdminSchedulePage() {
       return;
     }
 
+    let cleanDate = editMatchDate;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(cleanDate)) {
+      const [d, m, y] = cleanDate.split('-');
+      cleanDate = `${y}-${m}-${d}`;
+    }
+
     const payload = {
       teamA: editTeamA,
       teamB: editTeamB,
-      matchDate: editMatchDate,
+      matchDate: cleanDate,
       matchTime: editMatchTime,
       venue: editVenue,
       stage: editStage,
@@ -125,33 +145,16 @@ export default function AdminSchedulePage() {
       teamBScore: Number(editScoreB),
     };
 
-    await adminService.updateMatch(editingMatch._id, payload);
+    const res = await adminService.updateMatch(editingMatch._id, payload);
+    if (!res.success) {
+      alert(res.error || res.message || 'Failed to update fixture');
+      return;
+    }
 
-    const teamAObj = teams.find((t) => t._id === editTeamA) || editingMatch.teamA;
-    const teamBObj = teams.find((t) => t._id === editTeamB) || editingMatch.teamB;
-
-    setMatches((prev) =>
-      prev.map((m) =>
-        m._id === editingMatch._id
-          ? {
-              ...m,
-              teamA: teamAObj,
-              teamB: teamBObj,
-              matchDate: editMatchDate,
-              matchTime: editMatchTime,
-              venue: editVenue,
-              stage: editStage,
-              status: editStatus,
-              score: { teamA: Number(editScoreA), teamB: Number(editScoreB) },
-              teamAScore: Number(editScoreA),
-              teamBScore: Number(editScoreB),
-            }
-          : m
-      )
-    );
-
+    const updated = await matchService.getAllMatches();
+    setMatches(updated);
     setEditingMatch(null);
-    setSuccessMsg(`Fixture updated: ${teamAObj?.name} vs ${teamBObj?.name} details saved!`);
+    setSuccessMsg(`Fixture details updated and saved to database!`);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
 
@@ -165,8 +168,14 @@ export default function AdminSchedulePage() {
     const confirm = window.confirm(`Are you sure you want to delete fixture ${matchTitle}? This action cannot be undone.`);
     if (!confirm) return;
 
-    await adminService.deleteMatch(matchId);
-    setMatches((prev) => prev.filter((m) => m._id !== matchId));
+    const res = await adminService.deleteMatch(matchId);
+    if (!res.success) {
+      alert(res.error || res.message || 'Failed to delete fixture');
+      return;
+    }
+
+    const updated = await matchService.getAllMatches();
+    setMatches(updated);
     setSuccessMsg(`Fixture deleted successfully.`);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
@@ -214,69 +223,86 @@ export default function AdminSchedulePage() {
         </div>
 
         <div className="divide-y divide-surface-container-high">
-          {matches.map((match) => (
-            <div
-              key={match._id}
-              className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-container-low transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-surface-container text-on-surface flex items-center justify-center font-bold text-xs shrink-0 border border-surface-container-high">
-                  #{match.matchNumber || 1}
-                </div>
-                <div>
-                  <div className="font-headline-sm text-sm font-extrabold text-on-surface flex items-center gap-2">
-                    <span>{match.teamA?.name}</span>
-                    <span className="text-on-surface-variant font-normal">vs</span>
-                    <span>{match.teamB?.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-on-surface-variant mt-1">
-                    <span>{formatDate(match.matchDate)} • {match.matchTime}</span>
-                    <span>•</span>
-                    <span>{match.venue || 'Stadium Field #1'}</span>
-                    <span>•</span>
-                    <span className="font-semibold text-primary-container">{match.stage}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0">
-                <span
-                  className={`px-3 py-1 rounded-full text-[11px] font-bold font-label-caps ${
-                    match.status === 'Live'
-                      ? 'bg-emerald-100 text-primary-container ring-1 ring-primary-container/30'
-                      : match.status === 'Completed'
-                      ? 'bg-surface-container text-on-surface'
-                      : 'bg-primary-container/10 text-primary-container'
-                  }`}
-                >
-                  {match.status}
-                </span>
-                <span className="text-xs font-bold text-on-surface tabular-nums">
-                  {match.score ? `${match.score.teamA} - ${match.score.teamB}` : '0 - 0'}
-                </span>
-
-                {/* Edit & Delete Action Buttons */}
-                <div className="flex items-center gap-1.5 pl-2 border-l border-surface-container-high">
-                  <button
-                    onClick={() => handleOpenEditModal(match)}
-                    className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-primary-container transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
-                    title="Edit Match"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    <span>Edit</span>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMatch(match._id)}
-                    className="p-2 rounded-xl bg-surface-container hover:bg-error/15 text-on-surface hover:text-error transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
-                    title="Delete Match"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </div>
+          {matches.length === 0 ? (
+            <div className="p-12 text-center flex flex-col items-center justify-center gap-3">
+              <Calendar className="w-10 h-10 text-on-surface-variant/40" />
+              <p className="font-headline-sm text-sm font-bold text-on-surface">No Matches Scheduled Yet</p>
+              <p className="text-xs text-on-surface-variant font-medium max-w-sm">
+                Schedule tournament fixtures between registered teams.
+              </p>
+              <button
+                onClick={() => setShowModal(true)}
+                className="mt-2 flex items-center gap-2 bg-primary-container hover:bg-primary text-on-primary px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Schedule New Match</span>
+              </button>
             </div>
-          ))}
+          ) : (
+            matches.map((match) => (
+              <div
+                key={match._id}
+                className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-container-low transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-surface-container text-on-surface flex items-center justify-center font-bold text-xs shrink-0 border border-surface-container-high">
+                    #{match.matchNumber || 1}
+                  </div>
+                  <div>
+                    <div className="font-headline-sm text-sm font-extrabold text-on-surface flex items-center gap-2">
+                      <span>{match.teamA?.name || 'Team A'}</span>
+                      <span className="text-on-surface-variant font-normal">vs</span>
+                      <span>{match.teamB?.name || 'Team B'}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-on-surface-variant mt-1">
+                      <span>{formatDate(match.matchDate)} • {match.matchTime}</span>
+                      <span>•</span>
+                      <span>{match.venue || 'Stadium Field #1'}</span>
+                      <span>•</span>
+                      <span className="font-semibold text-primary-container">{match.stage}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <span
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold font-label-caps ${
+                      match.status === 'Live'
+                        ? 'bg-emerald-100 text-primary-container ring-1 ring-primary-container/30'
+                        : match.status === 'Completed'
+                        ? 'bg-surface-container text-on-surface'
+                        : 'bg-primary-container/10 text-primary-container'
+                    }`}
+                  >
+                    {match.status}
+                  </span>
+                  <span className="text-xs font-bold text-on-surface tabular-nums">
+                    {match.score ? `${match.score.teamA} - ${match.score.teamB}` : '0 - 0'}
+                  </span>
+
+                  {/* Edit & Delete Action Buttons */}
+                  <div className="flex items-center gap-1.5 pl-2 border-l border-surface-container-high">
+                    <button
+                      onClick={() => handleOpenEditModal(match)}
+                      className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-primary-container transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
+                      title="Edit Match"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteMatch(match._id)}
+                      className="p-2 rounded-xl bg-surface-container hover:bg-error/15 text-on-surface hover:text-error transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
+                      title="Delete Match"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

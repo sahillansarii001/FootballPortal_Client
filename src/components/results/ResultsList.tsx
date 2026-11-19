@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Match } from '@/types';
 import { CheckCircle2, Trophy, ChevronRight } from 'lucide-react';
-import { formatDate } from '@/utils/formatters';
+import { formatDate, getCaptainDisplayName } from '@/utils/formatters';
 
 interface ResultsListProps {
   results: Match[];
@@ -52,7 +52,7 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
                     {isTeamAWinner && <Trophy className="w-4 h-4 text-primary-container" />}
                   </span>
                   <span className="font-body-sm text-xs text-on-surface-variant font-medium">
-                    {match.teamA.conference || 'Pac-West Conference'}
+                    Captain: {getCaptainDisplayName(match.teamA.captain)}
                   </span>
                 </div>
               </div>
@@ -81,7 +81,7 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
                     {match.teamB.name}
                   </span>
                   <span className="font-body-sm text-xs text-on-surface-variant font-medium">
-                    {match.teamB.conference || 'Pac-West Conference'}
+                    Captain: {getCaptainDisplayName(match.teamB.captain)}
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center p-1 shadow-inner border border-surface-container-high shrink-0 font-headline-sm font-black order-1 md:order-2">

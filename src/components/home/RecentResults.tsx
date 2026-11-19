@@ -25,63 +25,71 @@ export const RecentResults: React.FC<RecentResultsProps> = ({ results }) => {
 
       {/* Results List */}
       <div className="space-y-3">
-        {results.slice(0, 3).map((match) => {
-          const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
-          const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
-          const isDraw = scoreA === scoreB;
-          const winnerName =
-            typeof match.winner === 'object' && match.winner
-              ? match.winner.name
-              : scoreA > scoreB
-                ? match.teamA?.name
-                : match.teamB?.name;
+        {!results || results.length === 0 ? (
+          <div className="p-8 text-center bg-surface-container-low/60 rounded-xl border border-surface-container/40">
+            <p className="font-body-md text-on-surface-variant font-medium">No completed matches recorded yet.</p>
+          </div>
+        ) : (
+          results.slice(0, 3).map((match) => {
+            const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
+            const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
+            const isDraw = scoreA === scoreB;
+            const teamAName = match.teamA?.name || 'Team A';
+            const teamBName = match.teamB?.name || 'Team B';
+            const winnerName =
+              (typeof match.winner === 'object' && match.winner?.name)
+                ? match.winner.name
+                : scoreA > scoreB
+                  ? teamAName
+                  : teamBName;
 
-          return (
-            <Link
-              key={match._id}
-              href={`/matches/${match._id}`}
-              className="p-4 rounded-xl bg-surface-container-lowest border border-surface-container hover:bg-surface-container-low/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs block group"
-            >
-              <div className="flex items-center gap-4">
-                {/* FT Badge */}
-                <div className="flex flex-col text-center w-14 shrink-0 py-1 bg-surface-container-high rounded-lg text-on-surface-variant border border-surface-container">
-                  <span className="font-label-caps text-[10px] uppercase font-bold">FT</span>
-                  <CheckCircle2 className="w-4 h-4 mx-auto text-primary-container" />
-                </div>
+            return (
+              <Link
+                key={match._id}
+                href={`/matches/${match._id}`}
+                className="p-4 rounded-xl bg-surface-container-lowest border border-surface-container hover:bg-surface-container-low/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs block group"
+              >
+                <div className="flex items-center gap-4">
+                  {/* FT Badge */}
+                  <div className="flex flex-col text-center w-14 shrink-0 py-1 bg-surface-container-high rounded-lg text-on-surface-variant border border-surface-container">
+                    <span className="font-label-caps text-[10px] uppercase font-bold">FT</span>
+                    <CheckCircle2 className="w-4 h-4 mx-auto text-primary-container" />
+                  </div>
 
-                {/* Score & Teams */}
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-3">
-                    <span className="font-headline-sm text-headline-sm text-on-surface font-bold flex items-center gap-1.5">
-                      {match.teamA?.name} {scoreA}
-                    </span>
-                    <span className="text-on-surface-variant font-bold">–</span>
-                    <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                      {scoreB} {match.teamB?.name}
+                  {/* Score & Teams */}
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                      <span className="font-headline-sm text-headline-sm text-on-surface font-bold flex items-center gap-1.5">
+                        {teamAName} {scoreA}
+                      </span>
+                      <span className="text-on-surface-variant font-bold">–</span>
+                      <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
+                        {scoreB} {teamBName}
+                      </span>
+                    </div>
+                    <span className="font-body-sm text-body-sm text-on-surface-variant font-medium mt-0.5">
+                      {match.venue || 'Championship Match'} • {match.matchResult || 'Final Score'}
                     </span>
                   </div>
-                  <span className="font-body-sm text-body-sm text-on-surface-variant font-medium mt-0.5">
-                    {match.venue || 'Inter-College Championship'} • {match.matchResult || 'Verified Match Result'}
-                  </span>
                 </div>
-              </div>
 
-              {/* Winner pill */}
-              <div className="shrink-0 self-end sm:self-center flex items-center gap-2">
-                {isDraw ? (
-                  <span className="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps font-bold border border-surface-container">
-                    DRAW (+1 PT)
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-1 rounded-full bg-secondary-container/40 text-on-secondary-container font-label-caps text-label-caps font-bold border border-secondary-container/60">
-                    WINNER: {winnerName.toUpperCase()} (+3)
-                  </span>
-                )}
-                <ChevronRight className="w-4 h-4 text-outline group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </Link>
-          );
-        })}
+                {/* Winner pill */}
+                <div className="shrink-0 self-end sm:self-center flex items-center gap-2">
+                  {isDraw ? (
+                    <span className="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps font-bold border border-surface-container">
+                      DRAW (+1 PT)
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full bg-secondary-container/40 text-on-secondary-container font-label-caps text-label-caps font-bold border border-secondary-container/60">
+                      WINNER: {(winnerName || 'WINNER').toUpperCase()} (+3)
+                    </span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-outline group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </Link>
+            );
+          })
+        )}
       </div>
     </div>
   );

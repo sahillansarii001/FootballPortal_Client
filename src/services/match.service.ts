@@ -76,6 +76,6 @@ export const matchService = {
       return res.data;
     }
     const match = MOCK_MATCHES.find((m) => m._id === id) || MOCK_LIVE_MATCH;
-    return match.events || [];
+    return match?.events || [];
   },
 };

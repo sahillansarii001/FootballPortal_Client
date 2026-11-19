@@ -29,8 +29,7 @@ export default function AdminTeamsPage() {
   // Register Team Modal state
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
-  const [conference, setConference] = useState('Pacific Division');
-  const [coach, setCoach] = useState('');
+  const [captain, setCaptain] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -38,8 +37,7 @@ export default function AdminTeamsPage() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [editName, setEditName] = useState('');
   const [editLogo, setEditLogo] = useState('');
-  const [editCoach, setEditCoach] = useState('');
-  const [editConference, setEditConference] = useState('Pacific Division');
+  const [editCaptain, setEditCaptain] = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -97,8 +95,8 @@ export default function AdminTeamsPage() {
     setEditingTeam(team);
     setEditName(team.name);
     setEditLogo(team.logo || '');
-    setEditCoach(team.coach || '');
-    setEditConference(team.conference || 'Pacific Division');
+    const currentCap = getCaptainDisplayName(team.captain);
+    setEditCaptain(currentCap === 'Unassigned' || currentCap === 'Team Captain' ? '' : currentCap);
     setEditError(null);
   };
 
@@ -117,8 +115,7 @@ export default function AdminTeamsPage() {
       const res = await adminService.updateTeam(editingTeam._id, {
         name: editName.trim(),
         logo: editLogo.trim(),
-        coach: editCoach.trim(),
-        conference: editConference.trim(),
+        captain: editCaptain.trim(),
       });
 
       if (res.success || !res.error) {
@@ -129,8 +126,7 @@ export default function AdminTeamsPage() {
                   ...t,
                   name: editName.trim(),
                   logo: editLogo.trim(),
-                  coach: editCoach.trim(),
-                  conference: editConference.trim(),
+                  captain: editCaptain.trim(),
                 }
               : t
           )
@@ -143,8 +139,7 @@ export default function AdminTeamsPage() {
                   ...prev,
                   name: editName.trim(),
                   logo: editLogo.trim(),
-                  coach: editCoach.trim(),
-                  conference: editConference.trim(),
+                  captain: editCaptain.trim(),
                 }
               : null
           );
@@ -163,35 +158,35 @@ export default function AdminTeamsPage() {
     }
   };
 
-  const handleAddTeam = (e: React.FormEvent) => {
+  const handleAddTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const newTeam: Team = {
-      _id: `team-${Date.now()}`,
-      name,
-      logo: logoUrl.trim() || undefined,
-      conference,
-      coach: coach || 'Head Coach',
-      captain: 'Team Captain (#10)',
-      players: [],
-      stats: {
-        matchesPlayed: 0,
-        matchesWon: 0,
-        matchesLost: 0,
-        goalsScored: 0,
-        goalsConceded: 0,
-        goalDifference: 0,
-        totalPoints: 0,
-      },
-    };
+    try {
+      const res = await adminService.createTeam({
+        name: name.trim(),
+        captain: captain.trim() || undefined,
+        logo: logoUrl.trim() || undefined,
+        description: `Varsity Collegiate Football Team`,
+      });
 
-    setTeams((prev) => [newTeam, ...prev]);
+      if (res.success && res.data) {
+        setTeams((prev) => [res.data, ...prev]);
+      } else {
+        const freshTeams = await teamService.getAllTeams();
+        setTeams(freshTeams);
+      }
+    } catch (err) {
+      const freshTeams = await teamService.getAllTeams();
+      setTeams(freshTeams);
+    }
+
     setShowModal(false);
+    const createdName = name;
     setName('');
-    setCoach('');
+    setCaptain('');
     setLogoUrl('');
-    setSuccessMsg(`Team "${name}" registered in ${conference}!`);
+    setSuccessMsg(`Team "${createdName}" registered successfully in database!`);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
 
@@ -283,88 +278,110 @@ export default function AdminTeamsPage() {
       )}
 
       {/* Teams Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {teams.map((team) => {
-          const stats = team.stats || {
-            matchesPlayed: team.matchesPlayed || 0,
-            matchesWon: team.matchesWon || 0,
-            matchesLost: team.matchesLost || 0,
-            goalsScored: team.goalsScored || 0,
-            goalsConceded: team.goalsConceded || 0,
-            goalDifference: team.goalDifference || 0,
-            totalPoints: team.totalPoints || 0,
-          };
+      {loading ? (
+        <div className="p-16 text-center flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 text-primary-container animate-spin" />
+          <p className="text-xs text-on-surface-variant font-medium">Loading teams...</p>
+        </div>
+      ) : teams.length === 0 ? (
+        <div className="p-12 text-center bg-surface-container-lowest rounded-2xl border border-surface-container flex flex-col items-center justify-center gap-4 shadow-xs">
+          <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant">
+            <Shield className="w-8 h-8 text-on-surface-variant/50" />
+          </div>
+          <div>
+            <h3 className="font-headline-sm text-base font-bold text-on-surface">No Teams Registered Yet</h3>
+            <p className="text-xs text-on-surface-variant font-medium mt-1 max-w-sm mx-auto">
+              Register official teams to start organizing tournament fixtures, rosters, and championship matches.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-primary-container hover:bg-primary text-on-primary px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Register First Team</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {teams.map((team) => {
+            const stats = team.stats || {
+              matchesPlayed: team.matchesPlayed || 0,
+              matchesWon: team.matchesWon || 0,
+              matchesLost: team.matchesLost || 0,
+              goalsScored: team.goalsScored || 0,
+              goalsConceded: team.goalsConceded || 0,
+              goalDifference: team.goalDifference || 0,
+              totalPoints: team.totalPoints || 0,
+            };
 
-          return (
-            <div
-              key={team._id}
-              onClick={() => handleSelectTeam(team)}
-              className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs hover:shadow-lg hover:border-primary-container/40 transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] relative"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-primary-container flex items-center justify-center font-black text-lg border border-emerald-200 shadow-inner group-hover:scale-105 transition-transform overflow-hidden shrink-0">
-                    {team.logo ? (
-                      <img src={team.logo} alt={team.name} className="w-full h-full object-cover" />
-                    ) : (
-                      team.name.slice(0, 2).toUpperCase()
-                    )}
+            return (
+              <div
+                key={team._id}
+                onClick={() => handleSelectTeam(team)}
+                className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs hover:shadow-lg hover:border-primary-container/40 transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] relative"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-50 text-primary-container flex items-center justify-center font-black text-lg border border-emerald-200 shadow-inner group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+                      {team.logo ? (
+                        <img src={team.logo} alt={team.name} className="w-full h-full object-cover" />
+                      ) : (
+                        (team.name || 'T').slice(0, 2).toUpperCase()
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEditModal(team, e)}
+                        className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary-container transition-colors shadow-2xs"
+                        title="Edit Team Name & Logo"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={(e) => handleOpenEditModal(team, e)}
-                      className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary-container transition-colors shadow-2xs"
-                      title="Edit Team Name & Logo"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="font-label-caps text-[10px] text-primary-container bg-emerald-50 px-2 py-0.5 rounded-full font-bold">
-                      {team.conference || 'Pac-West'}
-                    </span>
+
+                  <h2 className="font-headline-sm text-base font-black text-on-surface leading-tight mb-1 group-hover:text-primary-container transition-colors">
+                    {team.name}
+                  </h2>
+                  <div className="text-xs text-on-surface-variant mb-3">
+                    <div>Captain: <strong className="text-on-surface">{getCaptainDisplayName(team.captain)}</strong></div>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-1 bg-surface-container-low p-2 rounded-xl text-center text-xs font-bold border border-surface-container">
+                    <div>
+                      <span className="text-[9px] text-on-surface-variant block">PLAYED</span>
+                      <span>{stats.matchesPlayed}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-on-surface-variant block">DIFF</span>
+                      <span className={stats.goalDifference >= 0 ? 'text-primary-container' : 'text-error'}>
+                        {stats.goalDifference > 0 ? `+${stats.goalDifference}` : stats.goalDifference}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-on-surface-variant block">POINTS</span>
+                      <span className="text-primary-container">{stats.totalPoints}</span>
+                    </div>
                   </div>
                 </div>
 
-                <h2 className="font-headline-sm text-base font-black text-on-surface leading-tight mb-1 group-hover:text-primary-container transition-colors">
-                  {team.name}
-                </h2>
-                <div className="text-xs text-on-surface-variant space-y-1 mb-3">
-                  <div>Coach: <strong className="text-on-surface">{team.coach || 'Head Coach'}</strong></div>
-                  <div>Captain: <strong className="text-on-surface">{getCaptainDisplayName(team.captain)}</strong></div>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-1 bg-surface-container-low p-2 rounded-xl text-center text-xs font-bold border border-surface-container">
-                  <div>
-                    <span className="text-[9px] text-on-surface-variant block">PLAYED</span>
-                    <span>{stats.matchesPlayed}</span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-on-surface-variant block">DIFF</span>
-                    <span className={stats.goalDifference >= 0 ? 'text-primary-container' : 'text-error'}>
-                      {stats.goalDifference > 0 ? `+${stats.goalDifference}` : stats.goalDifference}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-on-surface-variant block">POINTS</span>
-                    <span className="text-primary-container">{stats.totalPoints}</span>
-                  </div>
+                <div className="pt-3 mt-3 border-t border-surface-container-high flex items-center justify-between text-xs">
+                  <span className="text-on-surface-variant font-medium">
+                    {Array.isArray(team.players) ? `${team.players.length} Athletes` : 'Active Roster'}
+                  </span>
+                  <span className="text-primary-container font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                    <span>View Roster</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
               </div>
-
-              <div className="pt-3 mt-3 border-t border-surface-container-high flex items-center justify-between text-xs">
-                <span className="text-on-surface-variant font-medium">
-                  {Array.isArray(team.players) ? `${team.players.length} Athletes` : 'Active Roster'}
-                </span>
-                <span className="text-primary-container font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                  <span>View Roster</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Team Roster / Players Modal */}
       {selectedTeam && (
@@ -382,11 +399,8 @@ export default function AdminTeamsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-label-caps text-[10px] uppercase font-extrabold text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                      {selectedTeam.conference || 'Varsity Franchise'}
-                    </span>
                     <span className="text-xs text-on-surface-variant font-medium">
-                      Coach: <strong className="text-on-surface">{selectedTeam.coach || 'Head Coach'}</strong>
+                      Captain: <strong className="text-on-surface">{getCaptainDisplayName(selectedTeam.captain)}</strong>
                     </span>
                   </div>
                   <h2 className="font-headline-lg text-2xl font-black text-on-surface tracking-tight mt-0.5">
@@ -696,37 +710,18 @@ export default function AdminTeamsPage() {
                 </span>
               </div>
 
-              {/* Head Coach */}
+              {/* Team Captain */}
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                  Head Coach
+                  Team Captain
                 </label>
                 <input
                   type="text"
-                  value={editCoach}
-                  onChange={(e) => setEditCoach(e.target.value)}
-                  placeholder="e.g. Marcus Henderson"
+                  value={editCaptain}
+                  onChange={(e) => setEditCaptain(e.target.value)}
+                  placeholder="e.g. Mateo Vance"
                   className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
                 />
-              </div>
-
-              {/* Conference */}
-              <div>
-                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                  Conference Division
-                </label>
-                <select
-                  value={editConference}
-                  onChange={(e) => setEditConference(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
-                >
-                  <option value="Pac-12 Varsity">Pac-12 Varsity</option>
-                  <option value="Big Ten Varsity">Big Ten Varsity</option>
-                  <option value="Pacific Division">Pacific Division</option>
-                  <option value="Ivy Collegiate">Ivy Collegiate</option>
-                  <option value="Atlantic Athletic">Atlantic Athletic</option>
-                  <option value="Midwest Conference">Midwest Conference</option>
-                </select>
               </div>
 
               <div className="flex items-center gap-2 pt-3">
@@ -794,31 +789,13 @@ export default function AdminTeamsPage() {
 
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                  Conference Division
-                </label>
-                <select
-                  value={conference}
-                  onChange={(e) => setConference(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
-                >
-                  <option value="Pac-12 Varsity">Pac-12 Varsity</option>
-                  <option value="Big Ten Varsity">Big Ten Varsity</option>
-                  <option value="Pacific Division">Pacific Division</option>
-                  <option value="Ivy Collegiate">Ivy Collegiate</option>
-                  <option value="Atlantic Athletic">Atlantic Athletic</option>
-                  <option value="Midwest Conference">Midwest Conference</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                  Head Coach
+                  Team Captain (Optional)
                 </label>
                 <input
                   type="text"
-                  value={coach}
-                  onChange={(e) => setCoach(e.target.value)}
-                  placeholder="e.g. Jeremy Gunn"
+                  value={captain}
+                  onChange={(e) => setCaptain(e.target.value)}
+                  placeholder="e.g. Mateo Vance"
                   className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
                 />
               </div>

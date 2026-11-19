@@ -32,9 +32,6 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
               {team.name.slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <span className="inline-block px-2 py-0.5 rounded-full font-label-caps text-label-caps bg-surface-container-high text-on-surface-variant mb-1 font-semibold">
-                {team.conference || 'Pac-West'}
-              </span>
               <h2 className="font-headline-sm text-headline-sm text-on-surface font-extrabold leading-tight group-hover:text-primary-container transition-colors">
                 {team.name}
               </h2>
@@ -47,12 +44,6 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
 
         {/* Details list */}
         <div className="space-y-1.5 font-body-sm text-body-sm text-on-surface-variant mb-4 pb-3 border-b border-surface-container-high">
-          <div className="flex justify-between">
-            <span>Head Coach:</span>
-            <span className="text-on-surface font-label-ui text-label-ui font-semibold">
-              {team.coach || 'Head Coach'}
-            </span>
-          </div>
           <div className="flex justify-between">
             <span>Team Captain:</span>
             <span className="text-on-surface font-label-ui text-label-ui font-semibold">

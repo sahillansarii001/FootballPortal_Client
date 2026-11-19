@@ -13,7 +13,7 @@ export const standingsService = {
 
     if (id && /^[0-9a-fA-F]{24}$/.test(id)) {
       const res = await fetchApi<TournamentStandingRow[]>(`/standings/${id}`);
-      if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res?.success && Array.isArray(res.data)) {
         return res.data;
       }
     }
@@ -22,7 +22,7 @@ export const standingsService = {
 
   async getLeaderboard(): Promise<TournamentStandingRow[]> {
     const res = await fetchApi<TournamentStandingRow[]>('/leaderboard');
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data;
     }
     return MOCK_STANDINGS;

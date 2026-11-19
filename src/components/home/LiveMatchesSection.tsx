@@ -56,7 +56,7 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
           {/* Home Team */}
           <div className="md:col-span-4 flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center shadow-inner font-headline-lg text-primary-container font-black shrink-0 border border-surface-container-high text-2xl">
-              {liveMatch.teamA.name.slice(0, 1)}
+              {liveMatch.teamA?.name ? liveMatch.teamA.name.slice(0, 1) : 'H'}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -65,18 +65,18 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
                 </span>
                 <span className="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
                 <span className="font-label-caps text-label-caps text-primary-container font-extrabold tracking-wider">
-                  {liveMatch.teamA.seed || 'RANK #1'}
+                  {liveMatch.teamA?.seed || 'RANK #1'}
                 </span>
               </div>
               <h2 className="font-headline-lg text-headline-md lg:text-headline-lg text-on-surface truncate font-extrabold tracking-tight">
-                {liveMatch.teamA.name}
+                {liveMatch.teamA?.name || 'Home Team'}
               </h2>
               {liveMatch.goals && liveMatch.goals.length > 0 && (
                 <p className="font-body-sm text-body-sm text-on-surface-variant font-medium truncate mt-0.5">
                   {liveMatch.goals
                     .filter((g) => {
                       const tId = typeof g.team === 'string' ? g.team : g.team?._id;
-                      return tId === liveMatch.teamA._id || (g.team as any)?.name === liveMatch.teamA.name;
+                      return tId === liveMatch.teamA?._id || (g.team as any)?.name === liveMatch.teamA?.name;
                     })
                     .map((g) => `${g.player?.name || 'Player'} ${g.matchTime}`)
                     .join(', ') || 'No goals yet'}
@@ -107,7 +107,7 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
             <div className="min-w-0 order-2 md:order-1">
               <div className="flex items-center justify-start md:justify-end gap-2 mb-1">
                 <span className="font-label-caps text-label-caps text-secondary font-extrabold tracking-wider">
-                  {liveMatch.teamB.seed || 'RANK #2'}
+                  {liveMatch.teamB?.seed || 'RANK #2'}
                 </span>
                 <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
                 <span className="px-1.5 py-0.5 rounded bg-surface-container-high font-label-caps text-[10px] text-on-surface-variant font-bold">
@@ -115,14 +115,14 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
                 </span>
               </div>
               <h2 className="font-headline-lg text-headline-md lg:text-headline-lg text-on-surface truncate font-extrabold tracking-tight">
-                {liveMatch.teamB.name}
+                {liveMatch.teamB?.name || 'Away Team'}
               </h2>
               {liveMatch.goals && liveMatch.goals.length > 0 && (
                 <p className="font-body-sm text-body-sm text-on-surface-variant font-medium truncate mt-0.5">
                   {liveMatch.goals
                     .filter((g) => {
                       const tId = typeof g.team === 'string' ? g.team : g.team?._id;
-                      return tId === liveMatch.teamB._id || (g.team as any)?.name === liveMatch.teamB.name;
+                      return tId === liveMatch.teamB?._id || (g.team as any)?.name === liveMatch.teamB?.name;
                     })
                     .map((g) => `${g.player?.name || 'Player'} ${g.matchTime}`)
                     .join(', ') || 'No goals yet'}
@@ -130,7 +130,7 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
               )}
             </div>
             <div className="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center shadow-inner font-headline-lg text-secondary font-black shrink-0 border border-surface-container text-2xl order-1 md:order-2">
-              {liveMatch.teamB.name.slice(0, 1)}
+              {liveMatch.teamB?.name ? liveMatch.teamB.name.slice(0, 1) : 'A'}
             </div>
           </div>
         </div>

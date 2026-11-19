@@ -14,7 +14,6 @@ import { getCaptainDisplayName } from '@/utils/formatters';
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedConference, setSelectedConference] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -27,16 +26,11 @@ export default function TeamsPage() {
     loadTeams();
   }, []);
 
-  const conferences = ['all', 'Pacific Division', 'Ivy Collegiate', 'Atlantic Athletic'];
-
   const filteredTeams = teams.filter((t) => {
-    if (selectedConference !== 'all' && t.conference?.toLowerCase() !== selectedConference.toLowerCase()) {
-      return false;
-    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const captainName = getCaptainDisplayName(t.captain);
-      const match = `${t.name} ${t.coach || ''} ${captainName}`.toLowerCase();
+      const match = `${t.name} ${captainName}`.toLowerCase();
       if (!match.includes(q)) return false;
     }
     return true;
@@ -58,23 +52,12 @@ export default function TeamsPage() {
         }
       />
 
-      {/* Filter and Search Bar */}
-      <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-surface-container-high mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Conference Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-          {conferences.map((conf) => (
-            <button
-              key={conf}
-              onClick={() => setSelectedConference(conf)}
-              className={`px-4 py-2 rounded-full font-label-ui text-label-ui text-xs font-bold transition-all shrink-0 ${
-                selectedConference === conf
-                  ? 'bg-primary-container text-white shadow-xs'
-                  : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-              }`}
-            >
-              {conf === 'all' ? `All Conferences (${teams.length})` : conf}
-            </button>
-          ))}
+      {/* Search & Counter Bar */}
+      <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-surface-container-high mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="font-label-caps text-xs font-bold text-on-surface uppercase tracking-wider">
+            All Registered Teams ({teams.length})
+          </span>
         </div>
 
         {/* Search */}
@@ -82,7 +65,7 @@ export default function TeamsPage() {
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search team, coach, captain..."
+            placeholder="Search team or captain..."
           />
         </div>
       </div>

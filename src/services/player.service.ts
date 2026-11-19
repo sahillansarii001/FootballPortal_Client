@@ -17,7 +17,7 @@ export const playerService = {
       return res.data;
     }
     const found = MOCK_PLAYERS.find((p) => p._id === id || p.name.toLowerCase().includes(id.toLowerCase()));
-    return found || MOCK_PLAYERS[0];
+    return found || null;
   },
 
   async getTopScorers(limit = 10): Promise<Player[]> {
@@ -35,7 +35,7 @@ export const playerService = {
     }
     const p = await this.getPlayerById(id);
     return {
-      matchesPlayed: p?.matchesPlayed || 7,
+      matchesPlayed: p?.matchesPlayed || 0,
       goals: p?.goals || 0,
       assists: p?.assists || 0,
       shots: p?.shots || 0,

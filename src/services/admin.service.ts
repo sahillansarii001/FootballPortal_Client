@@ -11,6 +11,27 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
+function extractErrorMessage(json: any, defaultMsg: string): string {
+  if (!json) return defaultMsg;
+  if (Array.isArray(json.error) && json.error.length > 0) {
+    return json.error
+      .map((e: any) => {
+        if (typeof e === 'string') return e;
+        if (e && typeof e === 'object') {
+          if (e.field && e.message) return `${e.field}: ${e.message}`;
+          if (e.message) return e.message;
+          if (e.msg) return e.msg;
+          return JSON.stringify(e);
+        }
+        return String(e);
+      })
+      .join(', ');
+  }
+  if (typeof json.error === 'string') return json.error;
+  if (json.message) return json.message;
+  return defaultMsg;
+}
+
 export const adminService = {
   // Live Match Controls (Authoritative)
   async startMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
@@ -186,6 +207,40 @@ export const adminService = {
     }
   },
 
+  async recordToss(
+    matchId: string,
+    payload: { tossWinner: string; choice: 'ATTACK' | 'DEFEND' | 'shoot' | 'save' }
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/toss`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async recordDecisiveKick(
+    matchId: string,
+    payload: { player: string; goalkeeper?: string; outcome: 'Goal' | 'Saved' | 'Missed' }
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/toss/decisive-kick`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
   async endMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/matches/${matchId}/end`, {
@@ -235,7 +290,7 @@ export const adminService = {
   // Team Management: Edit Team Name & Logo
   async updateTeam(
     teamId: string,
-    payload: { name?: string; logo?: string; coach?: string; conference?: string; description?: string }
+    payload: { name?: string; logo?: string; captain?: string; coach?: string; conference?: string; description?: string }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
@@ -252,14 +307,16 @@ export const adminService = {
 
   // Match Scheduling
   async scheduleMatch(payload: {
-    tournamentId: string;
+    tournament?: string;
+    tournamentId?: string;
     teamA: string;
     teamB: string;
     matchDate: string;
     matchTime: string;
     venue: string;
-    stage: string;
-  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    stage?: string;
+    matchNumber?: number;
+  }): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/matches`, {
         method: 'POST',
@@ -267,6 +324,10 @@ export const adminService = {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
+      if (!res.ok || !json.success) {
+        const errorDetail = extractErrorMessage(json, 'Failed to schedule match');
+        return { success: false, error: errorDetail, message: json.message };
+      }
       return json;
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -287,7 +348,7 @@ export const adminService = {
       teamAScore?: number;
       teamBScore?: number;
     }
-  ): Promise<{ success: boolean; data?: any; error?: string }> {
+  ): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
         method: 'PUT',
@@ -295,6 +356,9 @@ export const adminService = {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: extractErrorMessage(json, 'Failed to update match'), message: json.message };
+      }
       return json;
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -302,13 +366,41 @@ export const adminService = {
   },
 
   // Delete Match
-  async deleteMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+  async deleteMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
       const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: extractErrorMessage(json, 'Failed to delete match'), message: json.message };
+      }
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  // Team Registration
+  async createTeam(payload: {
+    name: string;
+    logo?: string;
+    description?: string;
+    captain?: string;
+    coach?: string;
+    conference?: string;
+  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/teams`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { success: false, error: extractErrorMessage(json, 'Failed to register team') };
+      }
       return json;
     } catch (err: any) {
       return { success: false, error: err.message };

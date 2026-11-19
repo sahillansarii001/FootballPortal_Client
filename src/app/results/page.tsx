@@ -38,7 +38,7 @@ export default function ResultsPage() {
   const filteredResults = results.filter((m) => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchName = `${m.teamA.name} ${m.teamB.name} ${m.venue || ''}`.toLowerCase();
+      const matchName = `${m.teamA?.name || ''} ${m.teamB?.name || ''} ${m.venue || ''}`.toLowerCase();
       if (!matchName.includes(q)) return false;
     }
 
@@ -48,7 +48,9 @@ export default function ResultsPage() {
 
     if (selectedTeam) {
       const t = selectedTeam.toLowerCase();
-      if (!m.teamA.name.toLowerCase().includes(t) && !m.teamB.name.toLowerCase().includes(t)) {
+      const teamAName = (m.teamA?.name || '').toLowerCase();
+      const teamBName = (m.teamB?.name || '').toLowerCase();
+      if (!teamAName.includes(t) && !teamBName.includes(t)) {
         return false;
       }
     }

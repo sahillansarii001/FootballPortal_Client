@@ -44,42 +44,59 @@ export const StandingsPreview: React.FC<StandingsPreviewProps> = ({ standings })
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-container">
-            {standings.slice(0, 5).map((row, idx) => (
-              <tr
-                key={row._id || row.team._id || idx}
-                className={`hover:bg-surface-container-low/40 transition-colors ${
-                  idx === 0 ? 'bg-secondary-container/20' : ''
-                }`}
-              >
-                <td className="py-2.5 px-2 text-center">
-                  <span
-                    className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${
-                      idx < 2
-                        ? 'bg-secondary-container/60 text-on-secondary-container ring-1 ring-secondary-container'
-                        : 'bg-surface-container text-on-surface'
-                    }`}
-                  >
-                    {row.position}
-                  </span>
-                </td>
-                <td className="py-2.5 px-2 font-headline-sm text-headline-sm text-on-surface font-bold">
-                  <Link href={`/teams/${row.team._id}`} className="hover:text-primary-container transition-colors truncate block">
-                    {row.team.name}
-                  </Link>
-                </td>
-                <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesPlayed}</td>
-                <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesWon}</td>
-                <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesLost}</td>
-                <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.goalsScored}</td>
-                <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.goalsConceded}</td>
-                <td className="py-2.5 px-1 text-center font-bold tabular-nums">
-                  {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
-                </td>
-                <td className="py-2.5 px-2 text-right font-headline-sm text-headline-sm text-primary-container font-extrabold tabular-nums">
-                  {row.totalPoints}
+            {!standings || standings.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="py-8 text-center text-on-surface-variant font-medium">
+                  No tournament standings recorded yet.
                 </td>
               </tr>
-            ))}
+            ) : (
+              standings.slice(0, 5).map((row, idx) => {
+                const teamId = typeof row.team === 'object' && row.team?._id ? row.team._id : (typeof row.team === 'string' ? row.team : '');
+                const teamName = typeof row.team === 'object' && row.team?.name ? row.team.name : 'Team';
+
+                return (
+                  <tr
+                    key={row._id || teamId || idx}
+                    className={`hover:bg-surface-container-low/40 transition-colors ${
+                      idx === 0 ? 'bg-secondary-container/20' : ''
+                    }`}
+                  >
+                    <td className="py-2.5 px-2 text-center">
+                      <span
+                        className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${
+                          idx < 2
+                            ? 'bg-secondary-container/60 text-on-secondary-container ring-1 ring-secondary-container'
+                            : 'bg-surface-container text-on-surface'
+                        }`}
+                      >
+                        {row.position || idx + 1}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2 font-headline-sm text-headline-sm text-on-surface font-bold">
+                      {teamId ? (
+                        <Link href={`/teams/${teamId}`} className="hover:text-primary-container transition-colors truncate block">
+                          {teamName}
+                        </Link>
+                      ) : (
+                        <span className="truncate block">{teamName}</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesPlayed || 0}</td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesWon || 0}</td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesLost || 0}</td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.goalsScored || 0}</td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.goalsConceded || 0}</td>
+                    <td className="py-2.5 px-1 text-center font-bold tabular-nums">
+                      {(row.goalDifference || 0) > 0 ? `+${row.goalDifference}` : (row.goalDifference || 0)}
+                    </td>
+                    <td className="py-2.5 px-2 text-right font-headline-sm text-headline-sm text-primary-container font-extrabold tabular-nums">
+                      {row.totalPoints || 0}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>

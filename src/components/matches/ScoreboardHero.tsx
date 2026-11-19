@@ -3,7 +3,7 @@
 import React from 'react';
 import { Clock, CheckCircle2, PauseCircle, Flag, Activity } from 'lucide-react';
 import { Match } from '@/types';
-import { formatTime } from '@/utils/formatters';
+import { formatTime, getCaptainDisplayName } from '@/utils/formatters';
 
 interface ScoreboardHeroProps {
   match: Match;
@@ -113,7 +113,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                 {match.teamA.name}
               </h2>
               <span className="font-label-caps text-label-caps text-primary-container font-extrabold tracking-widest">
-                {match.teamA.coach ? `COACH: ${match.teamA.coach.toUpperCase()}` : 'VARSITY SQUAD'}
+                {match.teamA.captain ? `CAPTAIN: ${getCaptainDisplayName(match.teamA.captain).toUpperCase()}` : 'VARSITY SQUAD'}
               </span>
 
               {/* Team A Goalscorers */}
@@ -199,7 +199,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                 {match.teamB.name}
               </h2>
               <span className="font-label-caps text-label-caps text-secondary font-extrabold tracking-widest">
-                {match.teamB.coach ? `COACH: ${match.teamB.coach.toUpperCase()}` : 'VARSITY SQUAD'}
+                {match.teamB.captain ? `CAPTAIN: ${getCaptainDisplayName(match.teamB.captain).toUpperCase()}` : 'VARSITY SQUAD'}
               </span>
 
               {/* Team B Goalscorers */}
@@ -241,58 +241,52 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
 
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 font-label-caps text-label-caps text-center">
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
-                activeIdx >= 0
-                  ? 'bg-surface-container-lowest text-primary-container border-primary-container/30 shadow-xs'
-                  : 'bg-surface-container-high text-outline border-transparent'
-              }`}
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${activeIdx >= 0
+                ? 'bg-surface-container-lowest text-primary-container border-primary-container/30 shadow-xs'
+                : 'bg-surface-container-high text-outline border-transparent'
+                }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" /> 1ST HALF (4m)
             </div>
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
-                activeIdx >= 1
-                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
-                  : 'bg-surface-container-high text-outline border-transparent'
-              }`}
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${activeIdx >= 1
+                ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
+                : 'bg-surface-container-high text-outline border-transparent'
+                }`}
             >
               <PauseCircle className="w-3.5 h-3.5 text-amber-600" /> WHISTLE DELAY (20s)
             </div>
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
-                activeIdx >= 2
-                  ? 'bg-surface-container-lowest text-primary-container border-primary-container/30 shadow-xs'
-                  : 'bg-surface-container-high text-outline border-transparent'
-              }`}
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${activeIdx >= 2
+                ? 'bg-surface-container-lowest text-primary-container border-primary-container/30 shadow-xs'
+                : 'bg-surface-container-high text-outline border-transparent'
+                }`}
             >
               <PauseCircle className="w-3.5 h-3.5" /> BREAK (2m)
             </div>
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
-                activeIdx >= 3
-                  ? 'bg-primary-container text-on-primary ring-2 ring-primary-container/30 shadow-xs'
-                  : 'bg-surface-container-high text-outline border-transparent'
-              }`}
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${activeIdx >= 3
+                ? 'bg-primary-container text-on-primary ring-2 ring-primary-container/30 shadow-xs'
+                : 'bg-surface-container-high text-outline border-transparent'
+                }`}
             >
               <Activity className="w-3.5 h-3.5 animate-spin" /> 2ND HALF (4m)
             </div>
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
-                activeIdx >= 4
-                  ? 'bg-amber-500 text-white ring-2 ring-amber-300 shadow-xs'
-                  : isDraw
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${activeIdx >= 4
+                ? 'bg-amber-500 text-white ring-2 ring-amber-300 shadow-xs'
+                : isDraw
                   ? 'bg-amber-100/70 text-amber-900 border-amber-300 border-dashed'
                   : 'bg-surface-container-high text-outline border-transparent'
-              }`}
+                }`}
             >
               <Clock className="w-3.5 h-3.5" /> DRAW DECIDER (2m)
             </div>
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] col-span-2 sm:col-span-1 ${
-                isCompleted
-                  ? 'bg-primary-container text-on-primary shadow-xs'
-                  : 'bg-surface-container-high/60 text-outline border-surface-container-high'
-              }`}
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] col-span-2 sm:col-span-1 ${isCompleted
+                ? 'bg-primary-container text-on-primary shadow-xs'
+                : 'bg-surface-container-high/60 text-outline border-surface-container-high'
+                }`}
             >
               <Flag className="w-3.5 h-3.5" /> FULL TIME
             </div>
@@ -301,33 +295,28 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
           {/* Visual progress bar across tournament format */}
           <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden flex gap-1 p-0.5">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                activeIdx >= 0 ? 'bg-primary-container w-[35%]' : 'w-0'
-              }`}
+              className={`h-full rounded-full transition-all duration-500 ${activeIdx >= 0 ? 'bg-primary-container w-[35%]' : 'w-0'
+                }`}
               title="First Half (4 mins)"
             />
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                activeIdx >= 1 ? 'bg-amber-400 w-[5%]' : 'w-0'
-              }`}
+              className={`h-full rounded-full transition-all duration-500 ${activeIdx >= 1 ? 'bg-amber-400 w-[5%]' : 'w-0'
+                }`}
               title="Whistle & Corner Delay (20s)"
             />
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                activeIdx >= 2 ? 'bg-tertiary-fixed w-[12%]' : 'w-0'
-              }`}
+              className={`h-full rounded-full transition-all duration-500 ${activeIdx >= 2 ? 'bg-tertiary-fixed w-[12%]' : 'w-0'
+                }`}
               title="Half-Time Break (2 mins)"
             />
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                activeIdx >= 3 ? 'bg-primary-container w-[35%]' : 'w-0'
-              }`}
+              className={`h-full rounded-full transition-all duration-500 ${activeIdx >= 3 ? 'bg-primary-container w-[35%]' : 'w-0'
+                }`}
               title="Second Half (4 mins)"
             />
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                activeIdx >= 4 ? 'bg-amber-500 w-[13%]' : isDraw ? 'bg-amber-300/50 w-[13%]' : 'w-0'
-              }`}
+              className={`h-full rounded-full transition-all duration-500 ${activeIdx >= 4 ? 'bg-amber-500 w-[13%]' : isDraw ? 'bg-amber-300/50 w-[13%]' : 'w-0'
+                }`}
               title="Draw Decider Extra Time (2 mins)"
             />
           </div>

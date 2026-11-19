@@ -17,14 +17,18 @@ import { formatDate } from '@/utils/formatters';
 
 export default function MatchDetailPage() {
   const params = useParams();
-  const matchId = (params?.id as string) || 'match-live-1';
+  const matchId = (params?.id as string) || '';
   const { match, timeline, isConnected, lastEvent } = useLiveMatch(matchId);
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'tactics' | 'stats'>('overview');
 
   if (!match) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <LoadingState message="Loading live match telemetry & events..." />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h2 className="text-xl font-bold text-on-surface">Match Not Found</h2>
+        <p className="text-xs text-on-surface-variant mt-2">The requested fixture does not exist or has been removed.</p>
+        <Link href="/fixtures" className="mt-4 inline-block px-4 py-2 bg-primary-container text-on-primary rounded-xl text-xs font-bold">
+          View Fixtures
+        </Link>
       </div>
     );
   }
@@ -39,7 +43,7 @@ export default function MatchDetailPage() {
             <span>/</span>
             <Link href="/live" className="hover:text-primary-container transition-colors">Live Matches</Link>
             <span>/</span>
-            <span className="text-on-surface font-extrabold">{match.teamA.name} vs {match.teamB.name}</span>
+            <span className="text-on-surface font-extrabold">{match.teamA?.name || 'Team A'} vs {match.teamB?.name || 'Team B'}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 mt-1">

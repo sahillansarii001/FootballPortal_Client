@@ -57,7 +57,7 @@ export default function AdminLiveControlPage() {
   const [showQuickSchedule, setShowQuickSchedule] = useState(false);
   const [newTeamA, setNewTeamA] = useState('');
   const [newTeamB, setNewTeamB] = useState('');
-  const [newVenue, setNewVenue] = useState('Stanford Stadium Field 1');
+  const [newVenue, setNewVenue] = useState('Championship Field 1');
   const [newStage, setNewStage] = useState('Quarter Final');
 
   // Modal / Form state for Goal Recording
@@ -101,8 +101,8 @@ export default function AdminLiveControlPage() {
     selectedDecisiveShooterId: '',
   });
 
-  const teamAName = selectedMatch?.teamA?.name || 'Stanford Cardinal';
-  const teamBName = selectedMatch?.teamB?.name || 'UCLA Bruins';
+  const teamAName = selectedMatch?.teamA?.name || 'Team A';
+  const teamBName = selectedMatch?.teamB?.name || 'Team B';
 
   useEffect(() => {
     async function loadMatches() {
@@ -578,7 +578,7 @@ export default function AdminLiveControlPage() {
     }, 1000);
   };
 
-  const handleSelectTossChoice = (choice: 'shoot' | 'save') => {
+  const handleSelectTossChoice = async (choice: 'shoot' | 'save') => {
     const winner = tossState.tossWinner;
     const winnerName = winner === 'A' ? teamAName : teamBName;
     const shootingTeam = (winner === 'A' && choice === 'shoot') || (winner === 'B' && choice === 'save') ? 'A' : 'B';
@@ -590,6 +590,17 @@ export default function AdminLiveControlPage() {
       tossChoice: choice,
       selectedDecisiveShooterId: initialShooter,
     }));
+
+    if (selectedMatch && winner) {
+      const winnerTeamId = winner === 'A' ? (typeof selectedMatch.teamA === 'string' ? selectedMatch.teamA : selectedMatch.teamA?._id) : (typeof selectedMatch.teamB === 'string' ? selectedMatch.teamB : selectedMatch.teamB?._id);
+      if (winnerTeamId) {
+        await adminService.recordToss(selectedMatch._id, {
+          tossWinner: winnerTeamId,
+          choice
+        });
+      }
+    }
+
     showNotification(
       `${winnerName} chose to ${choice.toUpperCase()}! ${shootingTeamName} will take the decisive sudden-death penalty kick.`
     );
@@ -643,6 +654,13 @@ export default function AdminLiveControlPage() {
         outcome,
       },
     ]);
+
+    if (shooterPlayer?._id) {
+      await adminService.recordDecisiveKick(selectedMatch._id, {
+        player: shooterPlayer._id,
+        outcome,
+      });
+    }
 
     await adminService.finalizeMatch(selectedMatch._id);
 
@@ -831,7 +849,7 @@ export default function AdminLiveControlPage() {
         teamB: newTeamB,
         matchDate: new Date().toISOString().split('T')[0],
         matchTime: new Date().toTimeString().slice(0, 5),
-        venue: newVenue || 'Stanford Stadium Field 1',
+        venue: newVenue || 'Championship Field 1',
         stage: newStage || 'Official Match',
       });
 
@@ -2159,7 +2177,7 @@ export default function AdminLiveControlPage() {
                       type="text"
                       value={newVenue}
                       onChange={(e) => setNewVenue(e.target.value)}
-                      placeholder="Stanford Stadium Field 1"
+                      placeholder="Championship Field 1"
                       className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-container"
                     />
                   </div>
