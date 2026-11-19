@@ -79,7 +79,7 @@ export const Navbar: React.FC = () => {
         {/* Action Button & Mobile Toggle */}
         <div className="flex items-center gap-3 shrink-0">
           <Link
-            href="/admin-login"
+            href="/login"
             className="inline-flex items-center gap-1.5 bg-primary-container text-on-primary font-label-ui text-label-ui px-3.5 py-2 rounded-lg hover:bg-primary transition-all shadow-xs active:scale-95 font-semibold"
           >
             <LogIn className="w-4 h-4" />
