@@ -22,13 +22,17 @@ import {
   Target,
   Coins,
   Sparkles,
-  Hourglass
+  Hourglass,
+  X,
+  Search,
+  Calendar,
+  Layers
 } from 'lucide-react';
 import { matchService } from '@/services/match.service';
 import { teamService } from '@/services/team.service';
 import { adminService } from '@/services/admin.service';
 import { formatTime } from '@/utils/formatters';
-import { Match, Player } from '@/types';
+import { Match, Player, Team } from '@/types';
 
 export default function AdminLiveControlPage() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -43,6 +47,17 @@ export default function AdminLiveControlPage() {
   const [teamBPlayers, setTeamBPlayers] = useState<Player[]>([]);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Match Selector / Launcher Modal
+  const [showMatchPickerModal, setShowMatchPickerModal] = useState(false);
+  const [matchPickerFilter, setMatchPickerFilter] = useState<'all' | 'Upcoming' | 'Live' | 'Completed'>('all');
+  const [matchSearchTerm, setMatchSearchTerm] = useState('');
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [showQuickSchedule, setShowQuickSchedule] = useState(false);
+  const [newTeamA, setNewTeamA] = useState('');
+  const [newTeamB, setNewTeamB] = useState('');
+  const [newVenue, setNewVenue] = useState('Stanford Stadium Field 1');
+  const [newStage, setNewStage] = useState('Quarter Final');
 
   // Modal / Form state for Goal Recording
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -91,8 +106,16 @@ export default function AdminLiveControlPage() {
   useEffect(() => {
     async function loadMatches() {
       setLoading(true);
-      const all = await matchService.getAllMatches();
+      const [all, teams] = await Promise.all([
+        matchService.getAllMatches(),
+        teamService.getAllTeams(),
+      ]);
       setMatches(all);
+      setAllTeams(teams);
+      if (teams.length >= 2) {
+        setNewTeamA(teams[0]._id);
+        setNewTeamB(teams[1]._id);
+      }
       const live = all.find((m) => m.status === 'Live' || m.status === 'Half-Time') || all[0];
       if (live) {
         await selectMatch(live);
@@ -625,12 +648,9 @@ export default function AdminLiveControlPage() {
     );
   };
 
+  // Finalize / Complete Match directly without blocking popups
   const handleFinalizeMatch = async () => {
     if (!selectedMatch) return;
-    const confirm = window.confirm(
-      `Declare match as Completed with final score ${scoreA} - ${scoreB}? Standings will update automatically.`
-    );
-    if (!confirm) return;
 
     setTimerRunning(false);
     setCurrentStage('Completed');
@@ -641,10 +661,166 @@ export default function AdminLiveControlPage() {
     const winnerName = scoreA > scoreB ? teamAName : scoreB > scoreA ? teamBName : null;
     const resultStr = winnerName ? `${winnerName} Victory` : 'Full Time Draw';
 
-    setSelectedMatch((prev) => (prev ? { ...prev, status: 'Completed', matchResult: resultStr } : null));
-    setMatches((prev) => prev.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m)));
+    const finalizedMatch: Match = {
+      ...selectedMatch,
+      status: 'Completed',
+      isFinalized: true,
+      matchResult: resultStr,
+      timer: {
+        stageDuration: selectedMatch.timer?.stageDuration || 240,
+        ...selectedMatch.timer,
+        isRunning: false,
+        isPaused: false,
+        remainingTime: 0,
+        currentStage: 'Completed',
+      },
+    };
 
-    showNotification(`Match is officially OVER! Marked as Completed (${scoreA} - ${scoreB}). Standings updated.`);
+    setSelectedMatch(finalizedMatch);
+    setMatches((prev) =>
+      prev.map((m) => (m._id === selectedMatch._id ? finalizedMatch : m))
+    );
+
+    showNotification(
+      `Match officially marked as Completed (${scoreA} - ${scoreB})! Standings updated. Choose another fixture or restart anytime.`
+    );
+  };
+
+  // Launch / Start a specific chosen match
+  const handleLaunchMatch = async (targetMatch: Match) => {
+    try {
+      await selectMatch(targetMatch);
+      await adminService.startMatch(targetMatch._id);
+
+      setTimerRunning(true);
+      setCurrentStage('First Half');
+      setRemainingSeconds(240);
+      setCompletedStages([]);
+
+      const updatedMatch: Match = {
+        ...targetMatch,
+        status: 'Live',
+        isFinalized: false,
+        timer: {
+          stageDuration: targetMatch.timer?.stageDuration || 240,
+          isRunning: true,
+          isPaused: false,
+          remainingTime: 240,
+          currentStage: 'First Half',
+        },
+      };
+
+      setSelectedMatch(updatedMatch);
+      setMatches((prev) =>
+        prev.map((m) => (m._id === targetMatch._id ? updatedMatch : m))
+      );
+      setShowMatchPickerModal(false);
+      showNotification(
+        `▶ Started match: ${targetMatch.teamA?.name || 'Team A'} vs ${targetMatch.teamB?.name || 'Team B'}! 4:00 First Half clock is LIVE.`
+      );
+    } catch (err: any) {
+      showError(`Failed to start match: ${err.message || 'Unknown error'}`);
+    }
+  };
+
+  // Restart an already completed or current match at 0-0
+  const handleRestartMatch = async (targetMatch?: Match | null) => {
+    const match = targetMatch || selectedMatch;
+    if (!match) return;
+    try {
+      await adminService.resetTimer(match._id);
+      await adminService.startMatch(match._id);
+      await adminService.updateScore(match._id, 0, 0);
+
+      setScoreA(0);
+      setScoreB(0);
+      setPenaltyScoreA(0);
+      setPenaltyScoreB(0);
+      setPenaltyKicks([]);
+      setRemainingSeconds(240);
+      setCurrentStage('First Half');
+      setCompletedStages([]);
+      setTimerRunning(true);
+      setTossState({
+        isFlipping: false,
+        tossWinner: null,
+        tossChoice: null,
+        isResolved: false,
+        winnerTeamName: null,
+        selectedDecisiveShooterId: '',
+      });
+
+      const updatedMatch: Match = {
+        ...match,
+        status: 'Live',
+        isFinalized: false,
+        teamAScore: 0,
+        teamBScore: 0,
+        score: { teamA: 0, teamB: 0 },
+        winner: undefined,
+        matchResult: '',
+        timer: {
+          stageDuration: match.timer?.stageDuration || 240,
+          isRunning: true,
+          isPaused: false,
+          remainingTime: 240,
+          currentStage: 'First Half',
+        },
+        shootout: {
+          isShootout: false,
+          teamAPenaltyScore: 0,
+          teamBPenaltyScore: 0,
+          isCompleted: false,
+        },
+      };
+
+      setSelectedMatch(updatedMatch);
+      setMatches((prev) =>
+        prev.map((m) => (m._id === match._id ? updatedMatch : m))
+      );
+      setShowMatchPickerModal(false);
+      showNotification(`Match restarted! Scores reset to 0 - 0 and 4:00 First Half clock is LIVE.`);
+    } catch (err: any) {
+      showError(`Failed to restart match: ${err.message || 'Unknown error'}`);
+    }
+  };
+
+  // Quick schedule and start immediately
+  const handleQuickCreateAndStart = async () => {
+    if (!newTeamA || !newTeamB || newTeamA === newTeamB) {
+      showError('Please select two distinct university teams.');
+      return;
+    }
+
+    try {
+      const res = await adminService.scheduleMatch({
+        tournamentId: 'tourn-2026-spring',
+        teamA: newTeamA,
+        teamB: newTeamB,
+        matchDate: new Date().toISOString().split('T')[0],
+        matchTime: new Date().toTimeString().slice(0, 5),
+        venue: newVenue || 'Stanford Stadium Field 1',
+        stage: newStage || 'Official Match',
+      });
+
+      if (res?.success && res.data) {
+        const teamAObj = allTeams.find((t) => t._id === newTeamA);
+        const teamBObj = allTeams.find((t) => t._id === newTeamB);
+        const newMatch: Match = {
+          ...res.data,
+          teamA: teamAObj || res.data.teamA,
+          teamB: teamBObj || res.data.teamB,
+        };
+
+        setMatches((prev) => [newMatch, ...prev]);
+        setShowQuickSchedule(false);
+        await handleLaunchMatch(newMatch);
+      } else {
+        showError(res?.error || 'Failed creating new match.');
+      }
+    } catch (err: any) {
+      showError(`Failed to create match: ${err.message || 'Error'}`);
+    }
   };
 
   // Penalties calculation
@@ -673,25 +849,63 @@ export default function AdminLiveControlPage() {
           </p>
         </div>
 
-        {/* Match Selector Dropdown */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-on-surface-variant uppercase font-label-caps">
-            Active Fixture:
-          </label>
-          <select
-            value={selectedMatch?._id || ''}
-            onChange={(e) => {
-              const found = matches.find((m) => m._id === e.target.value);
-              if (found) selectMatch(found);
-            }}
-            className="bg-surface-container-lowest text-xs font-bold text-on-surface px-3 py-2 rounded-xl border border-surface-container-high shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer"
+        {/* Match Selector & Launch Center */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase font-label-caps">
+              Fixture:
+            </label>
+            <select
+              value={selectedMatch?._id || ''}
+              onChange={(e) => {
+                const found = matches.find((m) => m._id === e.target.value);
+                if (found) selectMatch(found);
+              }}
+              className="bg-surface-container-lowest text-xs font-bold text-on-surface px-3 py-2 rounded-xl border border-surface-container-high shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer max-w-[220px] truncate"
+            >
+              {matches.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.teamA?.name} vs {m.teamB?.name} ({m.status})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Quick Start for Upcoming Match */}
+          {selectedMatch?.status === 'Upcoming' && (
+            <button
+              type="button"
+              onClick={() => handleLaunchMatch(selectedMatch)}
+              className="px-3 py-2 rounded-xl bg-primary-container hover:bg-primary text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+              title="Launch selected fixture live"
+            >
+              <Play className="w-3.5 h-3.5 fill-white" />
+              <span>Start</span>
+            </button>
+          )}
+
+          {/* Quick Restart for Completed Match */}
+          {selectedMatch?.status === 'Completed' && (
+            <button
+              type="button"
+              onClick={() => handleRestartMatch(selectedMatch)}
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 border border-slate-600 shadow-xs transition-all active:scale-95 cursor-pointer"
+              title="Restart selected completed match at 0-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Restart</span>
+            </button>
+          )}
+
+          {/* Prominent Match Picker Modal Opener */}
+          <button
+            type="button"
+            onClick={() => setShowMatchPickerModal(true)}
+            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-primary-container border border-emerald-300 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
           >
-            {matches.map((m) => (
-              <option key={m._id} value={m._id}>
-                {m.teamA?.name} vs {m.teamB?.name} ({m.status})
-              </option>
-            ))}
-          </select>
+            <Zap className="w-3.5 h-3.5 fill-primary-container text-primary-container" />
+            <span>Choose Match to Start</span>
+          </button>
         </div>
       </div>
 
@@ -737,23 +951,45 @@ export default function AdminLiveControlPage() {
 
         {/* Completion Alert Banner if match is over */}
         {selectedMatch?.status === 'Completed' && (
-          <div className="bg-slate-900 text-white rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg border border-slate-800 animate-in fade-in">
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl border border-emerald-500/30 animate-in fade-in">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-lg">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-xl border border-emerald-500/30 shrink-0">
                 ✓
               </div>
               <div>
-                <div className="font-headline-md text-sm font-black tracking-wide text-emerald-400 uppercase">
-                  MATCH FINISHED & OVER (FULL TIME)
+                <div className="flex items-center gap-2">
+                  <span className="font-headline-md text-sm font-black tracking-wide text-emerald-400 uppercase">
+                    MATCH FINISHED & OVER (FULL TIME)
+                  </span>
+                  <span className="font-label-caps text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full font-bold">
+                    OFFICIALLY COMPLETED
+                  </span>
                 </div>
-                <div className="text-xs text-slate-300">
-                  Final Result: <strong className="text-white">{teamAName} {scoreA} - {scoreB} {teamBName}</strong> • {selectedMatch.matchResult || (scoreA > scoreB ? `${teamAName} Win` : scoreB > scoreA ? `${teamBName} Win` : 'Draw')}
+                <div className="text-xs text-slate-300 mt-0.5">
+                  Final Result: <strong className="text-white font-extrabold">{teamAName} {scoreA} - {scoreB} {teamBName}</strong> • {selectedMatch.matchResult || (scoreA > scoreB ? `${teamAName} Win` : scoreB > scoreA ? `${teamBName} Win` : 'Draw')}
                 </div>
               </div>
             </div>
-            <span className="font-label-caps text-xs px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full font-bold">
-              OFFICIALLY COMPLETED
-            </span>
+
+            {/* Quick Action Buttons on Completion */}
+            <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowMatchPickerModal(true)}
+                className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-400/40"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>⚡ Choose Match to Start</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRestartMatch(selectedMatch)}
+                className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-surface-container-high/80 hover:bg-surface-container-highest text-white border border-white/20 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4 text-emerald-400" />
+                <span>Restart (0:0)</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -898,12 +1134,17 @@ export default function AdminLiveControlPage() {
 
         {/* Primary Action Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          {/* Pause / Resume Clock Button */}
+          {/* Pause / Resume Clock / Restart Match Button */}
           {selectedMatch?.status === 'Completed' ? (
-            <div className="py-3 px-4 rounded-xl bg-surface-container-high/60 text-on-surface-variant font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-surface-container-high cursor-not-allowed">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Full Time</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleRestartMatch(selectedMatch)}
+              className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-600 transition-all shadow-xs active:scale-95 cursor-pointer"
+              title="Reset scores and restart this match at 0-0"
+            >
+              <RotateCcw className="w-4 h-4 text-emerald-400" />
+              <span>Restart (0:0)</span>
+            </button>
           ) : timerRunning ? (
             <button
               onClick={handlePause}
@@ -942,16 +1183,21 @@ export default function AdminLiveControlPage() {
             <span>+ Goal ({teamBName.split(' ')[0]})</span>
           </button>
 
-          {/* Finalize / Stop Match */}
+          {/* Finalize / Choose Next Match Button */}
           {selectedMatch?.status === 'Completed' ? (
-            <div className="py-3 px-4 rounded-xl bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs cursor-default">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Completed</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowMatchPickerModal(true)}
+              className="py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-400/40"
+              title="Select which fixture to start next"
+            >
+              <Play className="w-4 h-4 fill-white" />
+              <span>⚡ Start Match</span>
+            </button>
           ) : (
             <button
               onClick={handleFinalizeMatch}
-              className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs"
+              className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               <span>Finalize Match</span>
@@ -1718,6 +1964,338 @@ export default function AdminLiveControlPage() {
                 className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-all"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Match Selection & Launch Modal (Choose Which Match to Start) */}
+      {showMatchPickerModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-2xl w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 space-y-4 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container-high shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-primary-container border border-emerald-300 flex items-center justify-center font-black">
+                  <Zap className="w-5 h-5 fill-primary-container" />
+                </div>
+                <div>
+                  <h3 className="font-headline-md text-base sm:text-lg font-black text-on-surface">
+                    Choose Which Match to Start
+                  </h3>
+                  <p className="text-[11px] text-on-surface-variant font-medium">
+                    Select any fixture to immediately launch live with the official 10-minute clock, or restart a finished game.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMatchPickerModal(false)}
+                className="w-8 h-8 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Filter Tabs & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                {(['all', 'Upcoming', 'Live', 'Completed'] as const).map((filter) => {
+                  const count =
+                    filter === 'all'
+                      ? matches.length
+                      : matches.filter((m) =>
+                          filter === 'Live'
+                            ? m.status === 'Live' || m.status === 'Half-Time'
+                            : m.status === filter
+                        ).length;
+                  const isActive = matchPickerFilter === filter;
+                  return (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setMatchPickerFilter(filter)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                        isActive
+                          ? 'bg-primary-container text-white shadow-xs'
+                          : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant'
+                      }`}
+                    >
+                      {filter === 'all' ? 'All Matches' : filter} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 sm:w-44">
+                  <Search className="w-3.5 h-3.5 text-on-surface-variant absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search teams..."
+                    value={matchSearchTerm}
+                    onChange={(e) => setMatchSearchTerm(e.target.value)}
+                    className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-surface-container border border-surface-container-high rounded-xl text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary-container"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickSchedule(!showQuickSchedule)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                    showQuickSchedule
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : 'bg-emerald-50 hover:bg-emerald-100 text-primary-container border border-emerald-300'
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{showQuickSchedule ? 'Hide Creator' : '+ New Match'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Match Creator Drawer */}
+            {showQuickSchedule && (
+              <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high space-y-3 shrink-0 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="font-label-caps text-xs text-primary-container font-extrabold uppercase">
+                    ⚡ Quick Schedule & Launch Match
+                  </span>
+                  <span className="text-[10px] text-on-surface-variant">Instant Match Provisioning</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1">
+                      Home Team (Team A)
+                    </label>
+                    <select
+                      value={newTeamA}
+                      onChange={(e) => setNewTeamA(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold"
+                    >
+                      {allTeams.map((t) => (
+                        <option key={t._id} value={t._id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1">
+                      Visiting Team (Team B)
+                    </label>
+                    <select
+                      value={newTeamB}
+                      onChange={(e) => setNewTeamB(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold"
+                    >
+                      {allTeams.map((t) => (
+                        <option key={t._id} value={t._id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1">
+                      Venue
+                    </label>
+                    <input
+                      type="text"
+                      value={newVenue}
+                      onChange={(e) => setNewVenue(e.target.value)}
+                      placeholder="Stanford Stadium Field 1"
+                      className="w-full px-3 py-1.5 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1">
+                      Stage / Round
+                    </label>
+                    <input
+                      type="text"
+                      value={newStage}
+                      onChange={(e) => setNewStage(e.target.value)}
+                      placeholder="Quarter Final Match"
+                      className="w-full px-3 py-1.5 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleQuickCreateAndStart}
+                  className="w-full py-2 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>Create & Launch This Match Live Now</span>
+                </button>
+              </div>
+            )}
+
+            {/* Matches List */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+              {matches
+                .filter((m) => {
+                  if (matchPickerFilter === 'Upcoming') return m.status === 'Upcoming';
+                  if (matchPickerFilter === 'Live') return m.status === 'Live' || m.status === 'Half-Time';
+                  if (matchPickerFilter === 'Completed') return m.status === 'Completed';
+                  return true;
+                })
+                .filter((m) => {
+                  if (!matchSearchTerm) return true;
+                  const q = matchSearchTerm.toLowerCase();
+                  return (
+                    m.teamA?.name?.toLowerCase().includes(q) ||
+                    m.teamB?.name?.toLowerCase().includes(q) ||
+                    m.venue?.toLowerCase().includes(q) ||
+                    m.stage?.toLowerCase().includes(q)
+                  );
+                })
+                .map((m) => {
+                  const isCurrent = selectedMatch?._id === m._id;
+                  const isLive = m.status === 'Live' || m.status === 'Half-Time';
+                  const isUpcoming = m.status === 'Upcoming';
+                  const isCompleted = m.status === 'Completed';
+
+                  return (
+                    <div
+                      key={m._id}
+                      className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        isCurrent
+                          ? 'bg-emerald-50/60 border-emerald-400 shadow-sm ring-1 ring-emerald-300'
+                          : 'bg-surface-container-low hover:bg-surface-container border-surface-container-high'
+                      }`}
+                    >
+                      {/* Left: Team & Match Info */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center -space-x-2 shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-primary-container/15 text-primary-container font-black text-xs flex items-center justify-center border border-primary-container/30 overflow-hidden shadow-2xs">
+                            {m.teamA?.logo ? (
+                              <img src={m.teamA.logo} alt={m.teamA.name} className="w-full h-full object-cover" />
+                            ) : (
+                              m.teamA?.name?.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="w-9 h-9 rounded-xl bg-secondary/15 text-secondary font-black text-xs flex items-center justify-center border border-secondary/30 overflow-hidden shadow-2xs">
+                            {m.teamB?.logo ? (
+                              <img src={m.teamB.logo} alt={m.teamB.name} className="w-full h-full object-cover" />
+                            ) : (
+                              m.teamB?.name?.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-headline-md text-sm font-black text-on-surface">
+                              {m.teamA?.name || 'Team A'} <span className="text-on-surface-variant font-normal">vs</span> {m.teamB?.name || 'Team B'}
+                            </h4>
+                            {isCurrent && (
+                              <span className="font-label-caps text-[9px] px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-extrabold uppercase">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] text-on-surface-variant mt-0.5">
+                            <span>{m.stage || 'Official Fixture'}</span>
+                            <span>•</span>
+                            <span>{m.venue || 'Main Stadium'}</span>
+                            {(isLive || isCompleted) && (
+                              <>
+                                <span>•</span>
+                                <strong className="text-on-surface font-extrabold">
+                                  Score: {m.score?.teamA ?? m.teamAScore ?? 0} - {m.score?.teamB ?? m.teamBScore ?? 0}
+                                </strong>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Status badge & Action buttons */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Status Tag */}
+                        <span
+                          className={`font-label-caps text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${
+                            isLive
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse'
+                              : isUpcoming
+                              ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                              : 'bg-slate-200 text-slate-800 border border-slate-300'
+                          }`}
+                        >
+                          {m.status}
+                        </span>
+
+                        {/* Action CTA */}
+                        {isUpcoming && (
+                          <button
+                            type="button"
+                            onClick={() => handleLaunchMatch(m)}
+                            className="px-3.5 py-2 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-white" />
+                            <span>Start Match</span>
+                          </button>
+                        )}
+
+                        {isLive && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              selectMatch(m);
+                              setShowMatchPickerModal(false);
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                          >
+                            <Zap className="w-3.5 h-3.5 fill-white" />
+                            <span>Control Desk</span>
+                          </button>
+                        )}
+
+                        {isCompleted && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleRestartMatch(m)}
+                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs transition-all active:scale-95 cursor-pointer"
+                              title="Restart this completed match at 0-0"
+                            >
+                              <RotateCcw className="w-3 h-3 text-emerald-400" />
+                              <span>Restart (0:0)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                selectMatch(m);
+                                setShowMatchPickerModal(false);
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-semibold text-on-surface transition-all cursor-pointer"
+                            >
+                              View
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+              {matches.length === 0 && (
+                <div className="text-center py-12 text-on-surface-variant text-xs font-medium">
+                  No fixtures found. Click &quot;+ New Match&quot; to schedule and launch one now!
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-surface-container-high shrink-0 text-xs text-on-surface-variant">
+              <span>Total Fixtures: <strong>{matches.length}</strong></span>
+              <button
+                type="button"
+                onClick={() => setShowMatchPickerModal(false)}
+                className="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-all cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>
