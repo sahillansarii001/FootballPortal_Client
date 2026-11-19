@@ -79,8 +79,8 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
               <div className="h-[1px] flex-1 bg-surface-container-high" />
             </div>
             {showPenalties && (
-              <div className="text-[11px] font-bold text-slate-400 mt-1 font-label-ui">
-                Penalties: <span className="text-on-surface font-extrabold">{penA} - {penB}</span>
+              <div className="bg-[#1e2025] px-3 py-1 rounded-lg border border-white/10 text-[11px] font-semibold text-[#8a94a6] mt-1.5 font-label-ui shadow-xs">
+                Penalties: <span className="text-white font-extrabold">{penA} - {penB}</span>
               </div>
             )}
           </div>

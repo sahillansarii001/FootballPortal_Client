@@ -19,7 +19,10 @@ import {
   ChevronRight,
   RefreshCw,
   Zap,
-  Target
+  Target,
+  Coins,
+  Sparkles,
+  Hourglass
 } from 'lucide-react';
 import { matchService } from '@/services/match.service';
 import { teamService } from '@/services/team.service';
@@ -46,9 +49,8 @@ export default function AdminLiveControlPage() {
   const [goalTeam, setGoalTeam] = useState<'A' | 'B'>('A');
   const [goalPlayerName, setGoalPlayerName] = useState('');
   const [goalMinute, setGoalMinute] = useState('02:30 (1H)');
-  const [goalType, setGoalType] = useState('Normal Goal');
 
-  // Penalty Shootout state
+  // 3-Kick Regulation Penalty Shootout state
   const [selectedKickerA, setSelectedKickerA] = useState<string>('');
   const [selectedKickerB, setSelectedKickerB] = useState<string>('');
   const [penaltyKicks, setPenaltyKicks] = useState<{
@@ -63,15 +65,31 @@ export default function AdminLiveControlPage() {
   const [penaltyScoreA, setPenaltyScoreA] = useState(0);
   const [penaltyScoreB, setPenaltyScoreB] = useState(0);
 
-  const teamAName = selectedMatch?.teamA?.name || 'Home Team';
-  const teamBName = selectedMatch?.teamB?.name || 'Away Team';
+  // Sudden Death Coin Toss State
+  const [tossState, setTossState] = useState<{
+    isFlipping: boolean;
+    tossWinner: 'A' | 'B' | null;
+    tossChoice: 'shoot' | 'save' | null;
+    isResolved: boolean;
+    winnerTeamName: string | null;
+    selectedDecisiveShooterId: string;
+  }>({
+    isFlipping: false,
+    tossWinner: null,
+    tossChoice: null,
+    isResolved: false,
+    winnerTeamName: null,
+    selectedDecisiveShooterId: '',
+  });
+
+  const teamAName = selectedMatch?.teamA?.name || 'Stanford Cardinal';
+  const teamBName = selectedMatch?.teamB?.name || 'UCLA Bruins';
 
   useEffect(() => {
     async function loadMatches() {
       setLoading(true);
       const all = await matchService.getAllMatches();
       setMatches(all);
-      // Pick first live match or first match
       const live = all.find((m) => m.status === 'Live' || m.status === 'Half-Time') || all[0];
       if (live) {
         await selectMatch(live);
@@ -83,14 +101,22 @@ export default function AdminLiveControlPage() {
 
   const selectMatch = async (match: Match) => {
     setSelectedMatch(match);
-    setScoreA(match.score?.teamA ?? 0);
-    setScoreB(match.score?.teamB ?? 0);
+    setScoreA(match.score?.teamA ?? match.teamAScore ?? 0);
+    setScoreB(match.score?.teamB ?? match.teamBScore ?? 0);
     setRemainingSeconds(match.timer?.remainingTime ?? 240);
     setTimerRunning(Boolean(match.timer?.isRunning || match.status === 'Live'));
     setCurrentStage(match.timer?.currentStage || match.stage || 'First Half');
     setPenaltyKicks([]);
-    setPenaltyScoreA(0);
-    setPenaltyScoreB(0);
+    setPenaltyScoreA(match.shootout?.teamAPenaltyScore ?? 0);
+    setPenaltyScoreB(match.shootout?.teamBPenaltyScore ?? 0);
+    setTossState({
+      isFlipping: false,
+      tossWinner: null,
+      tossChoice: null,
+      isResolved: match.status === 'Completed' && Boolean(match.winner),
+      winnerTeamName: typeof match.winner === 'object' && match.winner ? match.winner.name : null,
+      selectedDecisiveShooterId: '',
+    });
 
     // Fetch players for both teams to populate goalscorer and penalty kicker dropdowns
     if (match.teamA?._id) {
@@ -118,15 +144,29 @@ export default function AdminLiveControlPage() {
               setCurrentStage('Completed');
               if (selectedMatch) {
                 adminService.finalizeMatch(selectedMatch._id).then(() => {
-                  setSelectedMatch((m) => m ? { ...m, status: 'Completed', matchResult: scoreA > scoreB ? `${teamAName} won` : `${teamBName} won` } : null);
-                  setMatches((all) => all.map((m) => m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m));
+                  setSelectedMatch((m) =>
+                    m
+                      ? {
+                          ...m,
+                          status: 'Completed',
+                          matchResult: scoreA > scoreB ? `${teamAName} won` : `${teamBName} won`,
+                        }
+                      : null
+                  );
+                  setMatches((all) =>
+                    all.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m))
+                  );
                 });
-                showNotification(`Full Time whistle! Match has concluded: ${teamAName} ${scoreA} - ${scoreB} ${teamBName}. Marked as Completed.`);
+                showNotification(
+                  `Full Time whistle! Match has concluded: ${teamAName} ${scoreA} - ${scoreB} ${teamBName}. Marked as Completed.`
+                );
               }
               return 0;
             } else {
               setTimerRunning(false);
-              showNotification(`Time expired at ${scoreA} - ${scoreB} draw! Proceed to Extra Time or Penalty Shootout.`);
+              showNotification(
+                `Regulation time expired at ${scoreA} - ${scoreB} draw! You can add 2 minutes extra time or proceed to 3-kick Penalty Shootout.`
+              );
               return 0;
             }
           } else {
@@ -144,7 +184,7 @@ export default function AdminLiveControlPage() {
   const showNotification = (msg: string) => {
     setActionMessage(msg);
     setActionError(null);
-    setTimeout(() => setActionMessage(null), 4000);
+    setTimeout(() => setActionMessage(null), 5000);
   };
 
   const showError = (err: string) => {
@@ -153,7 +193,7 @@ export default function AdminLiveControlPage() {
     setTimeout(() => setActionError(null), 5000);
   };
 
-  // Direct Score Adjustment Handlers (No dropdowns)
+  // Direct Score Adjustment Handlers
   const handleScoreAdjust = async (team: 'A' | 'B', delta: number) => {
     let nextA = scoreA;
     let nextB = scoreB;
@@ -167,7 +207,7 @@ export default function AdminLiveControlPage() {
 
     if (selectedMatch) {
       await adminService.updateScore(selectedMatch._id, nextA, nextB);
-      showNotification(`Score updated: ${selectedMatch.teamA.name} ${nextA} - ${nextB} ${selectedMatch.teamB.name}`);
+      showNotification(`Score updated: ${teamAName} ${nextA} - ${nextB} ${teamBName}`);
     }
   };
 
@@ -194,6 +234,17 @@ export default function AdminLiveControlPage() {
     }
   };
 
+  // Add Time Handler (+1 Min, +2 Min Extra Time)
+  const handleAddTime = async (seconds: number = 120) => {
+    if (!selectedMatch) return;
+    setRemainingSeconds((prev) => prev + seconds);
+    setTimerRunning(true);
+    await adminService.addTimeToTimer(selectedMatch._id, seconds);
+    showNotification(
+      `Added +${seconds >= 60 ? `${Math.floor(seconds / 60)} minute${seconds > 60 ? 's' : ''}` : `${seconds}s`} to match clock!`
+    );
+  };
+
   // 1. First Half (4:00)
   const handleStartFirstHalf = async () => {
     if (!selectedMatch) return;
@@ -204,17 +255,7 @@ export default function AdminLiveControlPage() {
     showNotification('Stage set: First Half underway (4 minutes countdown).');
   };
 
-  // 2. Whistle & Corner Delay (0:20)
-  const handleWhistleCornerDelay = async () => {
-    if (!selectedMatch) return;
-    setTimerRunning(true);
-    setCurrentStage('Transition Gap (Whistle / Corners)');
-    setRemainingSeconds(20); // 20 seconds delay
-    await adminService.advanceStage(selectedMatch._id);
-    showNotification('Whistle blown! 20-second delay for players to proceed to corners.');
-  };
-
-  // 3. Half-Time Break (2:00)
+  // 2. Half-Time Break (2:00)
   const handleHalfTimeBreak = async () => {
     if (!selectedMatch) return;
     setTimerRunning(true);
@@ -224,7 +265,7 @@ export default function AdminLiveControlPage() {
     showNotification('Half-Time Break started (2 minutes interval).');
   };
 
-  // 4. Second Half (4:00)
+  // 3. Second Half (4:00)
   const handleSecondHalf = async () => {
     if (!selectedMatch) return;
     setTimerRunning(true);
@@ -234,13 +275,13 @@ export default function AdminLiveControlPage() {
     showNotification('Second Half underway (4 minutes countdown).');
   };
 
-  // 5. Draw Decider Extra Time (2:00)
+  // 4. Draw Decider Extra Time (2:00)
   const handleExtraTimeDraw = async () => {
     if (!selectedMatch) return;
     setTimerRunning(true);
     setCurrentStage('Extra Time (Draw Decider)');
     setRemainingSeconds(120); // 2 minutes extra time
-    await adminService.advanceStage(selectedMatch._id);
+    await adminService.addTimeToTimer(selectedMatch._id, 120);
     showNotification(`Match is a Draw (${scoreA} - ${scoreB})! 2 minutes extra time added to timer.`);
   };
 
@@ -248,13 +289,10 @@ export default function AdminLiveControlPage() {
   const handleAdvanceNextStage = async () => {
     if (!selectedMatch) return;
     if (currentStage.includes('First')) {
-      await handleWhistleCornerDelay();
-    } else if (currentStage.includes('Transition') || currentStage.includes('Whistle')) {
       await handleHalfTimeBreak();
     } else if (currentStage.includes('Half-Time') || currentStage.includes('Break')) {
       await handleSecondHalf();
     } else if (currentStage.includes('Second')) {
-      // If scores are tied (draw, e.g. 1-1), award 2 more minutes in timer
       if (scoreA === scoreB) {
         await handleExtraTimeDraw();
       } else {
@@ -262,7 +300,9 @@ export default function AdminLiveControlPage() {
       }
     } else if (currentStage.includes('Extra Time')) {
       if (scoreA === scoreB) {
-        showNotification(`Still tied (${scoreA} - ${scoreB}) after 2-minute Extra Time! Please log kicks in Penalty Shootout Console.`);
+        showNotification(
+          `Still tied (${scoreA} - ${scoreB}) after 2-minute Extra Time! 3-kick Penalty Shootout unlocked.`
+        );
       } else {
         await handleFinalizeMatch();
       }
@@ -290,7 +330,7 @@ export default function AdminLiveControlPage() {
   const handleSaveGoal = async () => {
     if (!selectedMatch) return;
     const teamId = goalTeam === 'A' ? selectedMatch.teamA._id : selectedMatch.teamB._id;
-    const teamName = goalTeam === 'A' ? selectedMatch.teamA.name : selectedMatch.teamB.name;
+    const teamName = goalTeam === 'A' ? teamAName : teamBName;
 
     const newScoreA = goalTeam === 'A' ? scoreA + 1 : scoreA;
     const newScoreB = goalTeam === 'B' ? scoreB + 1 : scoreB;
@@ -303,7 +343,9 @@ export default function AdminLiveControlPage() {
 
     setShowGoalModal(false);
 
-    const calculatedMinute = goalMinute || `${formatTime(remainingSeconds)} (${currentStage.includes('Second') ? '2H' : currentStage.includes('Extra') ? 'ET' : '1H'})`;
+    const calculatedMinute =
+      goalMinute ||
+      `${formatTime(remainingSeconds)} (${currentStage.includes('Second') ? '2H' : currentStage.includes('Extra') ? 'ET' : '1H'})`;
 
     const players = goalTeam === 'A' ? teamAPlayers : teamBPlayers;
     const matchedPlayer = players.find((p) => p.name === goalPlayerName);
@@ -320,6 +362,7 @@ export default function AdminLiveControlPage() {
     showNotification(`Goal recorded for ${teamName} (${goalPlayerName || 'Athlete'} • ${calculatedMinute})!`);
   };
 
+  // 3-Kick Regulation Penalty Recorder
   const handleRecordPenaltyKick = async (team: 'A' | 'B', outcome: 'Goal' | 'Saved' | 'Missed') => {
     if (!selectedMatch) return;
     const players = team === 'A' ? teamAPlayers : teamBPlayers;
@@ -331,7 +374,13 @@ export default function AdminLiveControlPage() {
       return;
     }
 
-    const currentRound = penaltyKicks.filter((k) => k.team === team).length + 1;
+    const teamKicks = penaltyKicks.filter((k) => k.team === team);
+    if (teamKicks.length >= 3) {
+      showError(`${team === 'A' ? teamAName : teamBName} has already completed their 3 regulation penalty kicks.`);
+      return;
+    }
+
+    const currentRound = teamKicks.length + 1;
 
     const newKick = {
       team,
@@ -374,30 +423,156 @@ export default function AdminLiveControlPage() {
     }
 
     showNotification(
-      `Penalty Round #${currentRound} (${team === 'A' ? teamAName : teamBName}): ${kicker.name} [${kicker.club || 'Club'}] -> ${outcome.toUpperCase()}! Shootout score: ${newPenA} - ${newPenB}`
+      `Penalty #${currentRound}/3 (${team === 'A' ? teamAName : teamBName}): ${kicker.name} [${kicker.club || 'Club'}] -> ${outcome.toUpperCase()}! Shootout score: ${newPenA} - ${newPenB}`
+    );
+  };
+
+  // Sudden Death Coin Toss Handler
+  const handleFlipCoin = () => {
+    setTossState((prev) => ({ ...prev, isFlipping: true, tossWinner: null, tossChoice: null }));
+    setTimeout(() => {
+      const winner: 'A' | 'B' = Math.random() < 0.5 ? 'A' : 'B';
+      const winnerName = winner === 'A' ? teamAName : teamBName;
+      setTossState((prev) => ({
+        ...prev,
+        isFlipping: false,
+        tossWinner: winner,
+        selectedDecisiveShooterId: winner === 'A' ? teamAPlayers[0]?._id || '' : teamBPlayers[0]?._id || '',
+      }));
+      showNotification(`🪙 Coin Toss Result: ${winnerName} won the toss! The winner must choose to SHOOT or SAVE.`);
+    }, 1000);
+  };
+
+  const handleSelectTossChoice = (choice: 'shoot' | 'save') => {
+    const winner = tossState.tossWinner;
+    const winnerName = winner === 'A' ? teamAName : teamBName;
+    const shootingTeam = (winner === 'A' && choice === 'shoot') || (winner === 'B' && choice === 'save') ? 'A' : 'B';
+    const shootingTeamName = shootingTeam === 'A' ? teamAName : teamBName;
+    const initialShooter = (shootingTeam === 'A' ? teamAPlayers[0]?._id : teamBPlayers[0]?._id) || '';
+
+    setTossState((prev) => ({
+      ...prev,
+      tossChoice: choice,
+      selectedDecisiveShooterId: initialShooter,
+    }));
+    showNotification(
+      `${winnerName} chose to ${choice.toUpperCase()}! ${shootingTeamName} will take the decisive sudden-death penalty kick.`
+    );
+  };
+
+  // Sudden Death Decisive Kick Resolution
+  const handleResolveDecisiveKick = async (outcome: 'Goal' | 'Saved' | 'Missed') => {
+    if (!selectedMatch || !tossState.tossWinner || !tossState.tossChoice) return;
+    const winner = tossState.tossWinner;
+    const choice = tossState.tossChoice;
+    const shootingTeam = (winner === 'A' && choice === 'shoot') || (winner === 'B' && choice === 'save') ? 'A' : 'B';
+    const defendingTeam = shootingTeam === 'A' ? 'B' : 'A';
+    const shootingTeamName = shootingTeam === 'A' ? teamAName : teamBName;
+    const defendingTeamName = defendingTeam === 'A' ? teamAName : teamBName;
+
+    const shooterPlayer =
+      (shootingTeam === 'A' ? teamAPlayers : teamBPlayers).find(
+        (p) => p._id === tossState.selectedDecisiveShooterId
+      ) || (shootingTeam === 'A' ? teamAPlayers[0] : teamBPlayers[0]);
+
+    let championshipWinnerName = '';
+    let finalPenaltyA = penaltyScoreA;
+    let finalPenaltyB = penaltyScoreB;
+
+    if (outcome === 'Goal') {
+      championshipWinnerName = shootingTeamName;
+      if (shootingTeam === 'A') finalPenaltyA += 1;
+      else finalPenaltyB += 1;
+    } else {
+      championshipWinnerName = defendingTeamName;
+    }
+
+    setPenaltyScoreA(finalPenaltyA);
+    setPenaltyScoreB(finalPenaltyB);
+
+    setTossState((prev) => ({
+      ...prev,
+      isResolved: true,
+      winnerTeamName: championshipWinnerName,
+    }));
+
+    setPenaltyKicks((prev) => [
+      ...prev,
+      {
+        team: shootingTeam,
+        round: 4,
+        playerId: shooterPlayer?._id || '',
+        playerName: shooterPlayer?.name || 'Decisive Shooter',
+        playerClub: shooterPlayer?.club || 'Independent Club',
+        playerJersey: shooterPlayer?.jerseyNumber || 10,
+        outcome,
+      },
+    ]);
+
+    await adminService.finalizeMatch(selectedMatch._id);
+
+    const finalMatchResult = `${championshipWinnerName} Victory (${outcome === 'Goal' ? 'Sudden Death Goal' : 'Decisive Penalty Save'})`;
+    setSelectedMatch((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: 'Completed',
+            matchResult: finalMatchResult,
+            shootout: {
+              isShootout: true,
+              teamAPenaltyScore: finalPenaltyA,
+              teamBPenaltyScore: finalPenaltyB,
+              isCompleted: true,
+            },
+          }
+        : null
+    );
+
+    setMatches((prev) =>
+      prev.map((m) =>
+        m._id === selectedMatch._id
+          ? {
+              ...m,
+              status: 'Completed',
+              matchResult: finalMatchResult,
+            }
+          : m
+      )
+    );
+
+    showNotification(
+      `🏆 MATCH DECIDED! ${championshipWinnerName} WINS! Kick outcome: ${outcome.toUpperCase()}! Shootout: ${finalPenaltyA} - ${finalPenaltyB}.`
     );
   };
 
   const handleFinalizeMatch = async () => {
     if (!selectedMatch) return;
-    const confirm = window.confirm(`Declare match as Completed with final score ${scoreA} - ${scoreB}? Standings will update automatically.`);
+    const confirm = window.confirm(
+      `Declare match as Completed with final score ${scoreA} - ${scoreB}? Standings will update automatically.`
+    );
     if (!confirm) return;
 
     setTimerRunning(false);
     setCurrentStage('Completed');
     setRemainingSeconds(0);
-    
-    // Call backend authoritative finalize
+
     await adminService.finalizeMatch(selectedMatch._id);
 
     const winnerName = scoreA > scoreB ? teamAName : scoreB > scoreA ? teamBName : null;
     const resultStr = winnerName ? `${winnerName} Victory` : 'Full Time Draw';
 
-    setSelectedMatch((prev) => prev ? { ...prev, status: 'Completed', matchResult: resultStr } : null);
-    setMatches((prev) => prev.map((m) => m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m));
+    setSelectedMatch((prev) => (prev ? { ...prev, status: 'Completed', matchResult: resultStr } : null));
+    setMatches((prev) => prev.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m)));
 
     showNotification(`Match is officially OVER! Marked as Completed (${scoreA} - ${scoreB}). Standings updated.`);
   };
+
+  // Penalties calculation
+  const kicksA = penaltyKicks.filter((k) => k.team === 'A').length;
+  const kicksB = penaltyKicks.filter((k) => k.team === 'B').length;
+  const regulationKicksComplete = kicksA >= 3 && kicksB >= 3;
+  const isShootoutTiedAfterThree = regulationKicksComplete && penaltyScoreA === penaltyScoreB;
+  const hasShootoutWinner = regulationKicksComplete && penaltyScoreA !== penaltyScoreB;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-6 select-none">
@@ -414,7 +589,7 @@ export default function AdminLiveControlPage() {
             Super Admin Live Match Controller
           </h1>
           <p className="text-xs text-on-surface-variant font-medium mt-1">
-            Official 10-Minute Tournament Clock: 4m 1st Half • 20s Whistle/Corners Delay • 2m Half-Time Break • 4m 2nd Half • 2m Extra Time if tied (Draw)
+            Official 10-Minute Tournament Clock: 4m 1st Half • 2m Half-Time Break • 4m 2nd Half • 2m Extra Time if tied • 3-Kick Shootout + Coin Toss
           </p>
         </div>
 
@@ -445,6 +620,13 @@ export default function AdminLiveControlPage() {
         <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3.5 flex items-center gap-2 text-xs font-bold shadow-xs animate-in fade-in duration-200">
           <CheckCircle2 className="w-4 h-4 text-primary-container shrink-0" />
           <span>{actionMessage}</span>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="bg-rose-50 border border-rose-300 text-rose-900 rounded-xl p-3.5 flex items-center gap-2 text-xs font-bold shadow-xs animate-in fade-in duration-200">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{actionError}</span>
         </div>
       )}
 
@@ -495,7 +677,7 @@ export default function AdminLiveControlPage() {
           </div>
         )}
 
-        {/* Central Score Display (Clean Scoreboard - No Dropdowns) */}
+        {/* Central Score Display */}
         <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-6">
           {/* Team A */}
           <div className="md:col-span-4 flex items-center gap-4">
@@ -512,59 +694,71 @@ export default function AdminLiveControlPage() {
             </div>
           </div>
 
-          {/* Middle: Official Score & Match Timer */}
+          {/* Middle: Dark Scoreboard matching official reference */}
           <div className="md:col-span-4 flex flex-col items-center justify-center text-center p-4 bg-surface-container-low rounded-2xl border border-surface-container shadow-inner">
-            <span className="font-label-caps text-[10px] text-primary-container font-extrabold uppercase mb-2 tracking-wider bg-primary-container/10 px-3 py-0.5 rounded-full border border-primary-container/20">
+            <span className="font-label-caps text-[10px] text-primary-container font-extrabold uppercase mb-1 tracking-wider bg-primary-container/10 px-3 py-0.5 rounded-full border border-primary-container/20">
               Official Match Score
             </span>
 
-            <div className="flex items-center justify-center gap-4">
-              {/* Score Team A */}
-              <div className="flex items-center gap-1.5">
+            {/* Dark Scoreboard Box matching user screenshot */}
+            <div className="bg-[#1e2025] px-8 py-3.5 rounded-2xl border border-white/10 shadow-lg flex flex-col items-center gap-1 my-2 min-w-[210px]">
+              <div className="flex items-center justify-center gap-6">
+                <span className="font-display-score text-4xl sm:text-5xl font-black text-white tabular-nums">
+                  {scoreA}
+                </span>
+                <span className="font-display-score text-3xl font-light text-slate-400">
+                  -
+                </span>
+                <span className="font-display-score text-4xl sm:text-5xl font-black text-white tabular-nums">
+                  {scoreB}
+                </span>
+              </div>
+
+              {(scoreA === scoreB || penaltyScoreA > 0 || penaltyScoreB > 0) && (
+                <div className="text-xs sm:text-sm font-semibold text-[#8a94a6] font-label-ui">
+                  Penalties: <span className="text-white font-extrabold">{penaltyScoreA} - {penaltyScoreB}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Direct Score Adjustment Controls */}
+            <div className="flex items-center justify-center gap-6 mt-1">
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => handleScoreAdjust('A', -1)}
                   disabled={selectedMatch?.status === 'Completed'}
-                  className="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-sm disabled:opacity-30 transition-all active:scale-95"
+                  className="w-6 h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-xs disabled:opacity-30"
                   title="Decrease Team A score"
                 >
                   -
                 </button>
-                <div className="bg-surface-container-lowest text-on-surface font-display-score text-4xl sm:text-5xl font-black min-w-16 py-1 px-3 rounded-xl border border-surface-container-high shadow-xs text-center tabular-nums">
-                  {scoreA}
-                </div>
                 <button
                   type="button"
                   onClick={() => handleScoreAdjust('A', 1)}
                   disabled={selectedMatch?.status === 'Completed'}
-                  className="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-sm disabled:opacity-30 transition-all active:scale-95"
+                  className="w-6 h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-xs disabled:opacity-30"
                   title="Increase Team A score"
                 >
                   +
                 </button>
               </div>
-
-              <span className="text-on-surface-variant/40 font-display-score text-3xl font-light">:</span>
-
-              {/* Score Team B */}
-              <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-on-surface-variant font-semibold">Adjust Score</span>
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => handleScoreAdjust('B', -1)}
                   disabled={selectedMatch?.status === 'Completed'}
-                  className="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-sm disabled:opacity-30 transition-all active:scale-95"
+                  className="w-6 h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-xs disabled:opacity-30"
                   title="Decrease Team B score"
                 >
                   -
                 </button>
-                <div className="bg-surface-container-lowest text-on-surface font-display-score text-4xl sm:text-5xl font-black min-w-16 py-1 px-3 rounded-xl border border-surface-container-high shadow-xs text-center tabular-nums">
-                  {scoreB}
-                </div>
                 <button
                   type="button"
                   onClick={() => handleScoreAdjust('B', 1)}
                   disabled={selectedMatch?.status === 'Completed'}
-                  className="w-7 h-7 rounded-lg bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-sm disabled:opacity-30 transition-all active:scale-95"
+                  className="w-6 h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-xs disabled:opacity-30"
                   title="Increase Team B score"
                 >
                   +
@@ -572,17 +766,10 @@ export default function AdminLiveControlPage() {
               </div>
             </div>
 
-            {/* Tied match / Penalties indicator matching official design */}
-            {(scoreA === scoreB || penaltyScoreA > 0 || penaltyScoreB > 0) && (
-              <div className="text-sm font-semibold text-slate-400 mt-2 font-label-ui">
-                Penalties: <span className="text-on-surface font-extrabold">{penaltyScoreA || (scoreA === scoreB ? 4 : 0)} - {penaltyScoreB || (scoreA === scoreB ? 2 : 0)}</span>
-              </div>
-            )}
-
             <div className="font-stat-numeral text-2xl font-black text-primary-container tabular-nums mt-2 tracking-tight">
               {formatTime(remainingSeconds)}
             </div>
-            <span className="font-label-caps text-[10px] text-on-surface-variant uppercase mt-1">
+            <span className="font-label-caps text-[10px] text-on-surface-variant uppercase mt-0.5">
               Stage: <strong>{currentStage}</strong>
             </span>
           </div>
@@ -603,18 +790,18 @@ export default function AdminLiveControlPage() {
           </div>
         </div>
 
-        {/* Primary Action Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          {/* Timer Toggle */}
+        {/* Primary Action Bar with Pause & Time Add Buttons */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+          {/* Pause / Resume Clock Button */}
           {selectedMatch?.status === 'Completed' ? (
             <div className="py-3 px-4 rounded-xl bg-surface-container-high/60 text-on-surface-variant font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-surface-container-high cursor-not-allowed">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Full Time (Over)</span>
+              <span>Full Time</span>
             </div>
           ) : timerRunning ? (
             <button
               onClick={handlePause}
-              className="py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs"
+              className="py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95"
             >
               <Pause className="w-4 h-4 text-amber-600" />
               <span>Pause Clock</span>
@@ -622,12 +809,23 @@ export default function AdminLiveControlPage() {
           ) : (
             <button
               onClick={handleStartOrResume}
-              className="py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs"
+              className="py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95"
             >
               <Play className="w-4 h-4" />
               <span>Resume Clock</span>
             </button>
           )}
+
+          {/* Time Add Button (+2m Extra Time) */}
+          <button
+            onClick={() => handleAddTime(120)}
+            disabled={selectedMatch?.status === 'Completed'}
+            className="py-3 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface border border-surface-container-high font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 disabled:opacity-40"
+            title="Add 2 minutes to the match timer"
+          >
+            <Hourglass className="w-4 h-4 text-primary-container" />
+            <span>+2m Time Add</span>
+          </button>
 
           {/* Goal Team A */}
           <button
@@ -636,7 +834,7 @@ export default function AdminLiveControlPage() {
             className="py-3 px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-40"
           >
             <Plus className="w-4 h-4 text-primary-container" />
-            <span>+ Goal ({teamAName})</span>
+            <span>+ Goal ({teamAName.split(' ')[0]})</span>
           </button>
 
           {/* Goal Team B */}
@@ -646,22 +844,22 @@ export default function AdminLiveControlPage() {
             className="py-3 px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-40"
           >
             <Plus className="w-4 h-4 text-primary-container" />
-            <span>+ Goal ({teamBName})</span>
+            <span>+ Goal ({teamBName.split(' ')[0]})</span>
           </button>
 
           {/* Finalize Match */}
           {selectedMatch?.status === 'Completed' ? (
-            <div className="py-3 px-4 rounded-xl bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs cursor-default">
+            <div className="py-3 px-4 rounded-xl bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs cursor-default col-span-2 sm:col-span-1">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Match Completed</span>
+              <span>Completed</span>
             </div>
           ) : (
             <button
               onClick={handleFinalizeMatch}
-              className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs"
+              className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs col-span-2 sm:col-span-1"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Finalize Match</span>
+              <span>Finalize</span>
             </button>
           )}
         </div>
@@ -688,10 +886,11 @@ export default function AdminLiveControlPage() {
           </div>
 
           <p className="text-xs text-on-surface-variant font-medium">
-            Standard match timeline: 4m 1st Half &rarr; 20s Whistle/Corners Delay &rarr; 2m Half-Time Break &rarr; 4m 2nd Half:
+            Standard match timeline: 4m 1st Half &rarr; 2m Half-Time Break &rarr; 4m 2nd Half &rarr; +2m Extra Time if tied:
           </p>
 
           <div className="grid grid-cols-2 gap-3">
+            {/* 1. First Half */}
             <button
               onClick={handleStartFirstHalf}
               className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
@@ -701,21 +900,10 @@ export default function AdminLiveControlPage() {
               }`}
             >
               <span className="font-extrabold">1. First Half (4:00)</span>
-              <span className="text-[10px] text-on-surface-variant">4-minute kickoff</span>
+              <span className="text-[10px] text-on-surface-variant">4 minutes countdown kickoff</span>
             </button>
 
-            <button
-              onClick={handleWhistleCornerDelay}
-              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
-                currentStage.includes('Transition') || currentStage.includes('Whistle')
-                  ? 'bg-amber-100 text-amber-900 border-amber-400'
-                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container'
-              }`}
-            >
-              <span className="font-extrabold">2. Whistle Delay (0:20)</span>
-              <span className="text-[10px] text-on-surface-variant">Whistle & players go in corner</span>
-            </button>
-
+            {/* 2. Half-Time Break */}
             <button
               onClick={handleHalfTimeBreak}
               className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
@@ -724,10 +912,11 @@ export default function AdminLiveControlPage() {
                   : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container'
               }`}
             >
-              <span className="font-extrabold">3. Half-Time Break (2:00)</span>
-              <span className="text-[10px] text-on-surface-variant">2-minute team interval</span>
+              <span className="font-extrabold">2. Half-Time Break (2:00)</span>
+              <span className="text-[10px] text-on-surface-variant">2 minutes interval break</span>
             </button>
 
+            {/* 3. Second Half */}
             <button
               onClick={handleSecondHalf}
               className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
@@ -736,62 +925,55 @@ export default function AdminLiveControlPage() {
                   : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container'
               }`}
             >
-              <span className="font-extrabold">4. Second Half (4:00)</span>
-              <span className="text-[10px] text-on-surface-variant">4-minute second half</span>
+              <span className="font-extrabold">3. Second Half (4:00)</span>
+              <span className="text-[10px] text-on-surface-variant">4 minutes second half clock</span>
             </button>
 
+            {/* 4. Draw Decider Extra Time (2:00) */}
             <button
               onClick={handleExtraTimeDraw}
-              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all col-span-2 ${
+              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
                 currentStage.includes('Extra Time')
-                  ? 'bg-amber-100 text-amber-900 border-amber-500 ring-2 ring-amber-400'
-                  : scoreA === scoreB
-                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 animate-pulse'
+                  ? 'bg-amber-500/20 text-amber-800 border-amber-500'
                   : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container'
               }`}
             >
               <span className="font-extrabold flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-amber-600" />
-                5. Draw Decider Extra Time (2:00)
+                <span>4. Extra Time if Tied (2:00)</span>
                 {scoreA === scoreB && (
-                  <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-black uppercase">
-                    Scores Tied {scoreA}-{scoreB}
+                  <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-black uppercase">
+                    Tied
                   </span>
                 )}
               </span>
               <span className="text-[10px] text-on-surface-variant">
-                If scores are equal (draw, e.g. 1-1), 2 more minutes added in timer
+                If scores are equal, add 2 minutes extra time
               </span>
             </button>
           </div>
 
-          {/* Clock Adjustments */}
+          {/* Clock Adjustments Strip */}
           <div className="pt-3 border-t border-surface-container-high flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-on-surface-variant font-semibold">Direct Clock Adjust:</span>
+            <span className="text-xs text-on-surface-variant font-semibold">Quick Time Buttons:</span>
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => setRemainingSeconds((s) => s + 30)}
-                className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors"
+                onClick={() => handleAddTime(60)}
+                className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 transition-colors"
               >
-                +30s
+                +1 Min Time
               </button>
               <button
-                onClick={() => setRemainingSeconds((s) => (s >= 30 ? s - 30 : 0))}
-                className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors"
+                onClick={() => handleAddTime(120)}
+                className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold hover:bg-emerald-200 transition-colors"
               >
-                -30s
+                +2 Min Extra Time
               </button>
               <button
                 onClick={() => setRemainingSeconds(240)}
                 className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors"
               >
                 Reset 4:00
-              </button>
-              <button
-                onClick={() => setRemainingSeconds(20)}
-                className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold hover:bg-amber-100 transition-colors"
-              >
-                Reset 0:20
               </button>
               <button
                 onClick={() => setRemainingSeconds(120)}
@@ -803,7 +985,7 @@ export default function AdminLiveControlPage() {
           </div>
         </div>
 
-        {/* Right Column (5 cols): Penalty Shootout Manager (Active ONLY on Draw / Tie) */}
+        {/* Right Column (5 cols): 3-Kick Penalty Shootout + Sudden Death Coin Toss */}
         {scoreA === scoreB ? (
           <div className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4 animate-in fade-in">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
@@ -813,137 +995,299 @@ export default function AdminLiveControlPage() {
                   Penalty Shootout Console
                 </h3>
               </div>
-              <span className="font-label-caps text-[10px] text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-full font-bold border border-emerald-200 animate-pulse">
-                ⚡ TIE-BREAKER ACTIVE ({scoreA}-{scoreB})
+              <span className="font-label-caps text-[10px] text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-full font-bold border border-emerald-200">
+                3-KICK STANDARD
               </span>
             </div>
 
             {/* Shootout Score Header */}
-            <div className="bg-surface-container-low px-4 py-2.5 rounded-xl border border-surface-container flex items-center justify-between text-xs">
-              <span className="font-bold text-on-surface">Shootout Penalty Tally:</span>
-              <span className="font-display-score text-base font-black text-primary-container tabular-nums">
+            <div className="bg-[#1e2025] px-4 py-2.5 rounded-xl border border-white/10 flex items-center justify-between text-xs text-white">
+              <span className="font-bold text-slate-300">Shootout Score:</span>
+              <span className="font-display-score text-base font-black text-white tabular-nums">
                 {teamAName} {penaltyScoreA} — {penaltyScoreB} {teamBName}
               </span>
             </div>
 
-            {/* Quick Kick Recorder with Athlete Selector */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Team A Kicks */}
-              <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2.5">
+            {/* Shootout Decided Alert if winner after 3 kicks */}
+            {hasShootoutWinner && (
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-xs font-black">
+                  <Trophy className="w-4 h-4 text-emerald-600" />
+                  <span>
+                    SHOOTOUT DECIDED! {penaltyScoreA > penaltyScoreB ? teamAName : teamBName} wins {penaltyScoreA} - {penaltyScoreB}!
+                  </span>
+                </div>
+                <button
+                  onClick={handleFinalizeMatch}
+                  className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider"
+                >
+                  Finalize Match Victory
+                </button>
+              </div>
+            )}
+
+            {/* Sudden Death Coin Toss Section if tied after 3 kicks */}
+            {isShootoutTiedAfterThree && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 flex flex-col gap-3 animate-in fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="font-label-caps text-xs text-on-surface font-extrabold truncate">
-                    {teamAName}
+                  <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-amber-800">
+                    <Coins className="w-4 h-4 text-amber-600" />
+                    <span>Sudden Death Coin Toss</span>
                   </span>
-                  <span className="font-display-score text-xs font-black text-primary-container">
-                    {penaltyScoreA} PK
+                  <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                    3 Kicks Tied ({penaltyScoreA}-{penaltyScoreB})
                   </span>
                 </div>
 
-                {/* Athlete Selector for Team A */}
-                <div>
-                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase font-label-caps mb-1">
-                    Penalty Taker (Shooter):
-                  </label>
-                  <select
-                    value={selectedKickerA}
-                    onChange={(e) => setSelectedKickerA(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer shadow-2xs truncate"
-                  >
-                    {teamAPlayers.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''}
-                      </option>
-                    ))}
-                  </select>
+                {!tossState.tossWinner ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                      All 3 regulation penalties are tied! Flip the coin to decide which team chooses their decisive role.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleFlipCoin}
+                      disabled={tossState.isFlipping}
+                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                    >
+                      <Coins className={`w-4 h-4 ${tossState.isFlipping ? 'animate-spin' : ''}`} />
+                      <span>{tossState.isFlipping ? 'Flipping Coin...' : '🪙 Flip Coin for Sudden Death'}</span>
+                    </button>
+                  </div>
+                ) : !tossState.tossChoice ? (
+                  <div className="flex flex-col gap-2.5">
+                    <div className="bg-amber-100 p-2.5 rounded-lg border border-amber-300 text-xs font-black text-amber-950">
+                      🪙 {tossState.tossWinner === 'A' ? teamAName : teamBName} WON THE COIN TOSS!
+                    </div>
+                    <p className="text-xs text-amber-900 font-medium">
+                      The coin toss winner must decide: do you take the decisive kick (SHOOT) or defend the goal (SAVE)?
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTossChoice('shoot')}
+                        className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95"
+                      >
+                        🎯 We Choose to SHOOT
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTossChoice('save')}
+                        className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95"
+                      >
+                        🧤 We Choose to SAVE
+                      </button>
+                    </div>
+                  </div>
+                ) : !tossState.isResolved ? (
+                  <div className="flex flex-col gap-3">
+                    {(() => {
+                      const winner = tossState.tossWinner;
+                      const choice = tossState.tossChoice;
+                      const shootingTeam = (winner === 'A' && choice === 'shoot') || (winner === 'B' && choice === 'save') ? 'A' : 'B';
+                      const defendingTeam = shootingTeam === 'A' ? 'B' : 'A';
+                      const shootingTeamName = shootingTeam === 'A' ? teamAName : teamBName;
+                      const defendingTeamName = defendingTeam === 'A' ? teamAName : teamBName;
+                      const shootingPlayers = shootingTeam === 'A' ? teamAPlayers : teamBPlayers;
+
+                      return (
+                        <>
+                          <div className="bg-amber-100 p-2.5 rounded-lg border border-amber-300 text-xs">
+                            <span className="font-bold block text-amber-950">
+                              Decisive Kick: <strong className="text-emerald-800">{shootingTeamName} (Shooter)</strong> vs{' '}
+                              <strong className="text-blue-800">{defendingTeamName} (Goalkeeper)</strong>
+                            </span>
+                            <span className="text-[11px] text-amber-800 block mt-0.5">
+                              If the shooter scores, {shootingTeamName} wins! If saved or missed, {defendingTeamName} wins!
+                            </span>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-amber-900 uppercase font-label-caps mb-1">
+                              Select Sudden-Death Shooter ({shootingTeamName}):
+                            </label>
+                            <select
+                              value={tossState.selectedDecisiveShooterId}
+                              onChange={(e) =>
+                                setTossState((prev) => ({
+                                  ...prev,
+                                  selectedDecisiveShooterId: e.target.value,
+                                }))
+                              }
+                              className="w-full px-2.5 py-2 bg-white border border-amber-300 rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-2xs"
+                            >
+                              {shootingPlayers.map((p) => (
+                                <option key={p._id} value={p._id}>
+                                  #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleResolveDecisiveKick('Goal')}
+                              className="py-2 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition-all active:scale-95 text-center"
+                            >
+                              ⚽ Goal! ({shootingTeamName} Wins)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleResolveDecisiveKick('Saved')}
+                              className="py-2 px-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-xs transition-all active:scale-95 text-center"
+                            >
+                              🧤 Saved! ({defendingTeamName} Wins)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleResolveDecisiveKick('Missed')}
+                              className="py-2 px-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shadow-xs transition-all active:scale-95 text-center"
+                            >
+                              ❌ Missed! ({defendingTeamName} Wins)
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-emerald-100 rounded-xl border border-emerald-300 text-emerald-950 text-xs font-bold flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-emerald-700" />
+                    <span>CHAMPIONSHIP DECIDED: {tossState.winnerTeamName} WINS!</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3-Kick Recorder Columns (Visible during regulation 3 kicks) */}
+            {!regulationKicksComplete && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Team A Kicks (Max 3) */}
+                <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-caps text-xs text-on-surface font-extrabold truncate">
+                      {teamAName}
+                    </span>
+                    <span className="font-display-score text-xs font-black text-primary-container">
+                      {kicksA}/3 Kicks • {penaltyScoreA} PK
+                    </span>
+                  </div>
+
+                  {/* Athlete Selector for Team A */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-on-surface-variant uppercase font-label-caps mb-1">
+                      Penalty Shooter:
+                    </label>
+                    <select
+                      value={selectedKickerA}
+                      onChange={(e) => setSelectedKickerA(e.target.value)}
+                      disabled={kicksA >= 3}
+                      className="w-full px-2.5 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer shadow-2xs truncate disabled:opacity-40"
+                    >
+                      {teamAPlayers.map((p) => (
+                        <option key={p._id} value={p._id}>
+                          #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Action Buttons Team A */}
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleRecordPenaltyKick('A', 'Goal')}
+                      disabled={kicksA >= 3}
+                      className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                    >
+                      ⚽ Goal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRecordPenaltyKick('A', 'Saved')}
+                      disabled={kicksA >= 3}
+                      className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                    >
+                      🧤 Saved
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRecordPenaltyKick('A', 'Missed')}
+                      disabled={kicksA >= 3}
+                      className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                    >
+                      ❌ Missed
+                    </button>
+                  </div>
                 </div>
 
-                {/* Action Buttons Team A */}
-                <div className="flex flex-col gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleRecordPenaltyKick('A', 'Goal')}
-                    className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
-                  >
-                    ⚽ Goal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRecordPenaltyKick('A', 'Saved')}
-                    className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
-                  >
-                    🧤 Saved
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRecordPenaltyKick('A', 'Missed')}
-                    className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
-                  >
-                    ❌ Missed
-                  </button>
+                {/* Team B Kicks (Max 3) */}
+                <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-caps text-xs text-on-surface font-extrabold truncate">
+                      {teamBName}
+                    </span>
+                    <span className="font-display-score text-xs font-black text-primary-container">
+                      {kicksB}/3 Kicks • {penaltyScoreB} PK
+                    </span>
+                  </div>
+
+                  {/* Athlete Selector for Team B */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-on-surface-variant uppercase font-label-caps mb-1">
+                      Penalty Shooter:
+                    </label>
+                    <select
+                      value={selectedKickerB}
+                      onChange={(e) => setSelectedKickerB(e.target.value)}
+                      disabled={kicksB >= 3}
+                      className="w-full px-2.5 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer shadow-2xs truncate disabled:opacity-40"
+                    >
+                      {teamBPlayers.map((p) => (
+                        <option key={p._id} value={p._id}>
+                          #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Action Buttons Team B */}
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleRecordPenaltyKick('B', 'Goal')}
+                      disabled={kicksB >= 3}
+                      className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                    >
+                      ⚽ Goal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRecordPenaltyKick('B', 'Saved')}
+                      disabled={kicksB >= 3}
+                      className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                    >
+                      🧤 Saved
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRecordPenaltyKick('B', 'Missed')}
+                      disabled={kicksB >= 3}
+                      className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                    >
+                      ❌ Missed
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              {/* Team B Kicks */}
-              <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-label-caps text-xs text-on-surface font-extrabold truncate">
-                    {teamBName}
-                  </span>
-                  <span className="font-display-score text-xs font-black text-primary-container">
-                    {penaltyScoreB} PK
-                  </span>
-                </div>
-
-                {/* Athlete Selector for Team B */}
-                <div>
-                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase font-label-caps mb-1">
-                    Penalty Taker (Shooter):
-                  </label>
-                  <select
-                    value={selectedKickerB}
-                    onChange={(e) => setSelectedKickerB(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer shadow-2xs truncate"
-                  >
-                    {teamBPlayers.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Action Buttons Team B */}
-                <div className="flex flex-col gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleRecordPenaltyKick('B', 'Goal')}
-                    className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
-                  >
-                    ⚽ Goal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRecordPenaltyKick('B', 'Saved')}
-                    className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
-                  >
-                    🧤 Saved
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRecordPenaltyKick('B', 'Missed')}
-                    className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
-                  >
-                    ❌ Missed
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Kicks Log with Athlete Names and Clubs */}
             <div className="space-y-1.5 max-h-48 overflow-y-auto pt-2 border-t border-surface-container">
               {penaltyKicks.length === 0 ? (
                 <p className="text-center text-xs text-on-surface-variant py-3 font-medium">
-                  Scores tied ({scoreA} - {scoreB}). Select shooter and record penalty kicks.
+                  3 penalty kicks per team. Select shooter and record penalty outcomes.
                 </p>
               ) : (
                 penaltyKicks.map((k, i) => (
@@ -953,7 +1297,7 @@ export default function AdminLiveControlPage() {
                   >
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-on-surface">
-                        Round #{k.round} ({k.team === 'A' ? teamAName : teamBName}):
+                        {k.round === 4 ? '⚡ SUDDEN DEATH:' : `Kick #${k.round}/3 (${k.team === 'A' ? teamAName : teamBName}):`}
                       </span>
                       <span className="font-semibold text-primary-container">
                         {k.playerName} (#{k.playerJersey})
@@ -993,7 +1337,7 @@ export default function AdminLiveControlPage() {
               Penalty Shootout Inactive
             </h4>
             <p className="text-xs text-on-surface-variant max-w-sm mt-1.5 font-medium leading-relaxed">
-              Penalty shootout unlocks exclusively if the match ends in a draw (<strong className="text-on-surface">{teamAName} {scoreA} - {scoreB} {teamBName}</strong>). When scores are tied, the penalty shootout console will appear here.
+              Penalty shootout unlocks exclusively if the match ends in a draw (<strong className="text-on-surface">{teamAName} {scoreA} - {scoreB} {teamBName}</strong>). When scores are tied, the 3-kick penalty shootout console will appear here.
             </p>
           </div>
         )}

@@ -15,7 +15,7 @@ export const adminService = {
   // Live Match Controls (Authoritative)
   async startMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/start`, {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/start`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -28,7 +28,7 @@ export const adminService = {
 
   async pauseMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/pause`, {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/pause`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -41,7 +41,7 @@ export const adminService = {
 
   async resumeMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/resume`, {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/resume`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -96,6 +96,20 @@ export const adminService = {
       const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/reset`, {
         method: 'POST',
         headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async addTimeToTimer(matchId: string, seconds: number = 120): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/add-time`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ seconds }),
       });
       const json = await res.json();
       return json;

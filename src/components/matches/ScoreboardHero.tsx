@@ -150,23 +150,24 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               </span>
             </div>
 
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="flex items-center justify-center gap-4 bg-surface-container-low px-6 py-2.5 rounded-2xl border border-surface-container-high shadow-inner">
-                <span className="font-display-score text-4xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tight tabular-nums">
+            {/* Dark Scoreboard Display Box matching official screenshot */}
+            <div className="bg-[#1e2025] px-8 sm:px-10 py-4 rounded-2xl border border-white/10 shadow-xl flex flex-col items-center gap-1.5 min-w-[200px]">
+              <div className="flex items-center justify-center gap-6">
+                <span className="font-display-score text-4xl sm:text-5xl md:text-6xl text-white font-extrabold tracking-tight tabular-nums">
                   {localScoreA}
                 </span>
-                <span className="font-display-score text-3xl sm:text-4xl text-on-surface-variant/40 font-light">
+                <span className="font-display-score text-3xl sm:text-4xl text-slate-400 font-light">
                   -
                 </span>
-                <span className="font-display-score text-4xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tight tabular-nums">
+                <span className="font-display-score text-4xl sm:text-5xl md:text-6xl text-white font-extrabold tracking-tight tabular-nums">
                   {localScoreB}
                 </span>
               </div>
 
               {/* Tied Match / Penalty Shootout Result Display */}
               {showPenalties && (
-                <div className="text-sm sm:text-base font-semibold text-slate-400 mt-1 font-label-ui tracking-wide">
-                  Penalties: <span className="text-on-surface font-extrabold">{penA} - {penB}</span>
+                <div className="text-sm sm:text-base font-semibold text-[#8a94a6] mt-0.5 font-label-ui tracking-wide">
+                  Penalties: <span className="text-white font-extrabold">{penA} - {penB}</span>
                 </div>
               )}
             </div>
