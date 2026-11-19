@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
   title: 'Varsity Football League | Inter-College Championship 2025',
@@ -24,11 +23,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-surface text-on-surface font-sans flex flex-col min-h-screen">
-        <Navbar />
-        <main className="flex-1 w-full pt-16">
-          {children}
-        </main>
-        <Footer />
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
