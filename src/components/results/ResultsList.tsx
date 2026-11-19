@@ -12,9 +12,11 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
   return (
     <div className="flex flex-col gap-4">
       {results.map((match) => {
-        const isTeamAWinner = match.score.teamA > match.score.teamB;
-        const isTeamBWinner = match.score.teamB > match.score.teamA;
-        const isDraw = match.score.teamA === match.score.teamB;
+        const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
+        const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
+        const isTeamAWinner = scoreA > scoreB;
+        const isTeamBWinner = scoreB > scoreA;
+        const isDraw = scoreA === scoreB;
 
         return (
           <div
@@ -59,11 +61,11 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
               <div className="md:col-span-2 flex flex-col items-center justify-center py-2 bg-surface-container-low rounded-xl border border-surface-container shadow-inner">
                 <div className="flex items-center gap-2 font-display-score text-3xl font-black text-on-surface tabular-nums">
                   <span className={isTeamAWinner ? 'text-primary-container' : 'text-on-surface'}>
-                    {match.score.teamA}
+                    {scoreA}
                   </span>
                   <span className="text-outline font-light">:</span>
                   <span className={isTeamBWinner ? 'text-primary-container' : 'text-on-surface'}>
-                    {match.score.teamB}
+                    {scoreB}
                   </span>
                 </div>
                 <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold mt-0.5">

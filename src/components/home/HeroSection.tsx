@@ -40,7 +40,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ stats }) => {
 
         {/* Tagline */}
         <p className="font-body-lg text-body-lg text-inverse-on-surface/90 max-w-2xl mb-8 font-medium leading-relaxed">
-          16 Collegiate Dynasties. 48 High-Octane Clashes. One Crown. Real-time tactical tracking,
+          Elite Collegiate Dynasties. High-Octane Clashes. One Crown. Real-time tactical tracking,
           verified varsity matchday data, and high-velocity college athletics.
         </p>
 

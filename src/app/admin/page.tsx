@@ -37,7 +37,7 @@ export default function AdminOverviewPage() {
   const [isTimerRunning, setIsTimerRunning] = useState(true);
   const [homeScore, setHomeScore] = useState(2);
   const [awayScore, setAwayScore] = useState(1);
-  const [timerSeconds, setTimerSeconds] = useState(5245); // 87:25 in seconds
+  const [timerSeconds, setTimerSeconds] = useState(55); // 00:55 in 4-minute Second Half
   const [auditLogs, setAuditLogs] = useState([
     {
       id: '1',
@@ -113,50 +113,6 @@ export default function AdminOverviewPage() {
     }
   };
 
-  const handleQuickGoal = async (team: 'home' | 'away') => {
-    if (team === 'home') {
-      const next = homeScore + 1;
-      setHomeScore(next);
-      setAuditLogs((prev) => [
-        {
-          id: Date.now().toString(),
-          title: `Goal Validated: Stanford (+1)`,
-          minute: `${Math.floor(timerSeconds / 60)}'`,
-          desc: `Score updated to ${next}-${awayScore}`,
-          official: 'Super Admin Override',
-          type: 'goal',
-        },
-        ...prev,
-      ]);
-      if (liveMatch) {
-        await adminService.recordGoal(liveMatch._id, {
-          teamId: liveMatch.teamA._id,
-          type: 'Normal Goal',
-        });
-      }
-    } else {
-      const next = awayScore + 1;
-      setAwayScore(next);
-      setAuditLogs((prev) => [
-        {
-          id: Date.now().toString(),
-          title: `Goal Validated: UCLA (+1)`,
-          minute: `${Math.floor(timerSeconds / 60)}'`,
-          desc: `Score updated to ${homeScore}-${next}`,
-          official: 'Super Admin Override',
-          type: 'goal',
-        },
-        ...prev,
-      ]);
-      if (liveMatch) {
-        await adminService.recordGoal(liveMatch._id, {
-          teamId: liveMatch.teamB._id,
-          type: 'Normal Goal',
-        });
-      }
-    }
-  };
-
   const handleUndoEvent = (id: string) => {
     setAuditLogs((prev) => prev.filter((item) => item.id !== id));
   };
@@ -189,6 +145,13 @@ export default function AdminOverviewPage() {
               <option>2026 Ivy Invitational Cup — Group Stage</option>
               <option>2025 Autumn All-Star Trophy — Archived</option>
             </select>
+            <Link
+              href="/admin/schedule"
+              className="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all border border-surface-container-high active:scale-95"
+            >
+              <Calendar className="w-3.5 h-3.5 text-primary-container" />
+              <span>Edit & Delete Fixtures</span>
+            </Link>
             <Link
               href="/admin/live-control"
               className="flex items-center gap-1.5 bg-primary-container hover:bg-primary text-on-primary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95"
@@ -361,17 +324,20 @@ export default function AdminOverviewPage() {
 
                   {/* Score & Clock */}
                   <div className="flex flex-col items-center justify-center px-4 text-center shrink-0">
-                    <div className="flex items-center gap-2 font-display-score text-4xl font-black text-on-surface tabular-nums">
+                    <div className="flex items-center gap-2 font-display-score text-4xl sm:text-5xl font-black text-on-surface tabular-nums">
                       <span>{homeScore}</span>
-                      <span className="text-on-surface-variant/40">:</span>
+                      <span className="text-on-surface-variant/40">-</span>
                       <span>{awayScore}</span>
                     </div>
-                    <div className="inline-flex items-center gap-1.5 bg-surface-container px-3 py-0.5 rounded-full mt-1.5 border border-surface-container-high">
+                    <span className="font-label-caps text-[9px] text-on-surface-variant uppercase font-semibold mt-1">
+                      Live Match Score
+                    </span>
+                    <div className="inline-flex items-center gap-1.5 bg-surface-container px-3 py-0.5 rounded-full mt-1 border border-surface-container-high">
                       <Clock className="w-3.5 h-3.5 text-primary-container" />
                       <span className="font-label-ui text-xs font-bold text-on-surface tabular-nums">
                         {formatTime(timerSeconds)}
                       </span>
-                      <span className="text-[10px] text-on-surface-variant font-bold uppercase">(2H)</span>
+                      <span className="text-[10px] text-on-surface-variant font-bold uppercase">(4m 2H)</span>
                     </div>
                   </div>
 
@@ -392,18 +358,18 @@ export default function AdminOverviewPage() {
                 {/* Timeline Progress */}
                 <div className="bg-surface-container-low p-3 rounded-xl flex flex-col gap-1.5 border border-surface-container">
                   <div className="flex items-center justify-between text-[10px] font-label-caps text-on-surface-variant uppercase font-bold">
-                    <span>Kickoff</span>
-                    <span>HT 1-0</span>
-                    <span>65&apos; Stanford</span>
-                    <span>81&apos; UCLA</span>
-                    <span>90&apos; FT</span>
+                    <span>Kickoff (4m)</span>
+                    <span>20s Delay</span>
+                    <span>Break (2m)</span>
+                    <span>2H (4m)</span>
+                    <span>FT</span>
                   </div>
                   <div className="relative w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
-                    <div className="absolute left-0 top-0 bottom-0 bg-primary-container rounded-full" style={{ width: '96%' }}></div>
+                    <div className="absolute left-0 top-0 bottom-0 bg-primary-container rounded-full" style={{ width: '85%' }}></div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-on-surface-variant font-medium pt-0.5">
-                    <span className="text-primary-container font-semibold">⚽ D. Kim (31&apos;), M. Vance (65&apos;)</span>
-                    <span>⚽ A. Morales (81&apos;)</span>
+                    <span className="text-primary-container font-semibold">⚽ M. Vance (02:48 1H), A. Chen (01:05 2H)</span>
+                    <span>⚽ J. Morales (02:15 2H)</span>
                   </div>
                 </div>
               </div>
@@ -421,49 +387,39 @@ export default function AdminOverviewPage() {
                     </span>
                   </div>
 
-                  {/* Quick Action Buttons */}
-                  <div className="grid grid-cols-2 gap-2 mt-3">
-                    <button
-                      onClick={() => handleQuickGoal('home')}
-                      className="py-2 px-3 rounded-xl bg-surface-container-lowest hover:bg-emerald-50 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-primary-container" />
-                      <span>+ Goal (Stanford)</span>
-                    </button>
-                    <button
-                      onClick={() => handleQuickGoal('away')}
-                      className="py-2 px-3 rounded-xl bg-surface-container-lowest hover:bg-emerald-50 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-primary-container" />
-                      <span>+ Goal (UCLA)</span>
-                    </button>
-                    <button
-                      onClick={handleToggleTimer}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs ${
-                        isTimerRunning
+                  {/* Operational Shortcuts (Scoring managed inside Live Control Desk) */}
+                  <div className="flex flex-col gap-2.5 mt-3">
+                    <p className="text-xs text-on-surface-variant font-medium">
+                      All live scoring, athlete goal recording, and stage clock shifts are managed inside the dedicated Live Control Desk.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={handleToggleTimer}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs ${isTimerRunning
                           ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100'
                           : 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100'
-                      }`}
-                    >
-                      {isTimerRunning ? (
-                        <>
-                          <Pause className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Pause Timer</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Resume Timer</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => alert('Yellow Card recorded for tactical foul.')}
-                      className="py-2 px-3 rounded-xl bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                    >
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Issue Card</span>
-                    </button>
+                          }`}
+                      >
+                        {isTimerRunning ? (
+                          <>
+                            <Pause className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Pause Timer</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Resume Timer</span>
+                          </>
+                        )}
+                      </button>
+                      <Link
+                        href="/admin/standings"
+                        className="py-2 px-3 rounded-xl bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                      >
+                        <Trophy className="w-3.5 h-3.5 text-primary-container" />
+                        <span>View Standings</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
@@ -632,13 +588,12 @@ export default function AdminOverviewPage() {
                   className="flex items-start gap-3 pb-3 border-b border-surface-container-high last:border-0 last:pb-0"
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                      log.type === 'goal'
-                        ? 'bg-emerald-100 text-primary-container'
-                        : log.type === 'card'
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${log.type === 'goal'
+                      ? 'bg-emerald-100 text-primary-container'
+                      : log.type === 'card'
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-surface-container text-on-surface'
-                    }`}
+                      }`}
                   >
                     {log.type === 'goal' ? '⚽' : log.type === 'card' ? '🟨' : '⏱️'}
                   </div>

@@ -24,7 +24,7 @@ export const FeaturedTeams: React.FC<FeaturedTeamsProps> = ({ teams }) => {
           href="/teams"
           className="font-headline-sm text-headline-sm text-primary-container hover:underline flex items-center gap-1 font-bold group"
         >
-          <span>View All 16 Teams</span>
+          <span>View All Teams ({teams.length})</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>

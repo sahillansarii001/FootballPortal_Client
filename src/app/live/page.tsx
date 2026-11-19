@@ -122,9 +122,9 @@ export default function LiveMatchesPage() {
                   {/* Score */}
                   <div className="md:col-span-3 flex flex-col items-center justify-center py-3 px-6 bg-surface-container-low rounded-2xl border border-surface-container shadow-inner">
                     <div className="flex items-center gap-3 leading-none font-display-score text-4xl sm:text-5xl font-black text-on-surface tabular-nums">
-                      <span className="text-primary-container">{match.score.teamA}</span>
+                      <span className="text-primary-container">{match.score?.teamA ?? match.teamAScore ?? 0}</span>
                       <span className="text-outline font-light">:</span>
-                      <span>{match.score.teamB}</span>
+                      <span>{match.score?.teamB ?? match.teamBScore ?? 0}</span>
                     </div>
                     <span className="font-label-caps text-[10px] uppercase font-bold text-on-surface-variant mt-1.5">
                       Possession: 54% - 46%

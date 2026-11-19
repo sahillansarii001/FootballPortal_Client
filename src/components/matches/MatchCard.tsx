@@ -57,7 +57,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
             </div>
             {(isLive || isCompleted) && (
               <span className="font-display-score text-2xl font-black text-on-surface tabular-nums">
-                {match.score.teamA}
+                {match.score?.teamA ?? match.teamAScore ?? 0}
               </span>
             )}
           </div>
@@ -85,7 +85,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
             </div>
             {(isLive || isCompleted) && (
               <span className="font-display-score text-2xl font-black text-on-surface tabular-nums">
-                {match.score.teamB}
+                {match.score?.teamB ?? match.teamBScore ?? 0}
               </span>
             )}
           </div>

@@ -89,11 +89,11 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
           <div className="md:col-span-3 flex flex-col items-center justify-center py-3 px-6 bg-surface-container-low rounded-2xl border border-surface-container shadow-inner">
             <div className="flex items-center justify-center gap-4 leading-none">
               <span className="font-display-score text-display-score text-primary-container font-black tabular-nums">
-                {liveMatch.score.teamA}
+                {liveMatch.score?.teamA ?? liveMatch.teamAScore ?? 0}
               </span>
               <span className="font-headline-lg text-on-surface-variant font-light">:</span>
               <span className="font-display-score text-display-score text-on-surface font-black tabular-nums">
-                {liveMatch.score.teamB}
+                {liveMatch.score?.teamB ?? liveMatch.teamBScore ?? 0}
               </span>
             </div>
             <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded bg-surface-container font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold">

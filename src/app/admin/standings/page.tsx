@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { TableProperties, RefreshCw, Trophy, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { standingsService } from '@/services/standings.service';
 import { adminService } from '@/services/admin.service';
+import { tournamentService } from '@/services/tournament.service';
 import { StandingsTable } from '@/components/standings/StandingsTable';
 import { QualificationLegend } from '@/components/standings/QualificationLegend';
 import { TournamentStandingRow } from '@/types';
@@ -17,7 +18,7 @@ export default function AdminStandingsPage() {
   useEffect(() => {
     async function loadStandings() {
       setLoading(true);
-      const data = await standingsService.getStandings('tourn-2025-vfl');
+      const data = await standingsService.getStandings();
       setStandings(data);
       setLoading(false);
     }
@@ -26,8 +27,12 @@ export default function AdminStandingsPage() {
 
   const handleRecalculate = async () => {
     setRecalculating(true);
-    await adminService.recalculateStandings('tourn-2025-vfl');
-    const updated = await standingsService.getStandings('tourn-2025-vfl');
+    const tournaments = await tournamentService.getTournaments();
+    const tId = tournaments[0]?._id;
+    if (tId) {
+      await adminService.recalculateStandings(tId);
+    }
+    const updated = await standingsService.getStandings();
     setStandings(updated);
     setRecalculating(false);
     setNotification('Tournament point table and tie-breakers successfully recalculated from match database.');

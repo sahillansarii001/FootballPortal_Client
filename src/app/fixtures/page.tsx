@@ -28,6 +28,14 @@ export default function FixturesPage() {
     fetchMatches();
   }, []);
 
+  const availableTeams = Array.from(
+    new Set(
+      matches
+        .flatMap((m) => [m.teamA?.name, m.teamB?.name])
+        .filter((name): name is string => Boolean(name))
+    )
+  );
+
   // Filter logic
   const filteredMatches = matches.filter((m) => {
     // Tab filter
@@ -181,14 +189,11 @@ export default function FixturesPage() {
               className="w-full bg-surface text-on-surface font-label-ui text-label-ui px-3 py-2.5 rounded-xl border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary-container/20 cursor-pointer shadow-sm text-xs font-semibold"
             >
               <option value="">Team: All Teams</option>
-              <option value="stanford">Stanford Cardinal</option>
-              <option value="ucla">UCLA Bruins</option>
-              <option value="harvard">Harvard Crimson</option>
-              <option value="columbia">Columbia Lions</option>
-              <option value="berkeley">Cal Golden Bears</option>
-              <option value="mit">MIT Engineers</option>
-              <option value="princeton">Princeton Tigers</option>
-              <option value="washington">Washington Huskies</option>
+              {availableTeams.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
             </select>
           </div>
 

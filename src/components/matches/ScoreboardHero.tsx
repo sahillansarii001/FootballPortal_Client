@@ -16,18 +16,30 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
   const remaining = match.timer?.remainingTime ?? 240;
   const stage = match.timer?.currentStage || match.currentStage || 'First Half';
 
-  // Determine stage progress
+  const [localScoreA, setLocalScoreA] = React.useState(match.score?.teamA ?? 0);
+  const [localScoreB, setLocalScoreB] = React.useState(match.score?.teamB ?? 0);
+
+  React.useEffect(() => {
+    if (match.score) {
+      setLocalScoreA(match.score.teamA);
+      setLocalScoreB(match.score.teamB);
+    }
+  }, [match.score?.teamA, match.score?.teamB]);
+
+  // Determine stage progress across tournament stages including 2-minute Draw Extra Time
   const getStageActiveIndex = () => {
     const s = stage.toLowerCase();
     if (s.includes('first')) return 0;
-    if (s.includes('transition') || s.includes('half-time') || s.includes('halftime')) return 1;
-    if (s.includes('second')) return 2;
-    if (s.includes('penalty')) return 3;
-    if (s.includes('completed')) return 4;
+    if (s.includes('transition') || s.includes('whistle') || s.includes('corner') || s.includes('delay')) return 1;
+    if (s.includes('half-time') || s.includes('halftime') || s.includes('break') || s.includes('interval')) return 2;
+    if (s.includes('second')) return 3;
+    if (s.includes('extra') || s.includes('draw')) return 4;
+    if (s.includes('completed') || s.includes('full') || s.includes('ft') || isCompleted) return 5;
     return 0;
   };
 
   const activeIdx = getStageActiveIndex();
+  const isDraw = localScoreA === localScoreB;
 
   return (
     <div className="relative bg-surface-container-lowest rounded-2xl shadow-xl border border-surface-container-high overflow-hidden mb-8">
@@ -124,7 +136,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
             </div>
           </div>
 
-          {/* Score Counter Middle */}
+          {/* Score Counter Middle with Dropdowns */}
           <div className="md:col-span-2 flex flex-col items-center justify-center py-2 md:py-0">
             <div className="bg-surface-container-high px-3.5 py-1 rounded-full mb-1 border border-surface-container-high shadow-inner">
               <span className="font-label-caps text-[11px] text-on-surface font-extrabold tracking-widest uppercase">
@@ -132,13 +144,42 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               </span>
             </div>
 
-            <div className="flex items-center justify-center gap-3 bg-surface-container-low px-6 py-2 rounded-2xl border border-surface-container-high shadow-inner">
-              <span className="font-display-score text-4xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tighter tabular-nums">
-                {match.score.teamA}
-              </span>
-              <span className="font-headline-lg text-2xl text-outline-variant font-light">:</span>
-              <span className="font-display-score text-4xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tighter tabular-nums">
-                {match.score.teamB}
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center justify-center gap-2 sm:gap-3 bg-surface-container-low px-4 sm:px-5 py-2 rounded-2xl border border-surface-container-high shadow-inner">
+                {/* Team A Dropdown Score */}
+                <select
+                  value={localScoreA}
+                  onChange={(e) => setLocalScoreA(Number(e.target.value))}
+                  className="bg-transparent font-display-score text-3xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tighter tabular-nums cursor-pointer hover:text-primary-container focus:outline-none focus:ring-2 focus:ring-primary-container/40 rounded-lg text-center"
+                  title="Select Team A Score from dropdown"
+                  aria-label={`${match.teamA.name} Score`}
+                >
+                  {[...Array(16)].map((_, i) => (
+                    <option key={i} value={i} className="bg-surface text-on-surface text-base">
+                      {i}
+                    </option>
+                  ))}
+                </select>
+
+                <span className="font-headline-lg text-2xl text-outline-variant font-light">:</span>
+
+                {/* Team B Dropdown Score */}
+                <select
+                  value={localScoreB}
+                  onChange={(e) => setLocalScoreB(Number(e.target.value))}
+                  className="bg-transparent font-display-score text-3xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tighter tabular-nums cursor-pointer hover:text-primary-container focus:outline-none focus:ring-2 focus:ring-primary-container/40 rounded-lg text-center"
+                  title="Select Team B Score from dropdown"
+                  aria-label={`${match.teamB.name} Score`}
+                >
+                  {[...Array(16)].map((_, i) => (
+                    <option key={i} value={i} className="bg-surface text-on-surface text-base">
+                      {i}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="font-label-caps text-[9px] text-on-surface-variant uppercase tracking-wider font-semibold">
+                Scoreboard Dropdown
               </span>
             </div>
 
@@ -195,38 +236,70 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
           </div>
         </div>
 
-        {/* Match Stages Multi-Segment Ribbon */}
+        {/* Match Stages Multi-Segment Ribbon (Tournament Cycle with 2-Minute Draw Decider) */}
         <div className="flex flex-col gap-3 pt-4 bg-surface-container-low p-4 rounded-xl border border-surface-container-high">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-label-caps text-label-caps text-center">
+          {isDraw && (
+            <div className="bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 px-3.5 py-2 rounded-xl text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow-xs">
+              <span className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                <span>Scores Level ({localScoreA} - {localScoreB}): Match is a Draw &rarr; 2 More Minutes Added in Timer!</span>
+              </span>
+              <span className="text-[10px] uppercase font-black bg-amber-600 text-white px-2.5 py-0.5 rounded-full shadow-xs">
+                2m Draw Decider
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 font-label-caps text-label-caps text-center">
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold ${
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
                 activeIdx >= 0
                   ? 'bg-surface-container-lowest text-primary-container border-primary-container/30 shadow-xs'
                   : 'bg-surface-container-high text-outline border-transparent'
               }`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5" /> 1ST HALF (240s)
+              <CheckCircle2 className="w-3.5 h-3.5" /> 1ST HALF (4m)
             </div>
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold ${
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
                 activeIdx >= 1
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs'
+                  : 'bg-surface-container-high text-outline border-transparent'
+              }`}
+            >
+              <PauseCircle className="w-3.5 h-3.5 text-amber-600" /> WHISTLE DELAY (20s)
+            </div>
+            <div
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
+                activeIdx >= 2
                   ? 'bg-surface-container-lowest text-primary-container border-primary-container/30 shadow-xs'
                   : 'bg-surface-container-high text-outline border-transparent'
               }`}
             >
-              <PauseCircle className="w-3.5 h-3.5" /> INTERVAL (120s)
+              <PauseCircle className="w-3.5 h-3.5" /> BREAK (2m)
             </div>
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold ${
-                activeIdx >= 2
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
+                activeIdx >= 3
                   ? 'bg-primary-container text-on-primary ring-2 ring-primary-container/30 shadow-xs'
                   : 'bg-surface-container-high text-outline border-transparent'
               }`}
             >
-              <Activity className="w-3.5 h-3.5 animate-spin" /> 2ND HALF (240s)
+              <Activity className="w-3.5 h-3.5 animate-spin" /> 2ND HALF (4m)
             </div>
             <div
-              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold ${
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] ${
+                activeIdx >= 4
+                  ? 'bg-amber-500 text-white ring-2 ring-amber-300 shadow-xs'
+                  : isDraw
+                  ? 'bg-amber-100/70 text-amber-900 border-amber-300 border-dashed'
+                  : 'bg-surface-container-high text-outline border-transparent'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" /> DRAW DECIDER (2m)
+            </div>
+            <div
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg border font-bold text-[11px] col-span-2 sm:col-span-1 ${
                 isCompleted
                   ? 'bg-primary-container text-on-primary shadow-xs'
                   : 'bg-surface-container-high/60 text-outline border-surface-container-high'
@@ -236,22 +309,37 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
             </div>
           </div>
 
-          {/* Visual progress bar */}
+          {/* Visual progress bar across tournament format */}
           <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden flex gap-1 p-0.5">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                activeIdx >= 0 ? 'bg-primary-container w-[48%]' : 'w-0'
+                activeIdx >= 0 ? 'bg-primary-container w-[35%]' : 'w-0'
               }`}
+              title="First Half (4 mins)"
             />
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                activeIdx >= 1 ? 'bg-tertiary-fixed w-[10%]' : 'w-0'
+                activeIdx >= 1 ? 'bg-amber-400 w-[5%]' : 'w-0'
               }`}
+              title="Whistle & Corner Delay (20s)"
             />
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                activeIdx >= 2 ? 'bg-primary-container w-[42%]' : 'w-0'
+                activeIdx >= 2 ? 'bg-tertiary-fixed w-[12%]' : 'w-0'
               }`}
+              title="Half-Time Break (2 mins)"
+            />
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                activeIdx >= 3 ? 'bg-primary-container w-[35%]' : 'w-0'
+              }`}
+              title="Second Half (4 mins)"
+            />
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                activeIdx >= 4 ? 'bg-amber-500 w-[13%]' : isDraw ? 'bg-amber-300/50 w-[13%]' : 'w-0'
+              }`}
+              title="Draw Decider Extra Time (2 mins)"
             />
           </div>
 

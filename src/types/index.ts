@@ -150,6 +150,8 @@ export interface Match {
     teamA: number;
     teamB: number;
   };
+  teamAScore?: number;
+  teamBScore?: number;
   timer?: MatchTimerState;
   currentStage?: string;
   winner?: Team | string | null;

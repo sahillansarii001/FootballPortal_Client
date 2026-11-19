@@ -78,6 +78,50 @@ export const adminService = {
     }
   },
 
+  async advanceStage(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/advance`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async resetTimer(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/reset`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async updateScore(
+    matchId: string,
+    teamAScore: number,
+    teamBScore: number
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ teamAScore, teamBScore }),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
   async recordGoal(
     matchId: string,
     payload: { teamId: string; playerId?: string; minute?: string; type?: string }
@@ -156,6 +200,48 @@ export const adminService = {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  // Edit / Update Match
+  async updateMatch(
+    matchId: string,
+    payload: {
+      teamA?: string;
+      teamB?: string;
+      matchDate?: string;
+      matchTime?: string;
+      venue?: string;
+      stage?: string;
+      status?: string;
+      teamAScore?: number;
+      teamBScore?: number;
+    }
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  // Delete Match
+  async deleteMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
       });
       const json = await res.json();
       return json;

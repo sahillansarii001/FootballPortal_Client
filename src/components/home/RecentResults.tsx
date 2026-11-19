@@ -26,13 +26,15 @@ export const RecentResults: React.FC<RecentResultsProps> = ({ results }) => {
       {/* Results List */}
       <div className="space-y-3">
         {results.slice(0, 3).map((match) => {
-          const isDraw = match.score.teamA === match.score.teamB;
+          const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
+          const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
+          const isDraw = scoreA === scoreB;
           const winnerName =
             typeof match.winner === 'object' && match.winner
               ? match.winner.name
-              : match.score.teamA > match.score.teamB
-              ? match.teamA.name
-              : match.teamB.name;
+              : scoreA > scoreB
+                ? match.teamA?.name
+                : match.teamB?.name;
 
           return (
             <Link
@@ -51,11 +53,11 @@ export const RecentResults: React.FC<RecentResultsProps> = ({ results }) => {
                 <div className="flex flex-col">
                   <div className="flex items-center gap-3">
                     <span className="font-headline-sm text-headline-sm text-on-surface font-bold flex items-center gap-1.5">
-                      {match.teamA.name} {match.score.teamA}
+                      {match.teamA?.name} {scoreA}
                     </span>
                     <span className="text-on-surface-variant font-bold">–</span>
                     <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                      {match.score.teamB} {match.teamB.name}
+                      {scoreB} {match.teamB?.name}
                     </span>
                   </div>
                   <span className="font-body-sm text-body-sm text-on-surface-variant font-medium mt-0.5">

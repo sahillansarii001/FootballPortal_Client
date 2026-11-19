@@ -25,7 +25,12 @@ export const teamService = {
     if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
       return res.data;
     }
-    return MOCK_PLAYERS;
+    return MOCK_PLAYERS.filter((p) => {
+      if (typeof p.team === 'object' && p.team) {
+        return p.team._id === teamId || p.team.name.toLowerCase().includes(teamId.toLowerCase());
+      }
+      return p.team === teamId;
+    });
   },
 
   async getTeamStats(teamId: string): Promise<any> {

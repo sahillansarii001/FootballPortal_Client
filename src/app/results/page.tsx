@@ -27,6 +27,14 @@ export default function ResultsPage() {
     fetchResults();
   }, []);
 
+  const availableTeams = Array.from(
+    new Set(
+      results
+        .flatMap((m) => [m.teamA?.name, m.teamB?.name])
+        .filter((name): name is string => Boolean(name))
+    )
+  );
+
   const filteredResults = results.filter((m) => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -145,14 +153,11 @@ export default function ResultsPage() {
               className="w-full bg-surface-container-low border border-surface-container-high rounded-xl px-3.5 py-2.5 text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
             >
               <option value="">All Universities</option>
-              <option value="Stanford">Stanford Cardinal</option>
-              <option value="UCLA">UCLA Bruins</option>
-              <option value="Harvard">Harvard Crimson</option>
-              <option value="Columbia">Columbia Lions</option>
-              <option value="Cal">California Golden Bears</option>
-              <option value="MIT">MIT Engineers</option>
-              <option value="Princeton">Princeton Tigers</option>
-              <option value="Washington">Washington Huskies</option>
+              {availableTeams.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
             </select>
           </div>
 
