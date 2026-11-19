@@ -157,10 +157,10 @@ export const adminService = {
 
   async recordPenalty(
     matchId: string,
-    payload: { teamId: string; playerId?: string; round: number; outcome: 'scored' | 'saved' | 'missed' }
+    payload: { team: string; player: string; goalkeeper?: string; outcome: 'Goal' | 'Saved' | 'Missed' }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/penalty`, {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/penalties`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),

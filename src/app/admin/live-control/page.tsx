@@ -49,7 +49,19 @@ export default function AdminLiveControlPage() {
   const [goalType, setGoalType] = useState('Normal Goal');
 
   // Penalty Shootout state
-  const [penaltyKicks, setPenaltyKicks] = useState<{ team: 'A' | 'B'; round: number; outcome: 'scored' | 'saved' | 'missed' }[]>([]);
+  const [selectedKickerA, setSelectedKickerA] = useState<string>('');
+  const [selectedKickerB, setSelectedKickerB] = useState<string>('');
+  const [penaltyKicks, setPenaltyKicks] = useState<{
+    team: 'A' | 'B';
+    round: number;
+    playerId: string;
+    playerName: string;
+    playerClub?: string;
+    playerJersey: number;
+    outcome: 'Goal' | 'Saved' | 'Missed';
+  }[]>([]);
+  const [penaltyScoreA, setPenaltyScoreA] = useState(0);
+  const [penaltyScoreB, setPenaltyScoreB] = useState(0);
 
   const teamAName = selectedMatch?.teamA?.name || 'Home Team';
   const teamBName = selectedMatch?.teamB?.name || 'Away Team';
@@ -76,15 +88,20 @@ export default function AdminLiveControlPage() {
     setRemainingSeconds(match.timer?.remainingTime ?? 240);
     setTimerRunning(Boolean(match.timer?.isRunning || match.status === 'Live'));
     setCurrentStage(match.timer?.currentStage || match.stage || 'First Half');
+    setPenaltyKicks([]);
+    setPenaltyScoreA(0);
+    setPenaltyScoreB(0);
 
-    // Fetch players for both teams to populate goalscorer dropdowns
+    // Fetch players for both teams to populate goalscorer and penalty kicker dropdowns
     if (match.teamA?._id) {
       const pA = await teamService.getTeamPlayers(match.teamA._id);
       setTeamAPlayers(pA);
+      if (pA.length > 0) setSelectedKickerA(pA[0]._id);
     }
     if (match.teamB?._id) {
       const pB = await teamService.getTeamPlayers(match.teamB._id);
       setTeamBPlayers(pB);
+      if (pB.length > 0) setSelectedKickerB(pB[0]._id);
     }
   };
 
@@ -303,23 +320,62 @@ export default function AdminLiveControlPage() {
     showNotification(`Goal recorded for ${teamName} (${goalPlayerName || 'Athlete'} • ${calculatedMinute})!`);
   };
 
-  const handleRecordPenaltyKick = (team: 'A' | 'B', outcome: 'scored' | 'saved' | 'missed') => {
-    const currentRound = penaltyKicks.filter((k) => k.team === team).length + 1;
-    setPenaltyKicks((prev) => [...prev, { team, round: currentRound, outcome }]);
+  const handleRecordPenaltyKick = async (team: 'A' | 'B', outcome: 'Goal' | 'Saved' | 'Missed') => {
+    if (!selectedMatch) return;
+    const players = team === 'A' ? teamAPlayers : teamBPlayers;
+    const selectedKickerId = team === 'A' ? selectedKickerA : selectedKickerB;
+    const kicker = players.find((p) => p._id === selectedKickerId) || players[0];
 
-    if (outcome === 'scored') {
+    if (!kicker) {
+      showError(`Please choose a penalty shooter for ${team === 'A' ? teamAName : teamBName}.`);
+      return;
+    }
+
+    const currentRound = penaltyKicks.filter((k) => k.team === team).length + 1;
+
+    const newKick = {
+      team,
+      round: currentRound,
+      playerId: kicker._id,
+      playerName: kicker.name,
+      playerClub: kicker.club || 'Independent Club',
+      playerJersey: kicker.jerseyNumber,
+      outcome,
+    };
+
+    setPenaltyKicks((prev) => [...prev, newKick]);
+
+    let newPenA = penaltyScoreA;
+    let newPenB = penaltyScoreB;
+    if (outcome === 'Goal') {
       if (team === 'A') {
-        const next = scoreA + 1;
-        setScoreA(next);
-        if (selectedMatch) adminService.updateScore(selectedMatch._id, next, scoreB);
+        newPenA = penaltyScoreA + 1;
+        setPenaltyScoreA(newPenA);
       } else {
-        const next = scoreB + 1;
-        setScoreB(next);
-        if (selectedMatch) adminService.updateScore(selectedMatch._id, scoreA, next);
+        newPenB = penaltyScoreB + 1;
+        setPenaltyScoreB(newPenB);
       }
     }
 
-    showNotification(`Penalty Round #${currentRound} (${team === 'A' ? 'Home' : 'Away'}) logged: ${outcome.toUpperCase()}`);
+    // Call backend authoritative penalty endpoint
+    const teamId = team === 'A' ? selectedMatch.teamA._id : selectedMatch.teamB._id;
+    await adminService.recordPenalty(selectedMatch._id, {
+      team: teamId,
+      player: kicker._id,
+      outcome,
+    });
+
+    // Advance kicker selection to next player in squad
+    const currentIndex = players.findIndex((p) => p._id === kicker._id);
+    const nextPlayer = players[(currentIndex + 1) % players.length];
+    if (nextPlayer) {
+      if (team === 'A') setSelectedKickerA(nextPlayer._id);
+      else setSelectedKickerB(nextPlayer._id);
+    }
+
+    showNotification(
+      `Penalty Round #${currentRound} (${team === 'A' ? teamAName : teamBName}): ${kicker.name} [${kicker.club || 'Club'}] -> ${outcome.toUpperCase()}! Shootout score: ${newPenA} - ${newPenB}`
+    );
   };
 
   const handleFinalizeMatch = async () => {
@@ -740,105 +796,200 @@ export default function AdminLiveControlPage() {
           </div>
         </div>
 
-        {/* Right Column (5 cols): Penalty Shootout Manager */}
-        <div className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4">
-          <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
-            <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-primary-container" />
-              <h3 className="font-headline-md text-base font-extrabold text-on-surface">
-                Penalty Shootout Console
-              </h3>
-            </div>
-            <span className="font-label-caps text-[10px] text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-full font-bold border border-emerald-200">
-              5-Kick Standard + Sudden Death
-            </span>
-          </div>
-
-          {/* Quick Kick Recorder */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Team A Kicks */}
-            <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2">
-              <span className="font-label-caps text-xs text-on-surface font-extrabold truncate">
-                {teamAName}
-              </span>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  onClick={() => handleRecordPenaltyKick('A', 'scored')}
-                  className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
-                >
-                  ⚽ Goal
-                </button>
-                <button
-                  onClick={() => handleRecordPenaltyKick('A', 'saved')}
-                  className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs"
-                >
-                  🧤 Saved
-                </button>
-                <button
-                  onClick={() => handleRecordPenaltyKick('A', 'missed')}
-                  className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs"
-                >
-                  ❌ Missed
-                </button>
+        {/* Right Column (5 cols): Penalty Shootout Manager (Active ONLY on Draw / Tie) */}
+        {scoreA === scoreB ? (
+          <div className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4 animate-in fade-in">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-primary-container" />
+                <h3 className="font-headline-md text-base font-extrabold text-on-surface">
+                  Penalty Shootout Console
+                </h3>
               </div>
-            </div>
-
-            {/* Team B Kicks */}
-            <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2">
-              <span className="font-label-caps text-xs text-on-surface font-extrabold truncate">
-                {teamBName}
+              <span className="font-label-caps text-[10px] text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-full font-bold border border-emerald-200 animate-pulse">
+                ⚡ TIE-BREAKER ACTIVE ({scoreA}-{scoreB})
               </span>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  onClick={() => handleRecordPenaltyKick('B', 'scored')}
-                  className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
-                >
-                  ⚽ Goal
-                </button>
-                <button
-                  onClick={() => handleRecordPenaltyKick('B', 'saved')}
-                  className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs"
-                >
-                  🧤 Saved
-                </button>
-                <button
-                  onClick={() => handleRecordPenaltyKick('B', 'missed')}
-                  className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs"
-                >
-                  ❌ Missed
-                </button>
-              </div>
             </div>
-          </div>
 
-          {/* Kicks Log */}
-          <div className="space-y-1 max-h-36 overflow-y-auto pt-2 border-t border-surface-container">
-            {penaltyKicks.length === 0 ? (
-              <p className="text-center text-xs text-on-surface-variant py-2">
-                No penalty kicks recorded yet.
-              </p>
-            ) : (
-              penaltyKicks.map((k, i) => (
-                <div key={i} className="flex items-center justify-between text-xs py-1 px-2 rounded bg-surface-container">
-                  <span>
-                    Round #{k.round} ({k.team === 'A' ? teamAName : teamBName})
+            {/* Shootout Score Header */}
+            <div className="bg-surface-container-low px-4 py-2.5 rounded-xl border border-surface-container flex items-center justify-between text-xs">
+              <span className="font-bold text-on-surface">Shootout Penalty Tally:</span>
+              <span className="font-display-score text-base font-black text-primary-container tabular-nums">
+                {teamAName} {penaltyScoreA} — {penaltyScoreB} {teamBName}
+              </span>
+            </div>
+
+            {/* Quick Kick Recorder with Athlete Selector */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Team A Kicks */}
+              <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-label-caps text-xs text-on-surface font-extrabold truncate">
+                    {teamAName}
                   </span>
-                  <span
-                    className={`font-bold uppercase px-2 py-0.5 rounded text-[10px] ${
-                      k.outcome === 'scored'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : k.outcome === 'saved'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {k.outcome}
+                  <span className="font-display-score text-xs font-black text-primary-container">
+                    {penaltyScoreA} PK
                   </span>
                 </div>
-              ))
-            )}
+
+                {/* Athlete Selector for Team A */}
+                <div>
+                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase font-label-caps mb-1">
+                    Penalty Taker (Shooter):
+                  </label>
+                  <select
+                    value={selectedKickerA}
+                    onChange={(e) => setSelectedKickerA(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer shadow-2xs truncate"
+                  >
+                    {teamAPlayers.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Action Buttons Team A */}
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleRecordPenaltyKick('A', 'Goal')}
+                    className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                  >
+                    ⚽ Goal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRecordPenaltyKick('A', 'Saved')}
+                    className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                  >
+                    🧤 Saved
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRecordPenaltyKick('A', 'Missed')}
+                    className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                  >
+                    ❌ Missed
+                  </button>
+                </div>
+              </div>
+
+              {/* Team B Kicks */}
+              <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-label-caps text-xs text-on-surface font-extrabold truncate">
+                    {teamBName}
+                  </span>
+                  <span className="font-display-score text-xs font-black text-primary-container">
+                    {penaltyScoreB} PK
+                  </span>
+                </div>
+
+                {/* Athlete Selector for Team B */}
+                <div>
+                  <label className="block text-[10px] font-bold text-on-surface-variant uppercase font-label-caps mb-1">
+                    Penalty Taker (Shooter):
+                  </label>
+                  <select
+                    value={selectedKickerB}
+                    onChange={(e) => setSelectedKickerB(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer shadow-2xs truncate"
+                  >
+                    {teamBPlayers.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Action Buttons Team B */}
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleRecordPenaltyKick('B', 'Goal')}
+                    className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                  >
+                    ⚽ Goal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRecordPenaltyKick('B', 'Saved')}
+                    className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                  >
+                    🧤 Saved
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRecordPenaltyKick('B', 'Missed')}
+                    className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                  >
+                    ❌ Missed
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Kicks Log with Athlete Names and Clubs */}
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pt-2 border-t border-surface-container">
+              {penaltyKicks.length === 0 ? (
+                <p className="text-center text-xs text-on-surface-variant py-3 font-medium">
+                  Scores tied ({scoreA} - {scoreB}). Select shooter and record penalty kicks.
+                </p>
+              ) : (
+                penaltyKicks.map((k, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-surface-container border border-surface-container-high/60 shadow-2xs"
+                  >
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-on-surface">
+                        Round #{k.round} ({k.team === 'A' ? teamAName : teamBName}):
+                      </span>
+                      <span className="font-semibold text-primary-container">
+                        {k.playerName} (#{k.playerJersey})
+                      </span>
+                      {k.playerClub && (
+                        <span className="text-[10px] text-on-surface-variant font-medium">
+                          [{k.playerClub}]
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`font-bold uppercase px-2.5 py-0.5 rounded-full text-[10px] shrink-0 ${
+                        k.outcome === 'Goal'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : k.outcome === 'Saved'
+                          ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                          : 'bg-red-100 text-red-800 border border-red-300'
+                      }`}
+                    >
+                      {k.outcome}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Penalty Shootout Inactive Placeholder when not tied */
+          <div className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col items-center justify-center text-center py-12">
+            <div className="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface-variant/40 mb-3 border border-surface-container-high">
+              <Target className="w-6 h-6" />
+            </div>
+            <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold bg-surface-container px-3 py-0.5 rounded-full mb-2 border border-surface-container-high">
+              Conditional Tie-Breaker
+            </span>
+            <h4 className="font-headline-md text-base font-black text-on-surface">
+              Penalty Shootout Inactive
+            </h4>
+            <p className="text-xs text-on-surface-variant max-w-sm mt-1.5 font-medium leading-relaxed">
+              Penalty shootout unlocks exclusively if the match ends in a draw (<strong className="text-on-surface">{teamAName} {scoreA} - {scoreB} {teamBName}</strong>). When scores are tied, the penalty shootout console will appear here.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Goal Recorder Modal with Roster Dropdown */}
