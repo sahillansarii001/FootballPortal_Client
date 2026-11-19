@@ -26,7 +26,8 @@ import {
   X,
   Search,
   Calendar,
-  Layers
+  Layers,
+  MapPin
 } from 'lucide-react';
 import { matchService } from '@/services/match.service';
 import { teamService } from '@/services/team.service';
@@ -172,6 +173,36 @@ export default function AdminLiveControlPage() {
       if (pB.length > 0) setSelectedKickerB(pB[0]._id);
     }
   };
+
+  // Authoritative server clock synchronization (every 2.5s) to guarantee Live Control & Broadcast panels match 100%
+  useEffect(() => {
+    if (!selectedMatch?._id || selectedMatch.status === 'Completed') return;
+    let isCancelled = false;
+
+    const syncInterval = setInterval(async () => {
+      try {
+        const liveData = await matchService.getMatchById(selectedMatch._id);
+        if (liveData && !isCancelled) {
+          if (liveData.timer?.remainingTime !== undefined) {
+            setRemainingSeconds(liveData.timer.remainingTime);
+          }
+          if (liveData.timer?.isRunning !== undefined) {
+            setTimerRunning(Boolean(liveData.timer.isRunning && !liveData.timer.isPaused));
+          }
+          if (liveData.timer?.currentStage) {
+            setCurrentStage(liveData.timer.currentStage);
+          }
+        }
+      } catch (err) {
+        // Silent catch for background poll
+      }
+    }, 2500);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(syncInterval);
+    };
+  }, [selectedMatch?._id, selectedMatch?.status]);
 
   // Local ticker countdown with automatic match completion
   useEffect(() => {
@@ -403,7 +434,7 @@ export default function AdminLiveControlPage() {
       typeof rawTarget === 'object' && rawTarget ? rawTarget._id : typeof rawTarget === 'string' ? rawTarget : '';
 
     let players = team === 'A' ? teamAPlayers : teamBPlayers;
-    if (players.length === 0 && targetTeamId) {
+    if (targetTeamId) {
       try {
         const fetched = await teamService.getTeamPlayers(targetTeamId);
         if (team === 'A') {
@@ -432,7 +463,8 @@ export default function AdminLiveControlPage() {
 
   const handleSaveGoal = async () => {
     if (!selectedMatch) return;
-    const teamId = goalTeam === 'A' ? selectedMatch.teamA._id : selectedMatch.teamB._id;
+    const targetTeam = goalTeam === 'A' ? selectedMatch.teamA : selectedMatch.teamB;
+    const teamId = typeof targetTeam === 'object' && targetTeam ? targetTeam._id : (targetTeam as string);
     const teamName = goalTeam === 'A' ? teamAName : teamBName;
 
     const newScoreA = goalTeam === 'A' ? scoreA + 1 : scoreA;
@@ -997,11 +1029,19 @@ export default function AdminLiveControlPage() {
         <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-6">
           {/* Team A */}
           <div className="md:col-span-4 flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-2xl shadow-inner border border-primary-container/30 shrink-0 overflow-hidden">
-              {selectedMatch?.teamA?.logo ? (
-                <img src={selectedMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
-              ) : (
-                teamAName.slice(0, 2).toUpperCase()
+            <div className="w-16 h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-2xl shadow-inner border border-primary-container/30 shrink-0 overflow-hidden relative">
+              <span className="absolute inset-0 flex items-center justify-center font-black text-xl text-primary-container">
+                {teamAName.slice(0, 2).toUpperCase()}
+              </span>
+              {selectedMatch?.teamA?.logo && (
+                <img
+                  src={selectedMatch.teamA.logo}
+                  alt=""
+                  className="w-full h-full object-cover relative z-10"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
               )}
             </div>
             <div>
@@ -1122,11 +1162,19 @@ export default function AdminLiveControlPage() {
                 <span>+ Goal ({teamBName.split(' ')[0]})</span>
               </button>
             </div>
-            <div className="w-16 h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-2xl shadow-inner border border-secondary/30 shrink-0 overflow-hidden">
-              {selectedMatch?.teamB?.logo ? (
-                <img src={selectedMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
-              ) : (
-                teamBName.slice(0, 2).toUpperCase()
+            <div className="w-16 h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-2xl shadow-inner border border-secondary/30 shrink-0 overflow-hidden relative">
+              <span className="absolute inset-0 flex items-center justify-center font-black text-xl text-secondary">
+                {teamBName.slice(0, 2).toUpperCase()}
+              </span>
+              {selectedMatch?.teamB?.logo && (
+                <img
+                  src={selectedMatch.teamB.logo}
+                  alt=""
+                  className="w-full h-full object-cover relative z-10"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
               )}
             </div>
           </div>
@@ -1436,8 +1484,8 @@ export default function AdminLiveControlPage() {
           </div>
         </div>
 
-        {/* Right Column (5 cols): 3-Kick Penalty Shootout + Sudden Death Coin Toss */}
-        {scoreA === scoreB ? (
+        {/* Right Column (5 cols): 3-Kick Penalty Shootout + Sudden Death Coin Toss (Conditional Tie-Breaker) */}
+        {(Boolean(selectedMatch?.shootout?.isShootout) || currentStage.includes('Penalty') || ((isSecondHalfDone || isExtraTimeDone) && scoreA === scoreB)) ? (
           <div className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4 animate-in fade-in">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
               <div className="flex items-center gap-2">
@@ -1888,8 +1936,8 @@ export default function AdminLiveControlPage() {
                             <div className="font-headline-sm text-xs font-black text-on-surface truncate">
                               {p.name}
                             </div>
-                            <div className="text-[10px] text-on-surface-variant truncate font-medium">
-                              {p.club ? `[${p.club}]` : p.position}
+                            <div className="text-[10px] text-primary-container truncate font-bold">
+                              {goalTeam === 'A' ? teamAName : teamBName} • {p.position}
                             </div>
                           </div>
                           {isSelected && (
@@ -1913,7 +1961,7 @@ export default function AdminLiveControlPage() {
                     <option value="">-- Or choose from dropdown --</option>
                     {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
                       <option key={p._id} value={p.name}>
-                        #{p.jerseyNumber} - {p.name} ({p.position}) {p.club ? `[Club: ${p.club}]` : ''}
+                        #{p.jerseyNumber} - {p.name} ({p.position}) [{goalTeam === 'A' ? teamAName : teamBName}]
                       </option>
                     ))}
                   </select>
@@ -1972,18 +2020,18 @@ export default function AdminLiveControlPage() {
       {/* Match Selection & Launch Modal (Choose Which Match to Start) */}
       {showMatchPickerModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="max-w-2xl w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 space-y-4 max-h-[90vh] flex flex-col">
+          <div className="max-w-3xl w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 sm:p-7 space-y-4 max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high shrink-0">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-primary-container border border-emerald-300 flex items-center justify-center font-black">
                   <Zap className="w-5 h-5 fill-primary-container" />
                 </div>
                 <div>
-                  <h3 className="font-headline-md text-base sm:text-lg font-black text-on-surface">
+                  <h3 className="font-headline-md text-lg sm:text-xl font-black text-on-surface">
                     Choose Which Match to Start
                   </h3>
-                  <p className="text-[11px] text-on-surface-variant font-medium">
+                  <p className="text-xs text-on-surface-variant font-medium">
                     Select any fixture to immediately launch live with the official 10-minute clock, or restart a finished game.
                   </p>
                 </div>
@@ -1997,9 +2045,9 @@ export default function AdminLiveControlPage() {
               </button>
             </div>
 
-            {/* Filter Tabs & Search Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {/* Filter Tabs Row */}
+            <div className="flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2">
                 {(['all', 'Upcoming', 'Live', 'Completed'] as const).map((filter) => {
                   const count =
                     filter === 'all'
@@ -2015,10 +2063,10 @@ export default function AdminLiveControlPage() {
                       key={filter}
                       type="button"
                       onClick={() => setMatchPickerFilter(filter)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
                         isActive
                           ? 'bg-primary-container text-white shadow-xs'
-                          : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant'
+                          : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
                       }`}
                     >
                       {filter === 'all' ? 'All Matches' : filter} ({count})
@@ -2027,50 +2075,56 @@ export default function AdminLiveControlPage() {
                 })}
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:w-44">
-                  <Search className="w-3.5 h-3.5 text-on-surface-variant absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search teams..."
-                    value={matchSearchTerm}
-                    onChange={(e) => setMatchSearchTerm(e.target.value)}
-                    className="w-full pl-8 pr-2.5 py-1.5 text-xs bg-surface-container border border-surface-container-high rounded-xl text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary-container"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickSchedule(!showQuickSchedule)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
-                    showQuickSchedule
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                      : 'bg-emerald-50 hover:bg-emerald-100 text-primary-container border border-emerald-300'
-                  }`}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{showQuickSchedule ? 'Hide Creator' : '+ New Match'}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuickSchedule(!showQuickSchedule)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs ${
+                  showQuickSchedule
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-primary-container border border-emerald-300'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{showQuickSchedule ? 'Hide Match Creator' : '+ Schedule New Match'}</span>
+              </button>
+            </div>
+
+            {/* Search Bar Row */}
+            <div className="relative shrink-0">
+              <Search className="w-4 h-4 text-on-surface-variant absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search teams by name, venue, or stage..."
+                value={matchSearchTerm}
+                onChange={(e) => setMatchSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs bg-surface-container-low border border-surface-container-high rounded-xl text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary-container font-medium"
+              />
             </div>
 
             {/* Quick Match Creator Drawer */}
             {showQuickSchedule && (
-              <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high space-y-3 shrink-0 animate-in fade-in">
-                <div className="flex items-center justify-between">
-                  <span className="font-label-caps text-xs text-primary-container font-extrabold uppercase">
-                    ⚡ Quick Schedule & Launch Match
+              <div className="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-emerald-200 shadow-sm space-y-3.5 shrink-0 animate-in fade-in">
+                <div className="flex items-center justify-between pb-2 border-b border-surface-container-high">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary-container" />
+                    <span className="font-headline-md text-xs sm:text-sm text-on-surface font-extrabold uppercase tracking-wide">
+                      ⚡ Quick Schedule & Live Provisioning
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-primary-container bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200">
+                    Instant Kickoff
                   </span>
-                  <span className="text-[10px] text-on-surface-variant">Instant Match Provisioning</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1">
-                      Home Team (Team A)
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="bg-surface-container-lowest p-3 rounded-xl border border-surface-container-high">
+                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1.5 flex items-center gap-1.5 text-primary-container">
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Home Team (Team A)</span>
                     </label>
                     <select
                       value={newTeamA}
                       onChange={(e) => setNewTeamA(e.target.value)}
-                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold"
+                      className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer"
                     >
                       {allTeams.map((t) => (
                         <option key={t._id} value={t._id}>
@@ -2079,14 +2133,15 @@ export default function AdminLiveControlPage() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1">
-                      Visiting Team (Team B)
+                  <div className="bg-surface-container-lowest p-3 rounded-xl border border-surface-container-high">
+                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1.5 flex items-center gap-1.5 text-secondary">
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Visiting Team (Team B)</span>
                     </label>
                     <select
                       value={newTeamB}
                       onChange={(e) => setNewTeamB(e.target.value)}
-                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold"
+                      className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer"
                     >
                       {allTeams.map((t) => (
                         <option key={t._id} value={t._id}>
@@ -2096,37 +2151,39 @@ export default function AdminLiveControlPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1">
-                      Venue
+                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-primary-container" />
+                      <span>Match Venue</span>
                     </label>
                     <input
                       type="text"
                       value={newVenue}
                       onChange={(e) => setNewVenue(e.target.value)}
                       placeholder="Stanford Stadium Field 1"
-                      className="w-full px-3 py-1.5 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs"
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-container"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1">
-                      Stage / Round
+                    <label className="text-[10px] font-bold text-on-surface uppercase block mb-1 flex items-center gap-1">
+                      <Trophy className="w-3 h-3 text-amber-500" />
+                      <span>Tournament Stage / Round</span>
                     </label>
                     <input
                       type="text"
                       value={newStage}
                       onChange={(e) => setNewStage(e.target.value)}
                       placeholder="Quarter Final Match"
-                      className="w-full px-3 py-1.5 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs"
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary-container"
                     />
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleQuickCreateAndStart}
-                  className="w-full py-2 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-400/30"
                 >
-                  <Play className="w-3.5 h-3.5 fill-white" />
-                  <span>Create & Launch This Match Live Now</span>
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>Create & Launch Match Live Immediately</span>
                 </button>
               </div>
             )}
@@ -2159,27 +2216,45 @@ export default function AdminLiveControlPage() {
                   return (
                     <div
                       key={m._id}
-                      className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         isCurrent
-                          ? 'bg-emerald-50/60 border-emerald-400 shadow-sm ring-1 ring-emerald-300'
+                          ? 'bg-emerald-50/70 border-emerald-400 shadow-sm ring-1 ring-emerald-300'
                           : 'bg-surface-container-low hover:bg-surface-container border-surface-container-high'
                       }`}
                     >
                       {/* Left: Team & Match Info */}
                       <div className="flex items-center gap-3">
                         <div className="flex items-center -space-x-2 shrink-0">
-                          <div className="w-9 h-9 rounded-xl bg-primary-container/15 text-primary-container font-black text-xs flex items-center justify-center border border-primary-container/30 overflow-hidden shadow-2xs">
-                            {m.teamA?.logo ? (
-                              <img src={m.teamA.logo} alt={m.teamA.name} className="w-full h-full object-cover" />
-                            ) : (
-                              m.teamA?.name?.slice(0, 2).toUpperCase()
+                          {/* Team A Badge */}
+                          <div className="w-10 h-10 rounded-xl bg-primary-container/15 text-primary-container font-black text-xs flex items-center justify-center border border-primary-container/30 overflow-hidden shadow-2xs relative">
+                            <span className="absolute inset-0 flex items-center justify-center font-black text-xs text-primary-container">
+                              {m.teamA?.name?.slice(0, 2).toUpperCase() || 'TA'}
+                            </span>
+                            {m.teamA?.logo && (
+                              <img
+                                src={m.teamA.logo}
+                                alt=""
+                                className="w-full h-full object-cover relative z-10"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
                             )}
                           </div>
-                          <div className="w-9 h-9 rounded-xl bg-secondary/15 text-secondary font-black text-xs flex items-center justify-center border border-secondary/30 overflow-hidden shadow-2xs">
-                            {m.teamB?.logo ? (
-                              <img src={m.teamB.logo} alt={m.teamB.name} className="w-full h-full object-cover" />
-                            ) : (
-                              m.teamB?.name?.slice(0, 2).toUpperCase()
+                          {/* Team B Badge */}
+                          <div className="w-10 h-10 rounded-xl bg-secondary/15 text-secondary font-black text-xs flex items-center justify-center border border-secondary/30 overflow-hidden shadow-2xs relative">
+                            <span className="absolute inset-0 flex items-center justify-center font-black text-xs text-secondary">
+                              {m.teamB?.name?.slice(0, 2).toUpperCase() || 'TB'}
+                            </span>
+                            {m.teamB?.logo && (
+                              <img
+                                src={m.teamB.logo}
+                                alt=""
+                                className="w-full h-full object-cover relative z-10"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
                             )}
                           </div>
                         </div>
@@ -2282,7 +2357,7 @@ export default function AdminLiveControlPage() {
 
               {matches.length === 0 && (
                 <div className="text-center py-12 text-on-surface-variant text-xs font-medium">
-                  No fixtures found. Click &quot;+ New Match&quot; to schedule and launch one now!
+                  No fixtures found. Click &quot;+ Schedule New Match&quot; to launch one now!
                 </div>
               )}
             </div>

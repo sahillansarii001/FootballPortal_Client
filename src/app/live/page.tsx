@@ -163,11 +163,19 @@ export default function LiveMatchesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-11 items-center gap-6 py-2">
                   {/* Home Team */}
                   <div className="md:col-span-4 flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center font-black text-primary-container text-2xl border border-surface-container-high shrink-0 overflow-hidden shadow-xs">
-                      {match.teamA.logo ? (
-                        <img src={match.teamA.logo} alt={match.teamA.name} className="w-full h-full object-cover" />
-                      ) : (
-                        match.teamA.name.slice(0, 2).toUpperCase()
+                    <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center font-black text-primary-container text-2xl border border-surface-container-high shrink-0 overflow-hidden shadow-xs relative">
+                      <span className="absolute inset-0 flex items-center justify-center font-black text-xl text-primary-container">
+                        {match.teamA.name.slice(0, 2).toUpperCase()}
+                      </span>
+                      {match.teamA.logo && (
+                        <img
+                          src={match.teamA.logo}
+                          alt=""
+                          className="w-full h-full object-cover relative z-10"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
                       )}
                     </div>
                     <div className="min-w-0">
@@ -245,11 +253,19 @@ export default function LiveMatchesPage() {
                         </p>
                       )}
                     </div>
-                    <div className="w-16 h-16 rounded-2xl bg-surface-container-high text-secondary flex items-center justify-center font-black text-2xl border border-surface-container shrink-0 order-1 md:order-2 overflow-hidden shadow-xs">
-                      {match.teamB.logo ? (
-                        <img src={match.teamB.logo} alt={match.teamB.name} className="w-full h-full object-cover" />
-                      ) : (
-                        match.teamB.name.slice(0, 2).toUpperCase()
+                    <div className="w-16 h-16 rounded-2xl bg-surface-container-high text-secondary flex items-center justify-center font-black text-2xl border border-surface-container shrink-0 order-1 md:order-2 overflow-hidden shadow-xs relative">
+                      <span className="absolute inset-0 flex items-center justify-center font-black text-xl text-secondary">
+                        {match.teamB.name.slice(0, 2).toUpperCase()}
+                      </span>
+                      {match.teamB.logo && (
+                        <img
+                          src={match.teamB.logo}
+                          alt=""
+                          className="w-full h-full object-cover relative z-10"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
                       )}
                     </div>
                   </div>
