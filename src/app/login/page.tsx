@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Lock,
   Mail,
@@ -19,6 +20,7 @@ import {
 import { authService, AuthUser } from '@/services/auth.service';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,6 +51,7 @@ export default function LoginPage() {
 
     if (result.success && result.user) {
       setCurrentUser(result.user);
+      router.push('/admin');
     } else {
       setError(result.error || 'Authentication failed. Please verify your credentials.');
     }
@@ -181,10 +184,10 @@ export default function LoginPage() {
 
               <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
                 <Link
-                  href="/"
+                  href="/admin"
                   className="flex-1 py-2.5 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider text-center transition-all shadow-sm"
                 >
-                  Return to Tournament Home
+                  Enter Admin Dashboard →
                 </Link>
                 <button
                   type="button"

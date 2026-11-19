@@ -12,6 +12,7 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const pathname = usePathname();
   const isAuthPage = pathname === '/login';
+  const isAdminPage = pathname.startsWith('/admin');
 
   if (isAuthPage) {
     return (
@@ -19,6 +20,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         {children}
       </main>
     );
+  }
+
+  if (isAdminPage) {
+    return <div className="w-full min-h-screen bg-surface">{children}</div>;
   }
 
   return (
