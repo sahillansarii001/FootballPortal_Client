@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, Menu, X, Trophy } from 'lucide-react';
+import { Shield, Menu, X, Trophy, LogIn } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 interface NavItem {
@@ -82,9 +82,8 @@ export const Navbar: React.FC = () => {
             href="/admin-login"
             className="inline-flex items-center gap-1.5 bg-primary-container text-on-primary font-label-ui text-label-ui px-3.5 py-2 rounded-lg hover:bg-primary transition-all shadow-xs active:scale-95 font-semibold"
           >
-            <Shield className="w-4 h-4" />
-            <span className="hidden sm:inline">Admin Portal</span>
-            <span className="sm:hidden">Admin</span>
+            <LogIn className="w-4 h-4" />
+            <span>Log In</span>
           </Link>
 
           {/* Mobile Menu Trigger */}
