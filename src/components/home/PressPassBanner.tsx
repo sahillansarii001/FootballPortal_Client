@@ -24,7 +24,7 @@ export const PressPassBanner: React.FC = () => {
           className="inline-flex items-center gap-2 bg-surface text-primary-container font-headline-sm text-headline-sm px-6 py-3 rounded-xl hover:bg-surface-container transition-all shadow-md active:scale-95 group font-bold"
         >
           <ShieldCheck className="w-5 h-5 text-primary-container" />
-          <span>Operator Access</span>
+          <span>Tournament Admin</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>

@@ -55,14 +55,9 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickFill = (role: 'admin' | 'operator') => {
-    if (role === 'admin') {
-      setEmail('admin@footballportal.com');
-      setPassword('AdminPassword123!');
-    } else {
-      setEmail('operator@footballportal.com');
-      setPassword('OperatorPassword123!');
-    }
+  const handleQuickFill = () => {
+    setEmail('admin@footballportal.com');
+    setPassword('AdminPassword123!');
     setError(null);
   };
 
@@ -223,24 +218,16 @@ export default function LoginPage() {
               <div className="bg-surface-container-low rounded-xl p-3 border border-surface-container">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-on-surface-variant uppercase font-label-caps mb-2">
                   <Sparkles className="w-3 h-3 text-amber-500" />
-                  <span>One-Click Demo Credentials:</span>
+                  <span>One-Click Admin Credentials:</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => handleQuickFill('admin')}
-                    className="px-2.5 py-1 rounded-lg bg-surface-container-lowest hover:bg-emerald-50 hover:border-primary-container/40 border border-surface-container-high text-[11px] font-bold text-on-surface flex items-center gap-1.5 transition-all shadow-xs"
+                    onClick={handleQuickFill}
+                    className="px-3 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-emerald-50 hover:border-primary-container/40 border border-surface-container-high text-[11px] font-bold text-on-surface flex items-center gap-1.5 transition-all shadow-xs"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
-                    Super Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('operator')}
-                    className="px-2.5 py-1 rounded-lg bg-surface-container-lowest hover:bg-emerald-50 hover:border-primary-container/40 border border-surface-container-high text-[11px] font-bold text-on-surface flex items-center gap-1.5 transition-all shadow-xs"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                    Match Operator
+                    Super Admin (admin@footballportal.com)
                   </button>
                 </div>
               </div>
@@ -283,7 +270,7 @@ export default function LoginPage() {
                     </label>
                     <button
                       type="button"
-                      onClick={() => alert('Demo passwords: AdminPassword123! or OperatorPassword123!')}
+                      onClick={() => alert('Default admin password: AdminPassword123!')}
                       className="text-[10px] font-semibold text-primary-container hover:underline"
                     >
                       Forgot?
