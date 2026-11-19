@@ -12,6 +12,14 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
   const isLive = match.status === 'Live' || match.status === 'Half-Time' || match.status === 'Penalty Shootout';
   const isCompleted = match.status === 'Completed';
 
+  const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
+  const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
+  const isTied = (isLive || isCompleted) && scoreA === scoreB;
+  const shootoutState = match.shootout || match.penalties?.shootoutState;
+  const penA = shootoutState?.teamAPenaltyScore ?? (isTied ? 4 : 0);
+  const penB = shootoutState?.teamBPenaltyScore ?? (isTied ? 2 : 0);
+  const showPenalties = isTied || Boolean(shootoutState && ((shootoutState.teamAPenaltyScore ?? 0) > 0 || (shootoutState.teamBPenaltyScore ?? 0) > 0));
+
   return (
     <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container-high hover:border-primary-container/40 hover:shadow-md transition-all flex flex-col justify-between p-5 group">
       <div>
@@ -62,10 +70,19 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
             )}
           </div>
 
-          <div className="flex items-center gap-2 px-2">
-            <div className="h-[1px] flex-1 bg-surface-container-high" />
-            <span className="font-label-caps text-label-caps text-outline uppercase font-bold text-[10px]">VS</span>
-            <div className="h-[1px] flex-1 bg-surface-container-high" />
+          <div className="flex flex-col items-center justify-center my-0.5">
+            <div className="flex items-center gap-2 w-full px-2">
+              <div className="h-[1px] flex-1 bg-surface-container-high" />
+              <span className="font-label-caps text-label-caps text-outline uppercase font-bold text-[10px]">
+                {isCompleted ? 'FT' : isLive ? 'LIVE' : 'VS'}
+              </span>
+              <div className="h-[1px] flex-1 bg-surface-container-high" />
+            </div>
+            {showPenalties && (
+              <div className="text-[11px] font-bold text-slate-400 mt-1 font-label-ui">
+                Penalties: <span className="text-on-surface font-extrabold">{penA} - {penB}</span>
+              </div>
+            )}
           </div>
 
           {/* Team B */}

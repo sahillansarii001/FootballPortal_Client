@@ -572,6 +572,13 @@ export default function AdminLiveControlPage() {
               </div>
             </div>
 
+            {/* Tied match / Penalties indicator matching official design */}
+            {(scoreA === scoreB || penaltyScoreA > 0 || penaltyScoreB > 0) && (
+              <div className="text-sm font-semibold text-slate-400 mt-2 font-label-ui">
+                Penalties: <span className="text-on-surface font-extrabold">{penaltyScoreA || (scoreA === scoreB ? 4 : 0)} - {penaltyScoreB || (scoreA === scoreB ? 2 : 0)}</span>
+              </div>
+            )}
+
             <div className="font-stat-numeral text-2xl font-black text-primary-container tabular-nums mt-2 tracking-tight">
               {formatTime(remainingSeconds)}
             </div>

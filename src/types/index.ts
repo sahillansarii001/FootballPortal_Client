@@ -168,6 +168,17 @@ export interface Match {
     detail?: { goalType?: string };
     timestamp: string;
   }>;
+  shootout?: {
+    isShootout?: boolean;
+    teamAPenaltyScore?: number;
+    teamBPenaltyScore?: number;
+    teamAPenaltiesTaken?: number;
+    teamBPenaltiesTaken?: number;
+    round?: number;
+    isSuddenDeath?: boolean;
+    isCompleted?: boolean;
+    shootoutWinner?: any;
+  };
   penalties?: PenaltyShootoutState;
   events?: MatchEvent[];
   stats?: {

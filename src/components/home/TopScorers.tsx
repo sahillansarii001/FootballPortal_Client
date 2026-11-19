@@ -54,7 +54,7 @@ export const TopScorers: React.FC<TopScorersProps> = ({ scorers }) => {
                     {player.name}
                   </span>
                   <span className="font-body-sm text-body-sm text-on-surface-variant font-medium">
-                    {teamName} • {player.assists || 0} Assists • {player.shots || 0} Shots
+                    {player.club ? `[${player.club}] • ` : ''}{teamName} • {player.assists || 0} Assists • {player.shots || 0} Shots
                   </span>
                 </div>
               </div>

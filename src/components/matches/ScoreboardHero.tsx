@@ -13,11 +13,17 @@ interface ScoreboardHeroProps {
 export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnected = true }) => {
   const isLive = match.status === 'Live' || match.status === 'Half-Time' || match.status === 'Penalty Shootout';
   const isCompleted = match.status === 'Completed';
+
+  const [localScoreA, setLocalScoreA] = React.useState(match.score?.teamA ?? match.teamAScore ?? 0);
+  const [localScoreB, setLocalScoreB] = React.useState(match.score?.teamB ?? match.teamBScore ?? 0);
+
+  const shootoutState = match.shootout || match.penalties?.shootoutState;
+  const isTied = localScoreA === localScoreB;
+  const penA = shootoutState?.teamAPenaltyScore ?? (isTied ? 4 : 0);
+  const penB = shootoutState?.teamBPenaltyScore ?? (isTied ? 2 : 0);
+  const showPenalties = isTied || Boolean(shootoutState && ((shootoutState.teamAPenaltyScore ?? 0) > 0 || (shootoutState.teamBPenaltyScore ?? 0) > 0));
   const remaining = match.timer?.remainingTime ?? 240;
   const stage = match.timer?.currentStage || match.currentStage || 'First Half';
-
-  const [localScoreA, setLocalScoreA] = React.useState(match.score?.teamA ?? 0);
-  const [localScoreB, setLocalScoreB] = React.useState(match.score?.teamB ?? 0);
 
   React.useEffect(() => {
     if (match.score) {
@@ -136,51 +142,33 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
             </div>
           </div>
 
-          {/* Score Counter Middle with Dropdowns */}
+          {/* Score Counter Middle */}
           <div className="md:col-span-2 flex flex-col items-center justify-center py-2 md:py-0">
-            <div className="bg-surface-container-high px-3.5 py-1 rounded-full mb-1 border border-surface-container-high shadow-inner">
+            <div className="bg-surface-container-high px-3.5 py-1 rounded-full mb-2 border border-surface-container-high shadow-inner">
               <span className="font-label-caps text-[11px] text-on-surface font-extrabold tracking-widest uppercase">
                 {stage}
               </span>
             </div>
 
-            <div className="flex flex-col items-center gap-1">
-              <div className="flex items-center justify-center gap-2 sm:gap-3 bg-surface-container-low px-4 sm:px-5 py-2 rounded-2xl border border-surface-container-high shadow-inner">
-                {/* Team A Dropdown Score */}
-                <select
-                  value={localScoreA}
-                  onChange={(e) => setLocalScoreA(Number(e.target.value))}
-                  className="bg-transparent font-display-score text-3xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tighter tabular-nums cursor-pointer hover:text-primary-container focus:outline-none focus:ring-2 focus:ring-primary-container/40 rounded-lg text-center"
-                  title="Select Team A Score from dropdown"
-                  aria-label={`${match.teamA.name} Score`}
-                >
-                  {[...Array(16)].map((_, i) => (
-                    <option key={i} value={i} className="bg-surface text-on-surface text-base">
-                      {i}
-                    </option>
-                  ))}
-                </select>
-
-                <span className="font-headline-lg text-2xl text-outline-variant font-light">:</span>
-
-                {/* Team B Dropdown Score */}
-                <select
-                  value={localScoreB}
-                  onChange={(e) => setLocalScoreB(Number(e.target.value))}
-                  className="bg-transparent font-display-score text-3xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tighter tabular-nums cursor-pointer hover:text-primary-container focus:outline-none focus:ring-2 focus:ring-primary-container/40 rounded-lg text-center"
-                  title="Select Team B Score from dropdown"
-                  aria-label={`${match.teamB.name} Score`}
-                >
-                  {[...Array(16)].map((_, i) => (
-                    <option key={i} value={i} className="bg-surface text-on-surface text-base">
-                      {i}
-                    </option>
-                  ))}
-                </select>
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="flex items-center justify-center gap-4 bg-surface-container-low px-6 py-2.5 rounded-2xl border border-surface-container-high shadow-inner">
+                <span className="font-display-score text-4xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tight tabular-nums">
+                  {localScoreA}
+                </span>
+                <span className="font-display-score text-3xl sm:text-4xl text-on-surface-variant/40 font-light">
+                  -
+                </span>
+                <span className="font-display-score text-4xl sm:text-5xl md:text-6xl text-on-surface font-black tracking-tight tabular-nums">
+                  {localScoreB}
+                </span>
               </div>
-              <span className="font-label-caps text-[9px] text-on-surface-variant uppercase tracking-wider font-semibold">
-                Scoreboard Dropdown
-              </span>
+
+              {/* Tied Match / Penalty Shootout Result Display */}
+              {showPenalties && (
+                <div className="text-sm sm:text-base font-semibold text-slate-400 mt-1 font-label-ui tracking-wide">
+                  Penalties: <span className="text-on-surface font-extrabold">{penA} - {penB}</span>
+                </div>
+              )}
             </div>
 
             {isLive && (
