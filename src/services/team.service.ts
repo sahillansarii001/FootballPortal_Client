@@ -5,7 +5,7 @@ import { MOCK_PLAYERS, MOCK_TEAMS } from './mockData';
 export const teamService = {
   async getAllTeams(): Promise<Team[]> {
     const res = await fetchApi<Team[]>('/teams');
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data;
     }
     return MOCK_TEAMS;
@@ -22,7 +22,7 @@ export const teamService = {
 
   async getTeamPlayers(teamId: string): Promise<Player[]> {
     const res = await fetchApi<Player[]>(`/teams/${teamId}/players`);
-    if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+    if (res?.success && Array.isArray(res.data)) {
       return res.data;
     }
     return MOCK_PLAYERS.filter((p) => {

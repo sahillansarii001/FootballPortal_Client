@@ -50,6 +50,9 @@ export default function AdminLiveControlPage() {
   const [goalPlayerName, setGoalPlayerName] = useState('');
   const [goalMinute, setGoalMinute] = useState('02:30 (1H)');
 
+  // Completed Match Protocol Stages tracker
+  const [completedStages, setCompletedStages] = useState<string[]>([]);
+
   // 3-Kick Regulation Penalty Shootout state
   const [selectedKickerA, setSelectedKickerA] = useState<string>('');
   const [selectedKickerB, setSelectedKickerB] = useState<string>('');
@@ -118,14 +121,30 @@ export default function AdminLiveControlPage() {
       selectedDecisiveShooterId: '',
     });
 
+    // Synchronize completed stages based on match state
+    if (match.status === 'Completed') {
+      setCompletedStages(['First Half', 'Half-Time Break', 'Second Half', 'Extra Time (Draw Decider)']);
+    } else if (match.timer?.currentStage?.includes('Extra') || match.timer?.currentStage?.includes('Penalty')) {
+      setCompletedStages(['First Half', 'Half-Time Break', 'Second Half']);
+    } else if (match.timer?.currentStage?.includes('Second')) {
+      setCompletedStages(['First Half', 'Half-Time Break']);
+    } else if (match.timer?.currentStage?.includes('Half-Time') || match.timer?.currentStage?.includes('Break')) {
+      setCompletedStages(['First Half']);
+    } else {
+      setCompletedStages([]);
+    }
+
     // Fetch players for both teams to populate goalscorer and penalty kicker dropdowns
-    if (match.teamA?._id) {
-      const pA = await teamService.getTeamPlayers(match.teamA._id);
+    const teamAId = typeof match.teamA === 'object' && match.teamA ? match.teamA._id : (match.teamA as string);
+    const teamBId = typeof match.teamB === 'object' && match.teamB ? match.teamB._id : (match.teamB as string);
+
+    if (teamAId) {
+      const pA = await teamService.getTeamPlayers(teamAId);
       setTeamAPlayers(pA);
       if (pA.length > 0) setSelectedKickerA(pA[0]._id);
     }
-    if (match.teamB?._id) {
-      const pB = await teamService.getTeamPlayers(match.teamB._id);
+    if (teamBId) {
+      const pB = await teamService.getTeamPlayers(teamBId);
       setTeamBPlayers(pB);
       if (pB.length > 0) setSelectedKickerB(pB[0]._id);
     }
@@ -257,9 +276,37 @@ export default function AdminLiveControlPage() {
     );
   };
 
+  // Stage completion calculation
+  const isFirstHalfDone =
+    completedStages.includes('First Half') ||
+    currentStage.includes('Half-Time') ||
+    currentStage.includes('Break') ||
+    currentStage.includes('Second') ||
+    currentStage.includes('Extra') ||
+    currentStage.includes('Penalty') ||
+    selectedMatch?.status === 'Completed';
+
+  const isHalfTimeDone =
+    completedStages.includes('Half-Time Break') ||
+    currentStage.includes('Second') ||
+    currentStage.includes('Extra') ||
+    currentStage.includes('Penalty') ||
+    selectedMatch?.status === 'Completed';
+
+  const isSecondHalfDone =
+    completedStages.includes('Second Half') ||
+    currentStage.includes('Extra') ||
+    currentStage.includes('Penalty') ||
+    selectedMatch?.status === 'Completed';
+
+  const isExtraTimeDone =
+    completedStages.includes('Extra Time (Draw Decider)') ||
+    currentStage.includes('Penalty') ||
+    selectedMatch?.status === 'Completed';
+
   // 1. First Half (4:00)
   const handleStartFirstHalf = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || isFirstHalfDone) return;
     setTimerRunning(true);
     setCurrentStage('First Half');
     setRemainingSeconds(240); // 4 minutes
@@ -269,19 +316,21 @@ export default function AdminLiveControlPage() {
 
   // 2. Half-Time Break (2:00)
   const handleHalfTimeBreak = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || isHalfTimeDone) return;
     setTimerRunning(true);
     setCurrentStage('Half-Time Break');
+    setCompletedStages((prev) => Array.from(new Set([...prev, 'First Half'])));
     setRemainingSeconds(120); // 2 minutes break
     await adminService.advanceStage(selectedMatch._id);
-    showNotification('Half-Time Break started (2 minutes interval).');
+    showNotification('First Half completed! Half-Time Break started (2 minutes interval).');
   };
 
   // 3. Second Half (4:00)
   const handleSecondHalf = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || isSecondHalfDone) return;
     setTimerRunning(true);
     setCurrentStage('Second Half');
+    setCompletedStages((prev) => Array.from(new Set([...prev, 'First Half', 'Half-Time Break'])));
     setRemainingSeconds(240); // 4 minutes
     await adminService.advanceStage(selectedMatch._id);
     showNotification('Second Half underway (4 minutes countdown).');
@@ -289,9 +338,10 @@ export default function AdminLiveControlPage() {
 
   // 4. Draw Decider Extra Time (2:00)
   const handleExtraTimeDraw = async () => {
-    if (!selectedMatch) return;
+    if (!selectedMatch || isExtraTimeDone) return;
     setTimerRunning(true);
     setCurrentStage('Extra Time (Draw Decider)');
+    setCompletedStages((prev) => Array.from(new Set([...prev, 'First Half', 'Half-Time Break', 'Second Half'])));
     setRemainingSeconds(120); // 2 minutes extra time
     await adminService.addTimeToTimer(selectedMatch._id, 120);
     showNotification(`Match is a Draw (${scoreA} - ${scoreB})! 2 minutes extra time added to timer.`);
@@ -323,9 +373,27 @@ export default function AdminLiveControlPage() {
     }
   };
 
-  const handleOpenGoalModal = (team: 'A' | 'B') => {
+  const handleOpenGoalModal = async (team: 'A' | 'B') => {
     setGoalTeam(team);
-    const players = team === 'A' ? teamAPlayers : teamBPlayers;
+    const rawTarget = team === 'A' ? selectedMatch?.teamA : selectedMatch?.teamB;
+    const targetTeamId: string =
+      typeof rawTarget === 'object' && rawTarget ? rawTarget._id : typeof rawTarget === 'string' ? rawTarget : '';
+
+    let players = team === 'A' ? teamAPlayers : teamBPlayers;
+    if (players.length === 0 && targetTeamId) {
+      try {
+        const fetched = await teamService.getTeamPlayers(targetTeamId);
+        if (team === 'A') {
+          setTeamAPlayers(fetched);
+        } else {
+          setTeamBPlayers(fetched);
+        }
+        players = fetched;
+      } catch (err) {
+        console.error('Failed fetching players for goal modal:', err);
+      }
+    }
+
     if (players.length > 0) {
       setGoalPlayerName(players[0].name);
     } else {
@@ -693,16 +761,29 @@ export default function AdminLiveControlPage() {
         <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-6">
           {/* Team A */}
           <div className="md:col-span-4 flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-2xl shadow-inner border border-primary-container/30 shrink-0">
-              {teamAName.slice(0, 2).toUpperCase()}
+            <div className="w-16 h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-2xl shadow-inner border border-primary-container/30 shrink-0 overflow-hidden">
+              {selectedMatch?.teamA?.logo ? (
+                <img src={selectedMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
+              ) : (
+                teamAName.slice(0, 2).toUpperCase()
+              )}
             </div>
             <div>
               <h2 className="font-headline-md text-2xl font-black text-on-surface leading-tight">
                 {teamAName}
               </h2>
-              <span className="font-label-caps text-xs text-on-surface-variant font-semibold">
+              <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
                 Home Squad
               </span>
+              <button
+                type="button"
+                onClick={() => handleOpenGoalModal('A')}
+                disabled={selectedMatch?.status === 'Completed'}
+                className="mt-2 py-1 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Goal ({teamAName.split(' ')[0]})</span>
+              </button>
             </div>
           </div>
 
@@ -792,12 +873,25 @@ export default function AdminLiveControlPage() {
               <h2 className="font-headline-md text-2xl font-black text-on-surface leading-tight">
                 {teamBName}
               </h2>
-              <span className="font-label-caps text-xs text-on-surface-variant font-semibold">
+              <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
                 Visiting Team
               </span>
+              <button
+                type="button"
+                onClick={() => handleOpenGoalModal('B')}
+                disabled={selectedMatch?.status === 'Completed'}
+                className="mt-2 py-1 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Goal ({teamBName.split(' ')[0]})</span>
+              </button>
             </div>
-            <div className="w-16 h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-2xl shadow-inner border border-secondary/30 shrink-0">
-              {teamBName.slice(0, 2).toUpperCase()}
+            <div className="w-16 h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-2xl shadow-inner border border-secondary/30 shrink-0 overflow-hidden">
+              {selectedMatch?.teamB?.logo ? (
+                <img src={selectedMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
+              ) : (
+                teamBName.slice(0, 2).toUpperCase()
+              )}
             </div>
           </div>
         </div>
@@ -887,69 +981,179 @@ export default function AdminLiveControlPage() {
           </div>
 
           <p className="text-xs text-on-surface-variant font-medium">
-            Standard match timeline: 4m 1st Half &rarr; 2m Half-Time Break &rarr; 4m 2nd Half &rarr; +2m Extra Time if tied:
+            Standard match timeline: 4m 1st Half &rarr; 2m Half-Time Break &rarr; 4m 2nd Half &rarr; +2m Extra Time if tied. Completed stages are locked and cannot be re-triggered.
           </p>
 
           <div className="grid grid-cols-2 gap-3">
             {/* 1. First Half */}
             <button
-              onClick={handleStartFirstHalf}
-              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
-                currentStage.includes('First')
-                  ? 'bg-primary-container/15 text-primary-container border-primary-container'
-                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container'
+              type="button"
+              disabled={isFirstHalfDone}
+              onClick={isFirstHalfDone ? undefined : handleStartFirstHalf}
+              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all text-center ${
+                isFirstHalfDone
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 shadow-none'
+                  : currentStage.includes('First')
+                  ? 'bg-primary-container/15 text-primary-container border-primary-container ring-2 ring-primary-container/20 shadow-xs'
+                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container shadow-xs active:scale-95'
               }`}
+              title={isFirstHalfDone ? 'First Half already concluded and cannot be clicked' : 'Start First Half (4:00)'}
             >
-              <span className="font-extrabold">1. First Half (4:00)</span>
-              <span className="text-[10px] text-on-surface-variant">4 minutes countdown kickoff</span>
+              <span className="font-extrabold flex items-center gap-1.5 flex-wrap justify-center">
+                {isFirstHalfDone ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="line-through text-slate-500">1. First Half (4:00)</span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
+                      DONE
+                    </span>
+                  </>
+                ) : currentStage.includes('First') ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse shrink-0"></span>
+                    <span>1. First Half (4:00)</span>
+                    <span className="text-[9px] bg-primary-container text-white px-1.5 py-0.2 rounded-full font-bold">
+                      IN PLAY
+                    </span>
+                  </>
+                ) : (
+                  <span>1. First Half (4:00)</span>
+                )}
+              </span>
+              <span className="text-[10px] text-on-surface-variant font-medium">
+                {isFirstHalfDone ? 'First half concluded (Locked)' : '4 minutes countdown kickoff'}
+              </span>
             </button>
 
             {/* 2. Half-Time Break */}
             <button
-              onClick={handleHalfTimeBreak}
-              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
-                currentStage.includes('Half-Time') || currentStage.includes('Break')
-                  ? 'bg-primary-container/15 text-primary-container border-primary-container'
-                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container'
+              type="button"
+              disabled={isHalfTimeDone}
+              onClick={isHalfTimeDone ? undefined : handleHalfTimeBreak}
+              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all text-center ${
+                isHalfTimeDone
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 shadow-none'
+                  : currentStage.includes('Half-Time') || currentStage.includes('Break')
+                  ? 'bg-primary-container/15 text-primary-container border-primary-container ring-2 ring-primary-container/20 shadow-xs'
+                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container shadow-xs active:scale-95'
               }`}
+              title={isHalfTimeDone ? 'Half-Time Break concluded' : 'Start Half-Time Break (2:00)'}
             >
-              <span className="font-extrabold">2. Half-Time Break (2:00)</span>
-              <span className="text-[10px] text-on-surface-variant">2 minutes interval break</span>
+              <span className="font-extrabold flex items-center gap-1.5 flex-wrap justify-center">
+                {isHalfTimeDone ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="line-through text-slate-500">2. Half-Time Break (2:00)</span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
+                      DONE
+                    </span>
+                  </>
+                ) : currentStage.includes('Half-Time') || currentStage.includes('Break') ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                    <span>2. Half-Time Break (2:00)</span>
+                    <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.2 rounded-full font-bold">
+                      IN BREAK
+                    </span>
+                  </>
+                ) : (
+                  <span>2. Half-Time Break (2:00)</span>
+                )}
+              </span>
+              <span className="text-[10px] text-on-surface-variant font-medium">
+                {isHalfTimeDone ? 'Break concluded (Locked)' : '2 minutes interval break'}
+              </span>
             </button>
 
             {/* 3. Second Half */}
             <button
-              onClick={handleSecondHalf}
-              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
-                currentStage.includes('Second')
-                  ? 'bg-primary-container/15 text-primary-container border-primary-container'
-                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container'
+              type="button"
+              disabled={isSecondHalfDone}
+              onClick={isSecondHalfDone ? undefined : handleSecondHalf}
+              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all text-center ${
+                isSecondHalfDone
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 shadow-none'
+                  : currentStage.includes('Second')
+                  ? 'bg-primary-container/15 text-primary-container border-primary-container ring-2 ring-primary-container/20 shadow-xs'
+                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container shadow-xs active:scale-95'
               }`}
+              title={isSecondHalfDone ? 'Second Half concluded' : 'Start Second Half (4:00)'}
             >
-              <span className="font-extrabold">3. Second Half (4:00)</span>
-              <span className="text-[10px] text-on-surface-variant">4 minutes second half clock</span>
+              <span className="font-extrabold flex items-center gap-1.5 flex-wrap justify-center">
+                {isSecondHalfDone ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="line-through text-slate-500">3. Second Half (4:00)</span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
+                      DONE
+                    </span>
+                  </>
+                ) : currentStage.includes('Second') ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse shrink-0"></span>
+                    <span>3. Second Half (4:00)</span>
+                    <span className="text-[9px] bg-primary-container text-white px-1.5 py-0.2 rounded-full font-bold">
+                      IN PLAY
+                    </span>
+                  </>
+                ) : (
+                  <span>3. Second Half (4:00)</span>
+                )}
+              </span>
+              <span className="text-[10px] text-on-surface-variant font-medium">
+                {isSecondHalfDone ? 'Second half concluded (Locked)' : '4 minutes second half clock'}
+              </span>
             </button>
 
             {/* 4. Draw Decider Extra Time (2:00) */}
             <button
-              onClick={handleExtraTimeDraw}
-              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all ${
-                currentStage.includes('Extra Time')
-                  ? 'bg-amber-500/20 text-amber-800 border-amber-500'
-                  : 'bg-surface-container-low hover:bg-surface-container text-on-surface border-surface-container'
+              type="button"
+              disabled={isExtraTimeDone || selectedMatch?.status === 'Completed' || (scoreA !== scoreB && !currentStage.includes('Extra'))}
+              onClick={isExtraTimeDone ? undefined : handleExtraTimeDraw}
+              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all text-center ${
+                isExtraTimeDone
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 shadow-none'
+                  : currentStage.includes('Extra Time')
+                  ? 'bg-amber-500/20 text-amber-800 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
+                  : scoreA === scoreB
+                  ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-xs active:scale-95'
+                  : 'bg-surface-container-low text-on-surface-variant/40 border-surface-container cursor-not-allowed opacity-50 shadow-none'
               }`}
+              title={
+                isExtraTimeDone
+                  ? 'Extra Time concluded'
+                  : scoreA === scoreB
+                  ? 'Scores tied! Click to add 2 minutes extra time'
+                  : 'Only enabled if scores are tied at full time'
+              }
             >
-              <span className="font-extrabold flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                <span>4. Extra Time if Tied (2:00)</span>
-                {scoreA === scoreB && (
-                  <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-black uppercase">
-                    Tied
-                  </span>
+              <span className="font-extrabold flex items-center gap-1.5 flex-wrap justify-center">
+                {isExtraTimeDone ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="line-through text-slate-500">4. Extra Time (2:00)</span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
+                      DONE
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>4. Extra Time if Tied (2:00)</span>
+                    {scoreA === scoreB && (
+                      <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-black uppercase">
+                        TIED
+                      </span>
+                    )}
+                  </>
                 )}
               </span>
-              <span className="text-[10px] text-on-surface-variant">
-                If scores are equal, add 2 minutes extra time
+              <span className="text-[10px] text-on-surface-variant font-medium">
+                {isExtraTimeDone
+                  ? 'Extra time concluded'
+                  : scoreA === scoreB
+                  ? 'Scores tied! Click to add 2m decider clock'
+                  : 'Active only if scores are tied at full time'}
               </span>
             </button>
           </div>
@@ -1344,47 +1548,169 @@ export default function AdminLiveControlPage() {
         )}
       </div>
 
-      {/* Goal Recorder Modal with Roster Dropdown */}
+      {/* Goal Recorder Modal - Shows ONLY the Scoring Team's Players */}
       {showGoalModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-surface-container-lowest rounded-2xl border border-surface-container-high shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="max-w-lg w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 space-y-4 max-h-[92vh] flex flex-col">
+            {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
-              <h3 className="font-headline-md text-base font-black text-on-surface">
-                Record Official Goal
-              </h3>
-              <span className="font-label-caps text-xs text-primary-container font-bold">
-                {goalTeam === 'A' ? teamAName : teamBName}
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-primary-container flex items-center justify-center font-black text-lg">
+                  ⚽
+                </div>
+                <div>
+                  <h3 className="font-headline-md text-base font-black text-on-surface">
+                    Record Goal for {goalTeam === 'A' ? teamAName : teamBName}
+                  </h3>
+                  <span className="text-[11px] text-primary-container font-bold flex items-center gap-1">
+                    <span>✓</span>
+                    <span>Exclusive Team Roster: Only {goalTeam === 'A' ? teamAName : teamBName} athletes shown</span>
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGoalModal(false)}
+                className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scoring Team Banner & Prospective Score Preview */}
+            <div className="p-3 bg-surface-container-low rounded-2xl border border-surface-container flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary-container text-white font-black text-base flex items-center justify-center shadow-xs">
+                  {goalTeam === 'A' ? teamAName.slice(0, 2).toUpperCase() : teamBName.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="font-headline-sm text-sm font-black text-on-surface">
+                    {goalTeam === 'A' ? teamAName : teamBName}
+                  </div>
+                  <div className="text-[11px] text-on-surface-variant font-medium">
+                    Current: <strong className="text-on-surface">{scoreA} - {scoreB}</strong> &rarr; New:{' '}
+                    <strong className="text-primary-container font-black">
+                      {goalTeam === 'A' ? scoreA + 1 : scoreA} - {goalTeam === 'B' ? scoreB + 1 : scoreB}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                +1 Goal
               </span>
             </div>
 
-            <div className="space-y-3">
-              {/* Goalscorer Athlete Dropdown */}
+            {/* Scrollable Body: Athletes Grid */}
+            <div className="space-y-3 overflow-y-auto pr-1 flex-1">
               <div>
-                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                  Goalscorer Athlete (Dropdown)
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1.5 flex items-center justify-between">
+                  <span>1. Click to Select Goalscorer ({goalTeam === 'A' ? teamAName : teamBName}):</span>
+                  <span className="text-[10px] text-primary-container font-bold">
+                    {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).length} Certified Athletes
+                  </span>
                 </label>
-                <select
-                  value={goalPlayerName}
-                  onChange={(e) => setGoalPlayerName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer font-semibold"
-                >
-                  <option value="">-- Select Athlete --</option>
-                  {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
-                    <option key={p._id} value={p.name}>
-                      #{p.jerseyNumber} - {p.name} {p.club ? `[Club: ${p.club}]` : ''} ({p.position})
-                    </option>
-                  ))}
-                </select>
+
+                {/* Athlete Quick Select Cards */}
+                {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).length === 0 ? (
+                  <div className="p-4 text-center rounded-xl bg-surface-container-low border border-surface-container text-xs text-on-surface-variant">
+                    No athletes found in roster for this team.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1 border border-surface-container-high rounded-xl bg-surface-container-low/40">
+                    {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => {
+                      const isSelected = goalPlayerName === p.name;
+                      return (
+                        <div
+                          key={p._id}
+                          onClick={() => setGoalPlayerName(p.name)}
+                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center gap-2.5 ${
+                            isSelected
+                              ? 'bg-primary-container/15 border-primary-container ring-2 ring-primary-container/30 shadow-xs'
+                              : 'bg-surface-container-lowest hover:bg-surface-container border-surface-container-high'
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center font-display-score text-xs font-black shrink-0 ${
+                              isSelected
+                                ? 'bg-primary-container text-white'
+                                : 'bg-surface-container text-on-surface-variant'
+                            }`}
+                          >
+                            #{p.jerseyNumber}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-headline-sm text-xs font-black text-on-surface truncate">
+                              {p.name}
+                            </div>
+                            <div className="text-[10px] text-on-surface-variant truncate font-medium">
+                              {p.club ? `[${p.club}]` : p.position}
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="w-4 h-4 rounded-full bg-primary-container text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                              ✓
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Dropdown Alternative */}
+                <div className="mt-2">
+                  <select
+                    value={goalPlayerName}
+                    onChange={(e) => setGoalPlayerName(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container font-semibold cursor-pointer"
+                  >
+                    <option value="">-- Or choose from dropdown --</option>
+                    {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
+                      <option key={p._id} value={p.name}>
+                        #{p.jerseyNumber} - {p.name} ({p.position}) {p.club ? `[Club: ${p.club}]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Goal Minute & Method */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[10px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                    Goal Timestamp
+                  </label>
+                  <input
+                    type="text"
+                    value={goalMinute}
+                    onChange={(e) => setGoalMinute(e.target.value)}
+                    placeholder="e.g. 02:45 (1H)"
+                    className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                    Goal Method
+                  </label>
+                  <select className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container font-medium">
+                    <option value="Normal Goal">Normal Goal</option>
+                    <option value="Penalty Kick">Penalty Kick</option>
+                    <option value="Free Kick">Free Kick</option>
+                    <option value="Header">Header Strike</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
+            {/* Modal Actions */}
+            <div className="flex items-center gap-2 pt-3 border-t border-surface-container-high">
               <button
                 type="button"
                 onClick={handleSaveGoal}
-                className="flex-1 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all"
+                disabled={!goalPlayerName}
+                className="flex-1 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all shadow-xs disabled:opacity-40 flex items-center justify-center gap-1.5"
               >
-                Confirm & Record Goal
+                <span>⚽ Confirm & Add Goal ({goalTeam === 'A' ? teamAName.split(' ')[0] : teamBName.split(' ')[0]})</span>
               </button>
               <button
                 type="button"
