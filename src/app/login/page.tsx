@@ -11,13 +11,11 @@ import {
   Shield,
   ArrowRight,
   ArrowLeft,
-  CheckCircle2,
   AlertCircle,
   Trophy,
-  Activity,
-  UserCheck
+  Activity
 } from 'lucide-react';
-import { authService, AuthUser } from '@/services/auth.service';
+import { authService } from '@/services/auth.service';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,14 +25,15 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
+    // If already authenticated, redirect straight to admin dashboard
     const user = authService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
+    const token = authService.getToken();
+    if (user && token) {
+      router.replace('/admin');
     }
-  }, []);
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,21 +46,14 @@ export default function LoginPage() {
 
     setLoading(true);
     const result = await authService.login(email.trim(), password);
-    setLoading(false);
 
     if (result.success && result.user) {
-      setCurrentUser(result.user);
-      router.push('/admin');
+      // Immediate direct redirect into Admin Dashboard
+      window.location.href = '/admin';
     } else {
+      setLoading(false);
       setError(result.error || 'Authentication failed. Please verify your credentials.');
     }
-  };
-
-  const handleLogout = () => {
-    authService.logout();
-    setCurrentUser(null);
-    setEmail('');
-    setPassword('');
   };
 
   return (
@@ -145,171 +137,119 @@ export default function LoginPage() {
             </span>
           </div>
 
-          {currentUser ? (
-            /* Logged in state */
-            <div className="space-y-4 my-auto">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-primary-container flex items-center justify-center shadow-inner">
-                  <UserCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-label-caps text-label-caps uppercase bg-emerald-100 text-primary-container px-2 py-0.5 rounded-full font-extrabold text-[10px]">
-                    Active Session
-                  </span>
-                  <h2 className="font-headline-md text-xl font-black text-on-surface">
-                    Welcome, {currentUser.fullName || currentUser.username}!
-                  </h2>
-                </div>
-              </div>
-
-              <div className="bg-surface-container-low rounded-xl p-4 border border-surface-container space-y-2.5 text-xs">
-                <div className="flex justify-between items-center pb-2 border-b border-surface-container">
-                  <span className="text-on-surface-variant font-medium">Assigned Role</span>
-                  <span className="font-bold text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                    {currentUser.role}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pb-2 border-b border-surface-container">
-                  <span className="text-on-surface-variant font-medium">Registered Email</span>
-                  <strong className="text-on-surface">{currentUser.email}</strong>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-on-surface-variant font-medium">Terminal Status</span>
-                  <span className="flex items-center gap-1 text-primary-container font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Verified & Active
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-                <Link
-                  href="/admin"
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider text-center transition-all shadow-sm"
-                >
-                  Enter Admin Dashboard →
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="py-2.5 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs uppercase tracking-wider transition-all"
-                >
-                  Sign Out
-                </button>
-              </div>
+          {/* Login Form */}
+          <div className="space-y-4 my-auto">
+            <div>
+              <h2 className="font-display-score text-2xl font-black text-on-surface tracking-tight">
+                Sign in to your account
+              </h2>
+              <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+                Enter your official credentials below to access tournament management controls.
+              </p>
             </div>
-          ) : (
-            /* Login Form */
-            <div className="space-y-4 my-auto">
+
+            {/* Error banner */}
+            {error && (
+              <div className="bg-error/10 border border-error/30 text-error rounded-xl p-2.5 flex items-start gap-2 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="font-medium">{error}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleLogin} className="space-y-3">
+              {/* Email field */}
               <div>
-                <h2 className="font-display-score text-2xl font-black text-on-surface tracking-tight">
-                  Sign in to your account
-                </h2>
-                <p className="text-xs text-on-surface-variant font-medium mt-0.5">
-                  Enter your official credentials below to access tournament management controls.
-                </p>
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                  Official Email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
+                    <Mail className="w-3.5 h-3.5" />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@footballportal.com"
+                    className="w-full pl-9 pr-3 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all"
+                  />
+                </div>
               </div>
 
-              {/* Error banner */}
-              {error && (
-                <div className="bg-error/10 border border-error/30 text-error rounded-xl p-2.5 flex items-start gap-2 text-xs">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span className="font-medium">{error}</span>
-                </div>
-              )}
-
-              {/* Form */}
-              <form onSubmit={handleLogin} className="space-y-3">
-                {/* Email field */}
-                <div>
-                  <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                    Official Email
+              {/* Password field */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps">
+                    Password
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
-                      <Mail className="w-3.5 h-3.5" />
-                    </div>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="admin@footballportal.com"
-                      className="w-full pl-9 pr-3 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all"
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alert('Please contact system administrator to recover access credentials.')}
+                    className="text-[10px] font-semibold text-primary-container hover:underline"
+                  >
+                    Forgot?
+                  </button>
                 </div>
-
-                {/* Password field */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps">
-                      Password
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => alert('Please contact system administrator to recover access credentials.')}
-                      className="text-[10px] font-semibold text-primary-container hover:underline"
-                    >
-                      Forgot?
-                    </button>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
+                    <Lock className="w-3.5 h-3.5" />
                   </div>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
-                      <Lock className="w-3.5 h-3.5" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      className="w-full pl-9 pr-9 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-on-surface transition-colors"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full pl-9 pr-9 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-on-surface transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
+              </div>
 
-                {/* Remember Me */}
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded border-surface-container-high text-primary-container focus:ring-primary-container accent-primary-container"
-                    />
-                    <span className="text-[11px] text-on-surface-variant font-medium">
-                      Remember this terminal
-                    </span>
-                  </label>
-                </div>
+              {/* Remember Me */}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-surface-container-high text-primary-container focus:ring-primary-container accent-primary-container"
+                  />
+                  <span className="text-[11px] text-on-surface-variant font-medium">
+                    Remember this terminal
+                  </span>
+                </label>
+              </div>
 
-                {/* Submit CTA */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed mt-1"
-                >
-                  {loading ? (
+              {/* Submit CTA */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span>Authorize & Sign In</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          )}
+                    <span>Signing in & Opening Dashboard...</span>
+                  </div>
+                ) : (
+                  <>
+                    <span>Authorize & Sign In</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
 
           {/* Security notice footer */}
           <div className="pt-3 border-t border-surface-container-high flex items-center justify-between text-[10px] text-on-surface-variant font-medium">
