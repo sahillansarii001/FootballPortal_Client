@@ -14,8 +14,7 @@ import {
   AlertCircle,
   Trophy,
   Activity,
-  UserCheck,
-  Sparkles
+  UserCheck
 } from 'lucide-react';
 import { authService, AuthUser } from '@/services/auth.service';
 
@@ -53,12 +52,6 @@ export default function LoginPage() {
     } else {
       setError(result.error || 'Authentication failed. Please verify your credentials.');
     }
-  };
-
-  const handleQuickFill = () => {
-    setEmail('admin@footballportal.com');
-    setPassword('AdminPassword123!');
-    setError(null);
   };
 
   const handleLogout = () => {
@@ -210,26 +203,8 @@ export default function LoginPage() {
                   Sign in to your account
                 </h2>
                 <p className="text-xs text-on-surface-variant font-medium mt-0.5">
-                  Enter your credentials below or select a demo role for one-click authentication.
+                  Enter your official credentials below to access tournament management controls.
                 </p>
-              </div>
-
-              {/* Quick Fill Demo Accounts */}
-              <div className="bg-surface-container-low rounded-xl p-3 border border-surface-container">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold text-on-surface-variant uppercase font-label-caps mb-2">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  <span>One-Click Admin Credentials:</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleQuickFill}
-                    className="px-3 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-emerald-50 hover:border-primary-container/40 border border-surface-container-high text-[11px] font-bold text-on-surface flex items-center gap-1.5 transition-all shadow-xs"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
-                    Super Admin (admin@footballportal.com)
-                  </button>
-                </div>
               </div>
 
               {/* Error banner */}
@@ -270,7 +245,7 @@ export default function LoginPage() {
                     </label>
                     <button
                       type="button"
-                      onClick={() => alert('Default admin password: AdminPassword123!')}
+                      onClick={() => alert('Please contact system administrator to recover access credentials.')}
                       className="text-[10px] font-semibold text-primary-container hover:underline"
                     >
                       Forgot?
