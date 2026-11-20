@@ -285,7 +285,7 @@ export default function AdminPlayersPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 space-y-6 select-none animate-in fade-in duration-200">
       {/* Toast Notification */}
       {toastMsg && (
         <div
@@ -521,12 +521,23 @@ export default function AdminPlayersPage() {
             </table>
           </div>
         )}
+
+        {/* Table Footer */}
+        {!loading && filteredPlayers.length > 0 && (
+          <div className="bg-surface-container-low/50 px-6 py-3.5 border-t border-surface-container-high flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-on-surface-variant font-medium">
+            <span>Showing <strong className="text-on-surface font-bold">{filteredPlayers.length}</strong> of <strong className="text-on-surface font-bold">{totalAthletes}</strong> registered athletes</span>
+            <span className="font-semibold text-primary-container flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+              <span>Authoritative Collegiate Database</span>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ADD PLAYER MODAL */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-surface-container-lowest w-full max-w-lg rounded-2xl border border-surface-container-high shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative bg-surface-container-lowest w-full max-w-lg rounded-3xl border border-surface-container-high shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-surface-container-high bg-surface-container-low/40">
               <div className="flex items-center gap-2.5">
@@ -666,8 +677,8 @@ export default function AdminPlayersPage() {
 
       {/* EDIT PLAYER MODAL */}
       {editingPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-surface-container-lowest w-full max-w-lg rounded-2xl border border-surface-container-high shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative bg-surface-container-lowest w-full max-w-lg rounded-3xl border border-surface-container-high shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-surface-container-high bg-surface-container-low/40">
               <div className="flex items-center gap-2.5">
@@ -801,8 +812,8 @@ export default function AdminPlayersPage() {
 
       {/* DELETE CONFIRMATION MODAL */}
       {deletingPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-surface-container-lowest w-full max-w-md rounded-2xl border border-surface-container-high shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative bg-surface-container-lowest w-full max-w-md rounded-3xl border border-surface-container-high shadow-2xl overflow-hidden p-6 sm:p-7 my-auto animate-in zoom-in-95 duration-200">
             <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center mb-4">
               <Trash2 className="w-6 h-6" />
             </div>

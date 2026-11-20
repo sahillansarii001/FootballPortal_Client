@@ -151,7 +151,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Main Executive Content Body */}
-      <div className="w-full px-3 sm:px-6 py-4 sm:py-6 max-w-7xl mx-auto flex flex-col gap-4 sm:gap-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 pb-24 max-w-7xl mx-auto flex flex-col gap-6 select-none animate-in fade-in duration-200">
         {/* Title + Date Strip */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>

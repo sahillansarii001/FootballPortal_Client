@@ -1024,7 +1024,7 @@ export default function AdminLiveControlPage() {
   const hasShootoutWinner = regulationKicksComplete && penaltyScoreA !== penaltyScoreB;
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6 select-none w-full animate-slide-up">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 flex flex-col gap-6 select-none w-full animate-in fade-in duration-200">
       {/* Top Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-surface-container-high">
         <div>
@@ -2055,8 +2055,8 @@ export default function AdminLiveControlPage() {
 
       {/* Goal Recorder Modal - Shows ONLY the Scoring Team's Players */}
       {showGoalModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
-          <div className="max-w-lg w-full bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-container-high shadow-2xl p-4 sm:p-6 space-y-3.5 sm:space-y-4 max-h-[92vh] flex flex-col animate-scale-in">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-3 sm:p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative max-w-lg w-full bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-container-high shadow-2xl p-4 sm:p-6 space-y-3.5 sm:space-y-4 max-h-[92vh] flex flex-col my-auto animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
               <div className="flex items-center gap-2.5">
@@ -2230,8 +2230,8 @@ export default function AdminLiveControlPage() {
       )}
       {/* Match Selection & Launch Modal (Choose Which Match to Start) */}
       {showMatchPickerModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
-          <div className="max-w-3xl w-full bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-container-high shadow-2xl p-4 sm:p-7 space-y-3.5 sm:space-y-4 max-h-[92vh] flex flex-col animate-scale-in">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-3 sm:p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative max-w-3xl w-full bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-container-high shadow-2xl p-4 sm:p-7 space-y-3.5 sm:space-y-4 max-h-[92vh] flex flex-col my-auto animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high shrink-0">
               <div className="flex items-center gap-3">
