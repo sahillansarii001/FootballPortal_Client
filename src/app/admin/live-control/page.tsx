@@ -925,6 +925,8 @@ export default function AdminLiveControlPage() {
         score: { teamA: 0, teamB: 0 },
         winner: undefined,
         matchResult: '',
+        goals: [],
+        events: [],
         timer: {
           stageDuration: match.timer?.stageDuration || 240,
           isRunning: true,

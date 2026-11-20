@@ -199,13 +199,60 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
     });
 
     // Score updates
-    socket.on('score:update', (data: { teamAScore: number; teamBScore: number }) => {
-      setMatch((prev) => prev ? { ...prev, score: { teamA: data.teamAScore, teamB: data.teamBScore } } : prev);
+    socket.on('score:update', (data: { teamAScore: number; teamBScore: number; goals?: any[] }) => {
+      setMatch((prev) => prev ? {
+        ...prev,
+        score: { teamA: data.teamAScore, teamB: data.teamBScore },
+        teamAScore: data.teamAScore,
+        teamBScore: data.teamBScore,
+        ...(data.goals !== undefined ? { goals: data.goals } : {})
+      } : prev);
     });
 
-    socket.on('score:updated', (data: { teamAScore: number; teamBScore: number }) => {
-      setMatch((prev) => prev ? { ...prev, score: { teamA: data.teamAScore, teamB: data.teamBScore } } : prev);
+    socket.on('score:updated', (data: { teamAScore: number; teamBScore: number; goals?: any[] }) => {
+      setMatch((prev) => prev ? {
+        ...prev,
+        score: { teamA: data.teamAScore, teamB: data.teamBScore },
+        teamAScore: data.teamAScore,
+        teamBScore: data.teamBScore,
+        ...(data.goals !== undefined ? { goals: data.goals } : {})
+      } : prev);
     });
+
+    // Timer & Match Reset
+    const handleMatchReset = () => {
+      setLastEvent('Match Restarted (0 - 0)');
+      setMatch((prev) => prev ? {
+        ...prev,
+        status: 'Live',
+        isFinalized: false,
+        teamAScore: 0,
+        teamBScore: 0,
+        score: { teamA: 0, teamB: 0 },
+        goals: [],
+        events: [],
+        currentStage: 'First Half',
+        timer: {
+          ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: true, isPaused: false }),
+          currentStage: 'First Half',
+          remainingTime: 240,
+          stageDuration: 240,
+          phaseEndsAt: null,
+          isRunning: true,
+          isPaused: false,
+        }
+      } : prev);
+      setTimeline([]);
+      matchService.getAuthoritativeLiveState(matchId).then((res) => {
+        if (res) setMatch(res);
+      });
+      matchService.getMatchTimeline(matchId).then((res) => {
+        if (res) setTimeline(res);
+      });
+    };
+
+    socket.on('timer:reset', handleMatchReset);
+    socket.on('match:reset', handleMatchReset);
 
     // Goal scored
     socket.on('goal:scored', (goalData: any) => {
