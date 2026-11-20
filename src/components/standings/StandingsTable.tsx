@@ -18,7 +18,6 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ standings }) => 
               <th className="py-4 px-4 min-w-[240px]">TEAM</th>
               <th className="py-4 px-2 text-center">MP</th>
               <th className="py-4 px-2 text-center">W</th>
-              <th className="py-4 px-2 text-center">D</th>
               <th className="py-4 px-2 text-center">L</th>
               <th className="py-4 px-2 text-center">GF</th>
               <th className="py-4 px-2 text-center">GA</th>
@@ -26,13 +25,13 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ standings }) => 
               <th className="py-4 px-4 text-center bg-surface-container font-headline-sm text-on-surface font-extrabold">
                 PTS
               </th>
-              <th className="py-4 px-4 text-center min-w-[170px]">FORM (LAST 5)</th>
+              <th className="py-4 px-4 text-center min-w-[130px]">FORM (LAST 3)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-container">
             {standings.length === 0 ? (
               <tr>
-                <td colSpan={11} className="py-12 text-center text-on-surface-variant font-medium">
+                <td colSpan={10} className="py-12 text-center text-on-surface-variant font-medium">
                   No tournament standings recorded yet. Standings will appear automatically as matches are played.
                 </td>
               </tr>
@@ -118,10 +117,9 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ standings }) => 
                       </div>
                     </td>
 
-                  {/* MP, W, D, L, GF, GA, GD */}
+                  {/* MP, W, L, GF, GA, GD */}
                   <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.matchesPlayed}</td>
                   <td className="py-4 px-2 text-center text-on-surface font-bold tabular-nums">{row.matchesWon}</td>
-                  <td className="py-4 px-2 text-center text-on-surface-variant tabular-nums">{row.matchesDrawn ?? 0}</td>
                   <td className="py-4 px-2 text-center text-on-surface-variant tabular-nums">{row.matchesLost}</td>
                   <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.goalsScored}</td>
                   <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.goalsConceded}</td>
@@ -142,23 +140,26 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ standings }) => 
                     {row.totalPoints}
                   </td>
 
-                  {/* Form */}
+                  {/* Form (Last 3) */}
                   <td className="py-4 px-4">
-                    <div className="flex items-center justify-center gap-1">
-                      {(row.form || ['W', 'W', 'D', 'W', 'L']).map((f, i) => (
-                        <span
-                          key={i}
-                          className={`w-6 h-6 rounded-full font-label-caps text-label-caps text-center flex items-center justify-center font-bold ${
-                            f === 'W'
-                              ? 'bg-on-tertiary-container text-primary-container shadow-xs'
-                              : f === 'D'
-                              ? 'bg-surface-container text-on-surface-variant'
-                              : 'bg-error-container text-error'
-                          }`}
-                        >
-                          {f}
-                        </span>
-                      ))}
+                    <div className="flex items-center justify-center gap-1.5">
+                      {(row.form && row.form.length > 0 ? row.form : ['W', 'L', 'W'])
+                        .slice(-3)
+                        .map((f, i) => {
+                          const outcome = f === 'L' ? 'L' : 'W';
+                          return (
+                            <span
+                              key={i}
+                              className={`w-6 h-6 rounded-full font-label-caps text-label-caps text-center flex items-center justify-center font-black text-[10px] shadow-xs ${
+                                outcome === 'W'
+                                  ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-400/40'
+                                  : 'bg-rose-100 text-rose-800 ring-1 ring-rose-400/40'
+                              }`}
+                            >
+                              {outcome}
+                            </span>
+                          );
+                        })}
                     </div>
                   </td>
                 </tr>

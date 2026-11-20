@@ -12,7 +12,7 @@ export const MOCK_TOURNAMENT: Tournament = {
     transitionDurationSeconds: 20,
     halfTimeDurationSeconds: 120,
     initialPenaltyKicks: 3,
-    pointsForWin: 3,
+    pointsForWin: 1,
     pointsForLoss: 0,
   },
 };

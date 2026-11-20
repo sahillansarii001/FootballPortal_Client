@@ -27,7 +27,7 @@ export const QualificationLegend: React.FC = () => {
 
       <div className="flex items-center gap-1.5 font-label-caps text-label-caps text-on-surface-variant uppercase font-bold">
         <Award className="w-4 h-4 text-primary-container" />
-        <span>Tiebreaker: 1. Points • 2. Goal Difference • 3. Goals Scored</span>
+        <span>Win = 1 Pt • Loss = 0 Pts • Tiebreaker: 1. Points • 2. Goal Difference • 3. Goals Scored</span>
       </div>
     </div>
   );
