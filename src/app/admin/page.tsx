@@ -26,7 +26,8 @@ import {
   Gauge,
   Medal,
   Sparkles,
-  MapPin
+  MapPin,
+  Zap
 } from 'lucide-react';
 import { matchService } from '@/services/match.service';
 import { teamService } from '@/services/team.service';
@@ -340,18 +341,32 @@ export default function AdminOverviewPage() {
                 const penA = m.shootout?.teamAPenaltyScore ?? (isTied ? 4 : 0);
                 const penB = m.shootout?.teamBPenaltyScore ?? (isTied ? 2 : 0);
 
+                const teamAName = m.teamA?.name || 'Team A';
+                const teamBName = m.teamB?.name || 'Team B';
+                let winnerName = '';
+                if (m.winner) {
+                  winnerName = typeof m.winner === 'object' && m.winner ? m.winner.name : String(m.winner);
+                } else if (scoreA > scoreB) {
+                  winnerName = teamAName;
+                } else if (scoreB > scoreA) {
+                  winnerName = teamBName;
+                } else if (m.shootout?.teamAPenaltyScore !== undefined && m.shootout?.teamBPenaltyScore !== undefined && m.shootout.teamAPenaltyScore !== m.shootout.teamBPenaltyScore) {
+                  winnerName = m.shootout.teamAPenaltyScore > m.shootout.teamBPenaltyScore ? teamAName : teamBName;
+                }
+
                 return (
                   <div
                     key={m._id || idx}
-                    className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs hover:shadow-md transition-all flex flex-col gap-4"
+                    className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs hover:shadow-md transition-all flex flex-col gap-3.5"
                   >
+                    {/* Header Row: Match Time, Fixture Title, Status Pill */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-surface-container-high">
                       <div className="flex items-center gap-2.5">
-                        <span className="bg-surface-container-high text-on-surface font-bold text-xs px-2.5 py-1 rounded-lg">
-                          {m.matchTime || '14:00 EST'}
+                        <span className="bg-surface-container-high text-on-surface font-bold text-xs px-2.5 py-1 rounded-lg font-mono">
+                          {m.matchTime || '14:00'}
                         </span>
-                        <span className="font-headline-sm text-sm font-extrabold text-on-surface">
-                          {m.teamA?.name} vs {m.teamB?.name}
+                        <span className="font-headline-sm text-base font-extrabold text-on-surface">
+                          {teamAName} vs {teamBName}
                         </span>
                       </div>
                       <span
@@ -367,42 +382,73 @@ export default function AdminOverviewPage() {
                           ? `LIVE IN PLAY • ${scoreA} - ${scoreB}`
                           : isCompleted
                             ? `FINAL RESULT • ${scoreA} - ${scoreB}${isTied ? ` (Pen: ${penA}-${penB})` : ''}`
-                            : 'Field Ready • Pitch Certified'}
+                            : 'UPCOMING FIXTURE'}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    {/* Official Match Result & Winner Section */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-surface-container-low border border-surface-container">
                       <div>
-                        <span className="text-on-surface-variant font-label-caps text-[10px] uppercase block font-bold">
-                          Lead Official
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant font-label-caps block mb-1">
+                          Official Result & Winner
                         </span>
-                        <span className="text-on-surface font-semibold mt-0.5 block truncate">
-                          {m.referee || 'FIFA Certified Official'}
-                        </span>
+                        {isCompleted ? (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-black text-on-surface">
+                              {teamAName}{' '}
+                              <span className="text-primary-container font-display-score text-base">{scoreA}</span> -{' '}
+                              <span className="text-primary-container font-display-score text-base">{scoreB}</span>{' '}
+                              {teamBName}
+                            </span>
+                            {winnerName ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 font-extrabold text-xs shadow-2xs">
+                                <Trophy className="w-3.5 h-3.5 text-amber-600 fill-amber-500 shrink-0" />
+                                <span>
+                                  Winner: <strong className="font-black text-amber-950">{winnerName}</strong>
+                                </span>
+                                {isTied && <span className="text-[10px] text-amber-800 font-medium">(on Penalties)</span>}
+                              </span>
+                            ) : (
+                              <span className="text-xs font-bold text-slate-600">Match Drawn</span>
+                            )}
+                          </div>
+                        ) : isLive ? (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-black text-on-surface">
+                              Current Score:{' '}
+                              <strong className="text-rose-600 font-display-score text-base">
+                                {scoreA} - {scoreB}
+                              </strong>
+                            </span>
+                            {scoreA !== scoreB ? (
+                              <span className="text-xs font-bold text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                                Currently Leading: {scoreA > scoreB ? teamAName : teamBName}
+                              </span>
+                            ) : (
+                              <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
+                                Scores Level
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-xs font-semibold text-on-surface-variant">
+                            Fixture not started yet • Scheduled for {m.matchTime || '14:00'}
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <span className="text-on-surface-variant font-label-caps text-[10px] uppercase block font-bold">
-                          Pitch / Venue
-                        </span>
-                        <span className="text-primary-container font-semibold mt-0.5 flex items-center gap-1 truncate">
-                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">{m.venue || 'Cardinal Athletic Complex'}</span>
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-on-surface-variant font-label-caps text-[10px] uppercase block font-bold">
-                          Roster Verification
-                        </span>
-                        <span className="text-primary-container font-semibold mt-0.5 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                          Club Affiliated Athletes
-                        </span>
-                      </div>
+
+                      <Link
+                        href="/admin/live-control"
+                        className="px-3.5 py-1.5 rounded-xl bg-primary-container hover:bg-primary text-xs font-bold text-on-primary transition-all shadow-xs shrink-0 active:scale-95 flex items-center gap-1.5"
+                      >
+                        <Zap className="w-3.5 h-3.5 fill-white" />
+                        <span>Operator Desk</span>
+                      </Link>
                     </div>
 
                     {/* Goalscorers pill display */}
                     {m.goals && m.goals.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-surface-container-high/60">
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
                         <span className="font-bold text-on-surface-variant flex items-center gap-1 text-[11px] uppercase tracking-wider">
                           <span>⚽ Scorers:</span>
                         </span>
@@ -424,30 +470,6 @@ export default function AdminOverviewPage() {
                         ))}
                       </div>
                     )}
-
-                    <div className="flex items-center justify-between pt-2 border-t border-surface-container-high">
-                      <span className="text-xs text-on-surface-variant font-medium">
-                        {isLive
-                          ? 'Real-time telemetry syncing'
-                          : isCompleted
-                            ? `Match Completed • Certified by Director`
-                            : 'Warm-ups ongoing • Lockers Open'}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/matches/${m._id}`}
-                          className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-colors"
-                        >
-                          View Match
-                        </Link>
-                        <Link
-                          href="/admin/live-control"
-                          className="px-3 py-1.5 rounded-lg bg-primary-container hover:bg-primary text-xs font-bold text-on-primary transition-colors"
-                        >
-                          Operator Desk
-                        </Link>
-                      </div>
-                    </div>
                   </div>
                 );
               })
