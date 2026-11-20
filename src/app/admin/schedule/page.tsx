@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Trophy, Shield, MapPin, Clock, CheckCircle2, AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import { Calendar, Plus, Trophy, Shield, MapPin, Clock, CheckCircle2, AlertCircle, Pencil, Trash2, X } from 'lucide-react';
 import { matchService } from '@/services/match.service';
 import { teamService } from '@/services/team.service';
 import { tournamentService } from '@/services/tournament.service';
@@ -181,7 +181,7 @@ export default function AdminSchedulePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6 select-none animate-slide-up">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 flex flex-col gap-6 select-none animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-container-high">
         <div>
@@ -308,17 +308,21 @@ export default function AdminSchedulePage() {
 
       {/* Schedule Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="max-w-lg w-full bg-surface-container-lowest rounded-2xl border border-surface-container-high shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative max-w-lg w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 sm:p-7 space-y-4 my-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
-              <h3 className="font-headline-md text-base font-black text-on-surface">
-                Schedule New Tournament Match
-              </h3>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary-container" />
+                <h3 className="font-headline-md text-base font-black text-on-surface">
+                  Schedule New Tournament Match
+                </h3>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                className="text-on-surface-variant hover:text-on-surface text-lg font-bold"
+                className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -440,8 +444,8 @@ export default function AdminSchedulePage() {
 
       {/* Edit Match Modal */}
       {editingMatch && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="max-w-lg w-full bg-surface-container-lowest rounded-2xl border border-surface-container-high shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative max-w-lg w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 sm:p-7 space-y-4 my-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
               <div className="flex items-center gap-2">
                 <Pencil className="w-4 h-4 text-primary-container" />
@@ -450,10 +454,11 @@ export default function AdminSchedulePage() {
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setEditingMatch(null)}
-                className="text-on-surface-variant hover:text-on-surface text-lg font-bold"
+                className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

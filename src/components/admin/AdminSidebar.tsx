@@ -96,13 +96,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen = false, onCl
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 animate-in fade-in"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 animate-in fade-in"
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-surface-container-high shadow-2xl lg:shadow-xs z-50 flex flex-col justify-between select-none transition-transform duration-300 ease-in-out ${
+        className={`fixed left-0 top-0 h-full w-64 bg-surface-container-lowest border-r border-surface-container-high shadow-2xl lg:shadow-xs z-40 flex flex-col justify-between select-none transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >

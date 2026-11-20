@@ -48,7 +48,7 @@ export default function AdminLayout({
       <AdminHeader
         onToggleSidebar={() => setMobileSidebarOpen((prev) => !prev)}
       />
-      <main className="lg:pl-64 pl-0 pt-16 flex-1 w-full bg-surface transition-all duration-300 ease-in-out overflow-x-hidden">
+      <main className="lg:pl-64 pl-0 pt-16 flex-1 w-full bg-surface overflow-x-hidden min-h-[calc(100vh-4rem)]">
         {children}
       </main>
     </div>
