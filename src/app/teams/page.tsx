@@ -18,7 +18,7 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [tournamentName, setTournamentName] = useState<string>('2026 Inter-College Championship');
+  const [tournamentName, setTournamentName] = useState<string>('Alliance Premier League - Season 9');
 
   const { socket, isConnected } = useSocket();
 
@@ -104,8 +104,8 @@ export default function TeamsPage() {
       <PageHeader
         badge={`${tournamentName} • Official Roster Registry`}
         badgeIcon={<Shield className="w-4 h-4 text-primary-container" />}
-        title="Inter-College Teams & University Rosters"
-        description="Official athletic registration database, player eligibility charts, tactical formations, and tournament standings across tier-1 varsity football programs."
+        title="Alliance Premier League Teams & Rosters"
+        description="Official club registration database, player eligibility charts, tactical formations, and tournament standings across Alliance Premier League Season 9."
         action={
           <div className="flex items-center gap-2.5">
             <div className="inline-flex items-center gap-2 bg-surface-container-low px-3.5 py-2 rounded-xl text-xs font-bold text-on-surface border border-surface-container shadow-xs">

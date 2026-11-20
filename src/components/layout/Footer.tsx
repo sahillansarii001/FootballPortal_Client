@@ -9,15 +9,15 @@ export const Footer: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 mb-8 border-b border-surface-container-high">
           {/* Logo & Info */}
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-primary-container/10 border border-primary-container/20 flex items-center justify-center text-primary-container shadow-xs">
-              <Trophy className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-xl overflow-hidden bg-black border border-amber-500/30 flex items-center justify-center shadow-xs shrink-0">
+              <img src="/images/apl-logo.jpg" alt="Alliance Premier League (APL)" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
               <span className="font-headline-sm text-headline-sm text-on-surface font-extrabold tracking-tight">
-                VARSITY FOOTBALL LEAGUE
+                ALLIANCE PREMIER LEAGUE
               </span>
               <span className="font-body-sm text-body-sm text-on-surface-variant">
-                Collegiate Athletic Board & Tournament Authority
+                Official Season 9 Championship Authority & Live Portal
               </span>
             </div>
           </div>
@@ -34,7 +34,7 @@ export const Footer: React.FC = () => {
         {/* Bottom copyright and legal */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 font-body-sm text-body-sm text-on-surface-variant">
           <div>
-            © 2025 Varsity Football League. Official Inter-College Championship Regulations Apply.
+            © 2026 Alliance Premier League (APL Season 9). Official Tournament Regulations Apply.
           </div>
           <div className="flex flex-wrap items-center gap-6">
             <Link href="#" className="hover:text-primary-container transition-colors">Tournament Bylaws</Link>

@@ -24,25 +24,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ stats, tournamentName 
       {/* Hero Content */}
       <div className="relative z-10 px-6 sm:px-10 py-12 lg:py-16 max-w-4xl flex flex-col justify-center">
         {/* Tier badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-container/30 backdrop-blur-md text-on-primary-container font-label-caps text-label-caps uppercase w-max mb-4 border border-primary-container/40 shadow-sm">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary-fixed opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary-fixed"></span>
-          </span>
-          <span>{tournamentName || '2026 Inter-College Championship'} • Collegiate Sanctioned</span>
+        <div className="inline-flex items-center gap-2.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-amber-300 font-label-caps text-label-caps uppercase w-max mb-4 border border-amber-500/40 shadow-sm">
+          <img src="/images/apl-logo.jpg" alt="APL Logo" className="w-4 h-4 rounded-full object-cover" />
+          <span>{tournamentName || 'Alliance Premier League — Season 9'} • Official Championship</span>
         </div>
 
         {/* Title */}
         <h1 className="font-display-score text-4xl sm:text-5xl lg:text-6xl text-on-primary font-black tracking-tight leading-none mb-3 uppercase">
-          Inter-College Football
+          Alliance Premier League
           <br />
-          <span className="text-primary-fixed drop-shadow-sm">{tournamentName || 'Championship 2026'}</span>
+          <span className="text-amber-400 drop-shadow-sm">{tournamentName || 'Season 9'}</span>
         </h1>
 
         {/* Tagline */}
         <p className="font-body-lg text-body-lg text-inverse-on-surface/90 max-w-2xl mb-8 font-medium leading-relaxed">
-          Elite Collegiate Dynasties. High-Octane Clashes. One Crown. Real-time tactical tracking,
-          verified varsity matchday data, and high-velocity college athletics.
+          Elite Football Dynasties. High-Octane Clashes. One Crown. Real-time tactical tracking,
+          verified live matchday telemetry, penalty shootouts, and dynamic league rankings.
         </p>
 
         {/* Call-to-actions */}

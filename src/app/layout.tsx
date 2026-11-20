@@ -3,8 +3,13 @@ import './globals.css';
 import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
-  title: 'Varsity Football League | Inter-College Championship 2026',
-  description: 'Official tournament portal for the 2026 Inter-College Football Championship. Live match tracker, real-time scorelines, penalty shootouts, verified standings, and team rosters.',
+  title: 'Alliance Premier League | APL Season 9',
+  description: 'Official tournament portal for the Alliance Premier League (APL Season 9). Live match tracker, real-time scorelines, penalty shootouts, verified standings, and team rosters.',
+  icons: {
+    icon: '/images/apl-logo.jpg',
+    shortcut: '/images/apl-logo.jpg',
+    apple: '/images/apl-logo.jpg',
+  },
 };
 
 export default function RootLayout({

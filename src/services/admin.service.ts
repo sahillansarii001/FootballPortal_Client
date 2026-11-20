@@ -106,7 +106,10 @@ export const adminService = {
 
   async startHalfTime(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/halftime`, { method: 'POST' });
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/stage`, {
+        method: 'POST',
+        body: JSON.stringify({ stage: 'Half-Time', duration: 120 }),
+      });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -114,7 +117,39 @@ export const adminService = {
 
   async startSecondHalf(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/second-half`, { method: 'POST' });
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/stage`, {
+        method: 'POST',
+        body: JSON.stringify({ stage: 'Second Half', duration: 240 }),
+      });
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async setStage(
+    matchId: string,
+    stage: string,
+    duration?: number
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/stage`, {
+        method: 'POST',
+        body: JSON.stringify({ stage, duration }),
+      });
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async setClockTime(
+    matchId: string,
+    seconds: number
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/set-time`, {
+        method: 'POST',
+        body: JSON.stringify({ seconds }),
+      });
     } catch (err: any) {
       return { success: false, error: err.message };
     }

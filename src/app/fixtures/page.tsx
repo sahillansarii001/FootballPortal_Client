@@ -79,7 +79,7 @@ export default function FixturesPage() {
         badge="Official Championship Schedule"
         badgeIcon={<Calendar className="w-4 h-4 text-primary-container" />}
         title="Fixtures & Tournament Schedule"
-        description="Track verified inter-college match schedules, real-time scorelines, penalty shootouts, and aggregate fixtures across all conferences."
+        description="Track verified Alliance Premier League match schedules, real-time scorelines, penalty shootouts, and aggregate fixtures across Season 9."
         action={
           <div className="flex items-center gap-2 bg-surface-container p-1.5 rounded-xl shadow-xs">
             <div className="flex items-center gap-1.5 px-3 py-1 bg-surface-container-lowest rounded-lg shadow-xs">

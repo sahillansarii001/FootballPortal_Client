@@ -36,8 +36,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar, onQui
         </div>
 
         <div className="hidden md:flex items-center gap-1.5 bg-surface-container-high/60 px-3 py-1.5 rounded-xl border border-surface-container-high text-xs shrink-0">
-          <Trophy className="w-3.5 h-3.5 text-primary-container" />
-          <span className="font-semibold text-on-surface">2026 Spring Cup</span>
+          <Trophy className="w-3.5 h-3.5 text-amber-500" />
+          <span className="font-semibold text-on-surface">Alliance Premier League — Season 9</span>
         </div>
       </div>
 

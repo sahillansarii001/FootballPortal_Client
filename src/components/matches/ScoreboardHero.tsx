@@ -76,7 +76,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               </span>
             )}
             <span className="bg-surface-container-high text-on-surface font-label-caps text-label-caps px-3 py-1 rounded-full font-semibold uppercase tracking-wider">
-              {match.stage || (match.tournament as any)?.name || '2026 Inter-College Championship'}
+              {match.stage || (match.tournament as any)?.name || 'Alliance Premier League - Season 9'}
             </span>
           </div>
 

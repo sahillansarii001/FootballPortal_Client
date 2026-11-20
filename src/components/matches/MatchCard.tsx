@@ -113,7 +113,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
           <div className="flex items-center gap-1.5 truncate">
             <MapPin className="w-3.5 h-3.5 text-primary-container shrink-0" />
             <span className="truncate font-medium text-on-surface">
-              {match.venue || 'Inter-College Grounds'}
+              {match.venue || 'APL National Arena'}
             </span>
           </div>
         </div>

@@ -128,7 +128,7 @@ export default function AdminOverviewPage() {
               aria-label="Select active tournament"
               className="bg-surface-container-low text-on-surface text-xs font-semibold px-3.5 py-1.5 rounded-xl border border-surface-container-high focus:outline-none cursor-pointer"
             >
-              <option>2026 Inter-College Spring Cup — Official</option>
+              <option>Alliance Premier League — Season 9 (Official)</option>
               <option>2026 Ivy Invitational Cup — Group Stage</option>
               <option>2025 Autumn All-Star Trophy — Archived</option>
             </select>

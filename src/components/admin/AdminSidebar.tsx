@@ -110,15 +110,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen = false, onCl
           {/* Brand Header */}
           <div className="h-16 flex items-center justify-between px-5 border-b border-surface-container-high">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary-container text-white flex items-center justify-center font-display-score text-base font-black shadow-xs shrink-0">
-                VK
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-black border border-amber-500/30 flex items-center justify-center shadow-xs shrink-0">
+                <img src="/images/apl-logo.jpg" alt="APL Logo" className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-col">
                 <span className="font-headline-sm text-sm leading-tight text-on-surface font-extrabold tracking-tight">
-                  LEAGUE ADMIN
+                  APL ADMIN
                 </span>
-                <span className="font-label-caps text-[10px] text-primary-container uppercase font-bold tracking-wider">
-                  Super Admin Console
+                <span className="font-label-caps text-[10px] text-amber-500 uppercase font-bold tracking-wider">
+                  Season 9 Console
                 </span>
               </div>
             </div>

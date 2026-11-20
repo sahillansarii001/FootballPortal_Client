@@ -32,7 +32,7 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-error"></span>
               </span>
-              LIVE MATCH • {liveMatch.stage || 'INTER-COLLEGE CHAMPIONSHIP'}
+              LIVE MATCH • {liveMatch.stage || 'ALLIANCE PREMIER LEAGUE — SEASON 9'}
             </span>
             <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5 font-medium">
               <MapPin className="w-4 h-4 text-primary-container shrink-0" />

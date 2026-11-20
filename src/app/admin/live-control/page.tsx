@@ -427,6 +427,7 @@ export default function AdminLiveControlPage() {
 
   const isExtraTimeDone =
     completedStages.includes('Extra Time (Draw Decider)') ||
+    completedStages.includes('Extra Time') ||
     currentStage.includes('Penalty') ||
     selectedMatch?.status === 'Completed';
 
@@ -436,7 +437,13 @@ export default function AdminLiveControlPage() {
     setTimerRunning(true);
     setCurrentStage('First Half');
     setRemainingSeconds(240); // 4 minutes
-    await adminService.resumeMatch(selectedMatch._id);
+    const res = await adminService.setStage(selectedMatch._id, 'First Half', 240);
+    if (res?.success && res.data) {
+      const matchData = res.data;
+      setCurrentStage(matchData.currentStage || 'First Half');
+      setRemainingSeconds(matchData.remainingTime ?? 240);
+      setTimerRunning(true);
+    }
     showNotification('Stage set: First Half underway (4 minutes countdown).');
   };
 
@@ -444,10 +451,16 @@ export default function AdminLiveControlPage() {
   const handleHalfTimeBreak = async () => {
     if (!selectedMatch || isHalfTimeDone) return;
     setTimerRunning(true);
-    setCurrentStage('Half-Time Break');
+    setCurrentStage('Half-Time');
     setCompletedStages((prev) => Array.from(new Set([...prev, 'First Half'])));
     setRemainingSeconds(120); // 2 minutes break
-    await adminService.advanceStage(selectedMatch._id);
+    const res = await adminService.setStage(selectedMatch._id, 'Half-Time', 120);
+    if (res?.success && res.data) {
+      const matchData = res.data;
+      setCurrentStage(matchData.currentStage || 'Half-Time');
+      setRemainingSeconds(matchData.remainingTime ?? 120);
+      setTimerRunning(true);
+    }
     showNotification('First Half completed! Half-Time Break started (2 minutes interval).');
   };
 
@@ -458,7 +471,13 @@ export default function AdminLiveControlPage() {
     setCurrentStage('Second Half');
     setCompletedStages((prev) => Array.from(new Set([...prev, 'First Half', 'Half-Time Break'])));
     setRemainingSeconds(240); // 4 minutes
-    await adminService.advanceStage(selectedMatch._id);
+    const res = await adminService.setStage(selectedMatch._id, 'Second Half', 240);
+    if (res?.success && res.data) {
+      const matchData = res.data;
+      setCurrentStage(matchData.currentStage || 'Second Half');
+      setRemainingSeconds(matchData.remainingTime ?? 240);
+      setTimerRunning(true);
+    }
     showNotification('Second Half underway (4 minutes countdown).');
   };
 
@@ -466,11 +485,17 @@ export default function AdminLiveControlPage() {
   const handleExtraTimeDraw = async () => {
     if (!selectedMatch || isExtraTimeDone) return;
     setTimerRunning(true);
-    setCurrentStage('Extra Time (Draw Decider)');
+    setCurrentStage('Extra Time');
     setCompletedStages((prev) => Array.from(new Set([...prev, 'First Half', 'Half-Time Break', 'Second Half'])));
     setRemainingSeconds(120); // 2 minutes extra time
-    await adminService.addTimeToTimer(selectedMatch._id, 120);
-    showNotification(`Match is a Draw (${scoreA} - ${scoreB})! 2 minutes extra time added to timer.`);
+    const res = await adminService.setStage(selectedMatch._id, 'Extra Time', 120);
+    if (res?.success && res.data) {
+      const matchData = res.data;
+      setCurrentStage(matchData.currentStage || 'Extra Time');
+      setRemainingSeconds(matchData.remainingTime ?? 120);
+      setTimerRunning(true);
+    }
+    showNotification(`Match transitioned to Extra Time (Draw Decider)! 2:00 clock is LIVE.`);
   };
 
   // Auto-Advance Next Stage in Sequence via Backend Authority
@@ -1575,7 +1600,7 @@ export default function AdminLiveControlPage() {
               className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all text-center ${
                 isExtraTimeDone
                   ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 shadow-none'
-                  : currentStage.includes('Extra Time')
+                  : currentStage.includes('Extra')
                   ? 'bg-amber-500/20 text-amber-800 border-amber-500 ring-2 ring-amber-500/20 shadow-xs'
                   : scoreA === scoreB
                   ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 shadow-xs active:scale-95'
@@ -1585,7 +1610,7 @@ export default function AdminLiveControlPage() {
                 isExtraTimeDone
                   ? 'Extra Time concluded'
                   : scoreA === scoreB
-                  ? 'Scores tied! Click to add 2 minutes extra time'
+                  ? 'Scores tied! Click to start 2 minutes extra time'
                   : 'Only enabled if scores are tied at full time'
               }
             >
@@ -1596,6 +1621,14 @@ export default function AdminLiveControlPage() {
                     <span className="line-through text-slate-500">4. Extra Time (2:00)</span>
                     <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
                       DONE
+                    </span>
+                  </>
+                ) : currentStage.includes('Extra') ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                    <span>4. Extra Time (2:00)</span>
+                    <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.2 rounded-full font-bold">
+                      IN PLAY
                     </span>
                   </>
                 ) : (
@@ -1613,8 +1646,10 @@ export default function AdminLiveControlPage() {
               <span className="text-[10px] text-on-surface-variant font-medium">
                 {isExtraTimeDone
                   ? 'Extra time concluded'
+                  : currentStage.includes('Extra')
+                  ? '2 minutes extra time countdown underway'
                   : scoreA === scoreB
-                  ? 'Scores tied! Click to add 2m decider clock'
+                  ? 'Scores tied! Click to start 2m decider clock'
                   : 'Active only if scores are tied at full time'}
               </span>
             </button>
@@ -1637,13 +1672,19 @@ export default function AdminLiveControlPage() {
                 +2 Min Extra Time
               </button>
               <button
-                onClick={() => setRemainingSeconds(240)}
+                onClick={async () => {
+                  setRemainingSeconds(240);
+                  if (selectedMatch?._id) await adminService.setClockTime(selectedMatch._id, 240);
+                }}
                 className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors"
               >
                 Reset 4:00
               </button>
               <button
-                onClick={() => setRemainingSeconds(120)}
+                onClick={async () => {
+                  setRemainingSeconds(120);
+                  if (selectedMatch?._id) await adminService.setClockTime(selectedMatch._id, 120);
+                }}
                 className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors"
               >
                 Reset 2:00

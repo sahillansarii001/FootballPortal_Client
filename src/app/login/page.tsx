@@ -67,16 +67,16 @@ export default function LoginPage() {
 
           {/* Top Brand */}
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-emerald-300 font-label-caps text-[11px] font-bold uppercase tracking-wider mb-4">
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-amber-300 font-label-caps text-[11px] font-bold uppercase tracking-wider mb-4">
+              <img src="/images/apl-logo.jpg" alt="APL Logo" className="w-4 h-4 rounded-full object-cover" />
               <span>Official Tournament Gate</span>
             </div>
 
             <h1 className="font-display-hero text-2xl font-black text-white tracking-tight leading-tight">
-              VarsityKick League Portal
+              Alliance Premier League
             </h1>
             <p className="mt-2 text-xs text-slate-300 leading-relaxed font-body-sm">
-              Secured access for match operators, tournament directors, and athletic officials.
+              Secured access for APL match operators, tournament directors, and league officials.
             </p>
           </div>
 
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
           {/* Bottom Accreditation */}
           <div className="relative z-10 pt-3 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-400">
-            <span>Inter-College Athletics 2026</span>
+            <span>Alliance Premier League • Season 9</span>
             <span className="flex items-center gap-1 text-emerald-400 font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               Live Server Active

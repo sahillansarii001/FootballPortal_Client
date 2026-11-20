@@ -858,7 +858,7 @@ export default function AdminTeamsPage() {
           <div className="max-w-md w-full bg-surface-container-lowest rounded-2xl border border-surface-container-high shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
               <h3 className="font-headline-md text-base font-black text-on-surface">
-                Register University Team
+                Register APL Team
               </h3>
               <button
                 onClick={() => {
@@ -882,7 +882,7 @@ export default function AdminTeamsPage() {
             <form onSubmit={handleAddTeam} className="space-y-3.5">
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                  University Team Name *
+                  Team Name *
                 </label>
                 <input
                   type="text"

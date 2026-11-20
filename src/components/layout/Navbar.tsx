@@ -26,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [tournamentTitle, setTournamentTitle] = useState('2026 Inter-College Championship');
+  const [tournamentTitle, setTournamentTitle] = useState('APL Season 9');
 
   useEffect(() => {
     async function loadTournament() {
@@ -50,15 +50,15 @@ export const Navbar: React.FC = () => {
       <div className="h-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
         {/* Brand Logo & Name */}
         <Link href="/" className="flex items-center gap-3 shrink-0 group">
-          <div className="w-9 h-9 rounded-xl bg-primary-container/10 border border-primary-container/20 flex items-center justify-center text-primary-container group-hover:bg-primary-container group-hover:text-white transition-all shadow-xs">
-            <Trophy className="w-5 h-5 transition-transform group-hover:scale-110" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden bg-black border border-amber-500/30 flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+            <img src="/images/apl-logo.jpg" alt="Alliance Premier League (APL)" className="w-full h-full object-cover" />
           </div>
           <div className="flex flex-col">
             <span className="font-headline-sm text-headline-sm text-on-surface leading-tight tracking-tight font-extrabold uppercase">
-              Varsity Football League
+              Alliance Premier League
             </span>
-            <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold truncate max-w-[200px] sm:max-w-xs">
-              {tournamentTitle}
+            <span className="font-label-caps text-label-caps text-amber-600 dark:text-amber-400 uppercase tracking-wider font-bold truncate max-w-[200px] sm:max-w-xs">
+              {tournamentTitle || 'APL Season 9'}
             </span>
           </div>
         </Link>

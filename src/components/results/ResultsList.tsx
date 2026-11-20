@@ -32,7 +32,7 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
                 <span className="font-label-caps text-label-caps uppercase bg-surface-container px-2.5 py-1 rounded text-on-surface font-extrabold border border-surface-container-high">
                   {match.stage || `MATCH #${match.matchNumber || 1}`}
                 </span>
-                <span>{formatDate(match.matchDate)} • {match.venue || 'Inter-College Stadium'}</span>
+                <span>{formatDate(match.matchDate)} • {match.venue || 'APL Stadium'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-label-caps text-label-caps bg-surface-container text-on-surface px-3 py-1 rounded-full font-bold border border-surface-container-high">

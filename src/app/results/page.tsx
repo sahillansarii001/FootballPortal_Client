@@ -75,7 +75,7 @@ export default function ResultsPage() {
         badge="Official Championship Archives"
         badgeIcon={<CheckCircle2 className="w-4 h-4 text-primary-container" />}
         title="Tournament Results & Final Scores"
-        description="Official final scores, penalty outcomes, and verified match reports from the 2026 Inter-College Championship."
+        description="Official final scores, penalty outcomes, and verified match reports from Alliance Premier League Season 9."
         action={
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-surface-container-lowest px-4 py-2 rounded-xl shadow-xs border border-surface-container-high">

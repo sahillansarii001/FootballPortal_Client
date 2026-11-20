@@ -61,7 +61,7 @@ export default function MatchDetailPage() {
               <ArrowLeft className="w-3.5 h-3.5" /> Back
             </Link>
             <h1 className="font-headline-md text-headline-md text-on-surface font-black tracking-tight">
-              {match.stage || 'Grand Inter-College Championship'}
+              {match.stage || 'Alliance Premier League — Season 9'}
             </h1>
             <span className="bg-primary-container text-white font-label-caps text-label-caps px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold">
               Official Tournament Match
