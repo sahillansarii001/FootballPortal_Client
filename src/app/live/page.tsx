@@ -47,17 +47,24 @@ export default function LiveMatchesPage() {
     };
   }, []);
 
-  // Smooth local 1-second countdown ticker for active matches
+  // Smooth local 1-second countdown ticker for active matches (synchronized with phaseEndsAt)
   useEffect(() => {
     const timerInterval = setInterval(() => {
       setLiveMatches((prevMatches) =>
         prevMatches.map((m) => {
           if (m.timer?.isRunning && !m.timer?.isPaused && (m.timer?.remainingTime ?? 0) > 0) {
+            let remaining = m.timer.remainingTime - 1;
+            if (m.timer.phaseEndsAt) {
+              const diffMs = new Date(m.timer.phaseEndsAt).getTime() - Date.now();
+              remaining = Math.max(0, Math.ceil(diffMs / 1000));
+            } else {
+              remaining = Math.max(0, remaining);
+            }
             return {
               ...m,
               timer: {
                 ...m.timer,
-                remainingTime: Math.max(0, (m.timer.remainingTime ?? 0) - 1),
+                remainingTime: remaining,
               },
             };
           }

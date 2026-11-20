@@ -13,7 +13,7 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function PlayerProfilePage() {
   const params = useParams();
-  const playerId = (params?.id as string) || 'player-vance';
+  const playerId = (params?.id as string) || '';
 
   const [player, setPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,10 +28,22 @@ export default function PlayerProfilePage() {
     loadPlayerData();
   }, [playerId]);
 
-  if (loading || !player) {
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <LoadingState message="Loading athlete profile & stats..." />
+      </div>
+    );
+  }
+
+  if (!player) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h2 className="text-xl font-bold text-on-surface">Player Not Found</h2>
+        <p className="text-xs text-on-surface-variant mt-2">The requested athlete record does not exist or has been removed.</p>
+        <Link href="/players" className="mt-4 inline-block px-4 py-2 bg-primary-container text-on-primary rounded-xl text-xs font-bold">
+          Back to Players Directory
+        </Link>
       </div>
     );
   }

@@ -4,10 +4,12 @@ import { MOCK_LIVE_MATCH, MOCK_MATCHES } from './mockData';
 
 function normalizeMatch(match: any): Match {
   if (!match) return match;
+  const id = match._id || match.matchId || match.id;
   const teamAScore = match.score?.teamA ?? match.teamAScore ?? 0;
   const teamBScore = match.score?.teamB ?? match.teamBScore ?? 0;
   return {
     ...match,
+    _id: id,
     teamAScore,
     teamBScore,
     score: {
@@ -58,7 +60,7 @@ export const matchService = {
       return normalizeMatch(res.data);
     }
     const found = MOCK_MATCHES.find((m) => m._id === id);
-    return normalizeMatch(found || MOCK_LIVE_MATCH);
+    return found ? normalizeMatch(found) : null;
   },
 
   async getAuthoritativeLiveState(id: string): Promise<Match | null> {
@@ -67,7 +69,7 @@ export const matchService = {
       return normalizeMatch(res.data);
     }
     const found = MOCK_MATCHES.find((m) => m._id === id);
-    return normalizeMatch(found || MOCK_LIVE_MATCH);
+    return found ? normalizeMatch(found) : null;
   },
 
   async getMatchTimeline(id: string): Promise<MatchEvent[]> {

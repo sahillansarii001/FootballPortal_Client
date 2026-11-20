@@ -18,8 +18,16 @@ import { formatDate } from '@/utils/formatters';
 export default function MatchDetailPage() {
   const params = useParams();
   const matchId = (params?.id as string) || '';
-  const { match, timeline, isConnected, lastEvent } = useLiveMatch(matchId);
+  const { match, timeline, isConnected, lastEvent, loading } = useLiveMatch(matchId);
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'tactics' | 'stats'>('overview');
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <LoadingState message="Loading match fixture details..." />
+      </div>
+    );
+  }
 
   if (!match) {
     return (

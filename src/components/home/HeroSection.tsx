@@ -5,9 +5,10 @@ import { TournamentOverviewStats } from '@/types';
 
 interface HeroSectionProps {
   stats: TournamentOverviewStats;
+  tournamentName?: string;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ stats }) => {
+export const HeroSection: React.FC<HeroSectionProps> = ({ stats, tournamentName }) => {
   return (
     <section className="relative w-full rounded-2xl overflow-hidden shadow-xl bg-inverse-surface mb-10 border border-surface-container-highest/20">
       {/* Dynamic atmospheric sports photography background */}
@@ -28,14 +29,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ stats }) => {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary-fixed opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary-fixed"></span>
           </span>
-          <span>2025 Inter-College Championship • NCAA Tier-1 Sanctioned</span>
+          <span>{tournamentName || '2026 Inter-College Championship'} • Collegiate Sanctioned</span>
         </div>
 
         {/* Title */}
         <h1 className="font-display-score text-4xl sm:text-5xl lg:text-6xl text-on-primary font-black tracking-tight leading-none mb-3 uppercase">
           Inter-College Football
           <br />
-          <span className="text-primary-fixed drop-shadow-sm">Championship 2025</span>
+          <span className="text-primary-fixed drop-shadow-sm">{tournamentName || 'Championship 2026'}</span>
         </h1>
 
         {/* Tagline */}

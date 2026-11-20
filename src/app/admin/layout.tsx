@@ -15,6 +15,7 @@ export default function AdminLayout({
   const router = useRouter();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -39,10 +40,15 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
-      <AdminSidebar />
-      <AdminHeader />
-      <main className="pl-64 pt-16 flex-1 w-full bg-surface">
+    <div className="min-h-screen bg-surface flex flex-col antialiased">
+      <AdminSidebar
+        isOpen={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
+      />
+      <AdminHeader
+        onToggleSidebar={() => setMobileSidebarOpen((prev) => !prev)}
+      />
+      <main className="lg:pl-64 pl-0 pt-16 flex-1 w-full bg-surface transition-all duration-300 ease-in-out overflow-x-hidden">
         {children}
       </main>
     </div>

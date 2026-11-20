@@ -157,7 +157,14 @@ export default function LoginPage() {
             )}
 
             {/* Form */}
-            <form onSubmit={handleLogin} className="space-y-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleLogin(e);
+              }}
+              action="#"
+              className="space-y-3"
+            >
               {/* Email field */}
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
@@ -232,7 +239,8 @@ export default function LoginPage() {
 
               {/* Submit CTA */}
               <button
-                type="submit"
+                type="button"
+                onClick={handleLogin}
                 disabled={loading}
                 className="w-full py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed mt-1"
               >

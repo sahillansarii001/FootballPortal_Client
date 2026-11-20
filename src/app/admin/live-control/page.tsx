@@ -34,6 +34,7 @@ import { teamService } from '@/services/team.service';
 import { adminService } from '@/services/admin.service';
 import { formatTime } from '@/utils/formatters';
 import { Match, Player, Team } from '@/types';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function AdminLiveControlPage() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -104,6 +105,58 @@ export default function AdminLiveControlPage() {
   const teamAName = selectedMatch?.teamA?.name || 'Team A';
   const teamBName = selectedMatch?.teamB?.name || 'Team B';
 
+  const { socket } = useSocket();
+
+  // Real-time authoritative Socket.IO listeners
+  useEffect(() => {
+    if (!socket || !selectedMatch?._id) return;
+    const matchId = selectedMatch._id;
+
+    socket.emit('join:match', matchId);
+
+    const handleTimerSync = (data: any) => {
+      if (data?.remainingTime !== undefined) {
+        setRemainingSeconds(data.remainingTime);
+      }
+      if (data?.currentStage) {
+        setCurrentStage(data.currentStage);
+      }
+      if (data?.isRunning !== undefined) {
+        setTimerRunning(Boolean(data.isRunning && !data.isPaused));
+      }
+      setSelectedMatch((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: data?.status || (data?.isRunning ? 'Live' : prev.status),
+          timer: {
+            ...(prev.timer || {}),
+            ...data,
+            isRunning: Boolean(data.isRunning),
+            isPaused: Boolean(data.isPaused),
+          }
+        };
+      });
+    };
+
+    socket.on('timer:started', handleTimerSync);
+    socket.on('timer:resumed', handleTimerSync);
+    socket.on('timer:paused', handleTimerSync);
+    socket.on('timer:sync', handleTimerSync);
+    socket.on('match:phase_changed', handleTimerSync);
+    socket.on('stage:change', handleTimerSync);
+
+    return () => {
+      socket.emit('leave:match', matchId);
+      socket.off('timer:started', handleTimerSync);
+      socket.off('timer:resumed', handleTimerSync);
+      socket.off('timer:paused', handleTimerSync);
+      socket.off('timer:sync', handleTimerSync);
+      socket.off('match:phase_changed', handleTimerSync);
+      socket.off('stage:change', handleTimerSync);
+    };
+  }, [socket, selectedMatch?._id]);
+
   useEffect(() => {
     async function loadMatches() {
       setLoading(true);
@@ -131,7 +184,7 @@ export default function AdminLiveControlPage() {
     setScoreA(match.score?.teamA ?? match.teamAScore ?? 0);
     setScoreB(match.score?.teamB ?? match.teamBScore ?? 0);
     setRemainingSeconds(match.timer?.remainingTime ?? 240);
-    setTimerRunning(Boolean(match.timer?.isRunning || match.status === 'Live'));
+    setTimerRunning(Boolean(match.timer?.isRunning && !match.timer?.isPaused));
     setCurrentStage(match.timer?.currentStage || match.stage || 'First Half');
     setPenaltyKicks([]);
     setPenaltyScoreA(match.shootout?.teamAPenaltyScore ?? 0);
@@ -183,15 +236,25 @@ export default function AdminLiveControlPage() {
       try {
         const liveData = await matchService.getMatchById(selectedMatch._id);
         if (liveData && !isCancelled) {
+          const isRunningNow = Boolean(liveData.timer?.isRunning && !liveData.timer?.isPaused);
+          setTimerRunning(isRunningNow);
           if (liveData.timer?.remainingTime !== undefined) {
             setRemainingSeconds(liveData.timer.remainingTime);
-          }
-          if (liveData.timer?.isRunning !== undefined) {
-            setTimerRunning(Boolean(liveData.timer.isRunning && !liveData.timer.isPaused));
           }
           if (liveData.timer?.currentStage) {
             setCurrentStage(liveData.timer.currentStage);
           }
+          setSelectedMatch((prev) => {
+            if (!prev) return liveData;
+            return {
+              ...prev,
+              status: liveData.status,
+              timer: liveData.timer,
+              score: liveData.score,
+              teamAScore: liveData.teamAScore,
+              teamBScore: liveData.teamBScore
+            };
+          });
         }
       } catch (err) {
         // Silent catch for background poll
@@ -204,112 +267,19 @@ export default function AdminLiveControlPage() {
     };
   }, [selectedMatch?._id, selectedMatch?.status]);
 
-  // Local ticker countdown with automatic match completion
+  // Local ticker countdown for smooth visual representation (backend ticker is authoritative for transitions)
   useEffect(() => {
     if (!timerRunning) return;
     const interval = setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
-          // When stage timer reaches 0
-          if (currentStage.includes('Extra')) {
-            // 2-Minute Tie Timer (Extra Time) completed!
-            if (scoreA === scoreB) {
-              setTimerRunning(false);
-              setCurrentStage('Penalty Shootout');
-              setCompletedStages((all) =>
-                Array.from(new Set([...all, 'First Half', 'Half-Time Break', 'Second Half', 'Extra Time (Draw Decider)']))
-              );
-              if (selectedMatch) {
-                adminService.startPenaltyShootout(selectedMatch._id).catch(() => {});
-                setSelectedMatch((m) =>
-                  m
-                    ? {
-                        ...m,
-                        status: 'Penalty Shootout',
-                        shootout: {
-                          ...(m.shootout || {}),
-                          isShootout: true,
-                          round: 1,
-                          teamAPenaltyScore: 0,
-                          teamBPenaltyScore: 0,
-                        },
-                      }
-                    : null
-                );
-              }
-              showNotification(
-                `⏱️ 2-Minute Extra Time period ended in a draw (${scoreA} - ${scoreB})! Penalty Shootout has now opened. Take 3 regulation kicks per team.`
-              );
-              setTimeout(() => {
-                document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
-              }, 150);
-              return 0;
-            } else {
-              setTimerRunning(false);
-              setCurrentStage('Completed');
-              if (selectedMatch) {
-                adminService.finalizeMatch(selectedMatch._id).then(() => {
-                  setSelectedMatch((m) =>
-                    m
-                      ? {
-                          ...m,
-                          status: 'Completed',
-                          matchResult: scoreA > scoreB ? `${teamAName} won` : `${teamBName} won`,
-                        }
-                      : null
-                  );
-                  setMatches((all) =>
-                    all.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m))
-                  );
-                });
-                showNotification(
-                  `Extra Time whistle! Match has concluded: ${teamAName} ${scoreA} - ${scoreB} ${teamBName}. Marked as Completed.`
-                );
-              }
-              return 0;
-            }
-          } else if (currentStage.includes('Second')) {
-            if (scoreA !== scoreB) {
-              setTimerRunning(false);
-              setCurrentStage('Completed');
-              if (selectedMatch) {
-                adminService.finalizeMatch(selectedMatch._id).then(() => {
-                  setSelectedMatch((m) =>
-                    m
-                      ? {
-                          ...m,
-                          status: 'Completed',
-                          matchResult: scoreA > scoreB ? `${teamAName} won` : `${teamBName} won`,
-                        }
-                      : null
-                  );
-                  setMatches((all) =>
-                    all.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Completed' } : m))
-                  );
-                });
-                showNotification(
-                  `Full Time whistle! Match has concluded: ${teamAName} ${scoreA} - ${scoreB} ${teamBName}. Marked as Completed.`
-                );
-              }
-              return 0;
-            } else {
-              setTimerRunning(false);
-              showNotification(
-                `Regulation time expired at ${scoreA} - ${scoreB} draw! You can add 2 minutes extra time or proceed to 3-kick Penalty Shootout.`
-              );
-              return 0;
-            }
-          } else {
-            setTimerRunning(false);
-            showNotification(`${currentStage} time expired! Please advance to the next stage.`);
-            return 0;
-          }
+          return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [timerRunning, currentStage, scoreA, scoreB, selectedMatch, teamAName, teamBName]);
+  }, [timerRunning]);
 
   const showNotification = (msg: string) => {
     setActionMessage(msg);
@@ -344,36 +314,81 @@ export default function AdminLiveControlPage() {
   // Authoritative Control Handlers
   const handleStartOrResume = async () => {
     if (!selectedMatch) return;
-    setTimerRunning(true);
+    const isUpcoming = selectedMatch.status === 'Upcoming' || !selectedMatch.timer?.isRunning;
+    
     let res;
-    if (selectedMatch.status === 'Upcoming' || !selectedMatch.timer?.isRunning) {
+    if (isUpcoming) {
       res = await adminService.startMatch(selectedMatch._id);
     } else {
       res = await adminService.resumeMatch(selectedMatch._id);
     }
-    setSelectedMatch((prev) => (prev ? { ...prev, status: 'Live' } : null));
-    setMatches((prev) =>
-      prev.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Live' } : m))
-    );
-    if (res?.success) {
-      showNotification('Match started! Live telemetry synchronized with Live Match Center.');
-    } else {
-      showNotification('Timer active (authoritative live clock running).');
+
+    if (!res || !res.success) {
+      setTimerRunning(false);
+      showError(res?.error || (res as any)?.message || 'Failed to start timer. Check authorization.');
+      return;
     }
+
+    // Backend accepted authoritative start/resume:
+    setTimerRunning(true);
+    const updatedTimer = res.data?.timer || {
+      ...selectedMatch.timer,
+      isRunning: true,
+      isPaused: false,
+      remainingTime: res.data?.remainingMs ? Math.round(res.data.remainingMs / 1000) : selectedMatch.timer?.remainingTime ?? 240,
+      phaseEndsAt: res.data?.phaseEndsAt,
+      currentStage: res.data?.phase || selectedMatch.timer?.currentStage || 'First Half',
+      timerStatus: 'RUNNING'
+    };
+
+    setSelectedMatch((prev) => prev ? {
+      ...prev,
+      status: 'Live',
+      timer: updatedTimer
+    } : null);
+
+    setMatches((prev) =>
+      prev.map((m) => (m._id === selectedMatch._id ? { ...m, status: 'Live', timer: updatedTimer } : m))
+    );
+
+    if (updatedTimer.remainingTime !== undefined) {
+      setRemainingSeconds(updatedTimer.remainingTime);
+    }
+    if (updatedTimer.currentStage) {
+      setCurrentStage(updatedTimer.currentStage);
+    }
+
+    showNotification(isUpcoming ? 'Match started! Live clock is RUNNING.' : 'Clock resumed! Live clock is RUNNING.');
   };
 
   const handlePause = async () => {
     if (!selectedMatch) return;
-    setTimerRunning(false);
     const res = await adminService.pauseMatch(selectedMatch._id);
-    setSelectedMatch((prev) =>
-      prev ? { ...prev, timer: prev.timer ? { ...prev.timer, isPaused: true } : undefined } : null
-    );
-    if (res?.success) {
-      showNotification('Timer paused and authoritative state broadcasted to Live viewers.');
-    } else {
-      showNotification('Timer paused locally.');
+    if (!res || !res.success) {
+      showError(res?.error || (res as any)?.message || 'Failed to pause clock.');
+      return;
     }
+
+    setTimerRunning(false);
+    const pausedTimer = res.data?.timer || {
+      ...selectedMatch.timer,
+      isRunning: true,
+      isPaused: true,
+      remainingTime: res.data?.remainingMs ? Math.round(res.data.remainingMs / 1000) : remainingSeconds,
+      phaseEndsAt: null,
+      timerStatus: 'PAUSED'
+    };
+
+    setSelectedMatch((prev) => prev ? { ...prev, timer: pausedTimer } : null);
+    setMatches((prev) =>
+      prev.map((m) => (m._id === selectedMatch._id ? { ...m, timer: pausedTimer } : m))
+    );
+
+    if (pausedTimer.remainingTime !== undefined) {
+      setRemainingSeconds(pausedTimer.remainingTime);
+    }
+
+    showNotification('Timer paused and authoritative state broadcasted to Live viewers.');
   };
 
   // Add Time Handler (+1 Min, +2 Min Extra Time)
@@ -458,56 +473,35 @@ export default function AdminLiveControlPage() {
     showNotification(`Match is a Draw (${scoreA} - ${scoreB})! 2 minutes extra time added to timer.`);
   };
 
-  // Auto-Advance Next Stage in Sequence
+  // Auto-Advance Next Stage in Sequence via Backend Authority
   const handleAdvanceNextStage = async () => {
     if (!selectedMatch) return;
-    if (currentStage.includes('First')) {
-      await handleHalfTimeBreak();
-    } else if (currentStage.includes('Half-Time') || currentStage.includes('Break')) {
-      await handleSecondHalf();
-    } else if (currentStage.includes('Second')) {
-      if (scoreA === scoreB) {
-        await handleExtraTimeDraw();
-      } else {
-        await handleFinalizeMatch();
-      }
-    } else if (currentStage.includes('Extra Time') || currentStage.includes('Extra')) {
-      if (scoreA === scoreB) {
-        setTimerRunning(false);
-        setRemainingSeconds(0);
-        setCurrentStage('Penalty Shootout');
+    const res = await adminService.advanceStage(selectedMatch._id);
+    if (res?.success && res.data) {
+      const matchData = res.data;
+      const stage = matchData.timer?.currentStage || matchData.phase || matchData.status;
+      setCurrentStage(stage);
+      setRemainingSeconds(matchData.timer?.remainingTime ?? 0);
+      setTimerRunning(Boolean(matchData.timer?.isRunning && !matchData.timer?.isPaused));
+
+      if (stage === 'Penalty Shootout' || matchData.status === 'Penalty Shootout') {
         setCompletedStages((all) =>
           Array.from(new Set([...all, 'First Half', 'Half-Time Break', 'Second Half', 'Extra Time (Draw Decider)']))
         );
-        if (selectedMatch) {
-          adminService.startPenaltyShootout(selectedMatch._id).catch(() => {});
-          setSelectedMatch((m) =>
-            m
-              ? {
-                  ...m,
-                  status: 'Penalty Shootout',
-                  shootout: {
-                    ...(m.shootout || {}),
-                    isShootout: true,
-                    round: 1,
-                    teamAPenaltyScore: 0,
-                    teamBPenaltyScore: 0,
-                  },
-                }
-              : null
-          );
-        }
-        showNotification(
-          `Still tied (${scoreA} - ${scoreB}) after 2-minute Extra Time! Penalty Shootout has opened.`
-        );
+        showNotification(`Advanced to Penalty Shootout! 3 regulation kicks per team.`);
         setTimeout(() => {
           document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
         }, 150);
+      } else if (matchData.status === 'Completed' || stage === 'Match Completed') {
+        showNotification(`Match finalized and marked Completed.`);
       } else {
-        await handleFinalizeMatch();
+        showNotification(`Advanced stage to ${stage}!`);
       }
+
+      const updated = await matchService.getMatchById(selectedMatch._id);
+      if (updated) setSelectedMatch(updated);
     } else {
-      await handleFinalizeMatch();
+      showError(res?.error || 'Failed to advance stage');
     }
   };
 
@@ -965,9 +959,9 @@ export default function AdminLiveControlPage() {
   const hasShootoutWinner = regulationKicksComplete && penaltyScoreA !== penaltyScoreB;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-6 select-none">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6 select-none w-full animate-slide-up">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-container-high">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-surface-container-high">
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-primary-container animate-pulse"></span>
@@ -975,7 +969,7 @@ export default function AdminLiveControlPage() {
               Unified Match Operator Desk
             </span>
           </div>
-          <h1 className="font-headline-lg text-2xl sm:text-3xl font-black text-on-surface tracking-tight mt-0.5">
+          <h1 className="font-headline-lg text-xl sm:text-2xl md:text-3xl font-black text-on-surface tracking-tight mt-0.5">
             Super Admin Live Match Controller
           </h1>
           <p className="text-xs text-on-surface-variant font-medium mt-1">
@@ -984,9 +978,9 @@ export default function AdminLiveControlPage() {
         </div>
 
         {/* Match Selector & Launch Center */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            <label className="text-[11px] font-bold text-on-surface-variant uppercase font-label-caps">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase font-label-caps shrink-0">
               Fixture:
             </label>
             <select
@@ -996,7 +990,7 @@ export default function AdminLiveControlPage() {
                 const found = matches.find((m) => m._id === e.target.value);
                 if (found) selectMatch(found);
               }}
-              className="bg-surface-container-lowest text-xs font-bold text-on-surface px-3 py-2 rounded-xl border border-surface-container-high shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer max-w-[220px] truncate disabled:opacity-50"
+              className="bg-surface-container-lowest text-xs font-bold text-on-surface px-3 py-2 rounded-xl border border-surface-container-high shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer w-full sm:w-auto sm:max-w-[220px] truncate disabled:opacity-50"
             >
               {matches.length === 0 ? (
                 <option value="">No fixtures scheduled</option>
@@ -1015,7 +1009,7 @@ export default function AdminLiveControlPage() {
             <button
               type="button"
               onClick={() => handleLaunchMatch(selectedMatch)}
-              className="px-3 py-2 rounded-xl bg-primary-container hover:bg-primary text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-primary-container hover:bg-primary text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
               title="Launch selected fixture live"
             >
               <Play className="w-3.5 h-3.5 fill-white" />
@@ -1028,7 +1022,7 @@ export default function AdminLiveControlPage() {
             <button
               type="button"
               onClick={() => handleRestartMatch(selectedMatch)}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 border border-slate-600 shadow-xs transition-all active:scale-95 cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 border border-slate-600 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
               title="Restart selected completed match at 0-0"
             >
               <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
@@ -1040,10 +1034,11 @@ export default function AdminLiveControlPage() {
           <button
             type="button"
             onClick={() => setShowMatchPickerModal(true)}
-            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-primary-container border border-emerald-300 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-primary-container border border-emerald-300 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
           >
             <Zap className="w-3.5 h-3.5 fill-primary-container text-primary-container" />
-            <span>Choose Match to Start</span>
+            <span className="hidden sm:inline">Choose Match to Start</span>
+            <span className="sm:hidden">Choose Match</span>
           </button>
         </div>
       </div>
@@ -1112,10 +1107,10 @@ export default function AdminLiveControlPage() {
       ) : (
         <>
           {/* Main Scoreboard & Official Clock Hero */}
-          <div className="bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xl p-6 sm:p-8 flex flex-col gap-6">
+          <div className="bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-container-high shadow-xl p-4 sm:p-8 flex flex-col gap-4 sm:gap-6 transition-all duration-200">
         {/* Match Info & Current Stage Badge */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-surface-container-high">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 sm:pb-4 border-b border-surface-container-high">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-label-caps text-xs uppercase bg-primary-container text-white px-3 py-1 rounded-full font-black tracking-wider">
               {currentStage}
             </span>
@@ -1125,9 +1120,9 @@ export default function AdminLiveControlPage() {
           </div>
           <div className="flex items-center gap-2">
             <span
-              className={`px-3 py-1 rounded-full text-xs font-bold font-label-caps ${
+              className={`px-3 py-1 rounded-full text-xs font-bold font-label-caps transition-all ${
                 timerRunning
-                  ? 'bg-emerald-100 text-primary-container ring-2 ring-primary-container/20'
+                  ? 'bg-emerald-100 text-primary-container ring-2 ring-primary-container/20 animate-live-glow'
                   : 'bg-amber-100 text-amber-800'
               }`}
             >
@@ -1138,13 +1133,13 @@ export default function AdminLiveControlPage() {
 
         {/* Completion Alert Banner if match is over */}
         {selectedMatch?.status === 'Completed' && (
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl border border-emerald-500/30 animate-in fade-in">
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl border border-emerald-500/30 animate-in fade-in">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-xl border border-emerald-500/30 shrink-0">
                 ✓
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-headline-md text-sm font-black tracking-wide text-emerald-400 uppercase">
                     MATCH FINISHED & OVER (FULL TIME)
                   </span>
@@ -1181,59 +1176,61 @@ export default function AdminLiveControlPage() {
         )}
 
         {/* Central Score Display */}
-        <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4 sm:gap-6">
           {/* Team A */}
-          <div className="md:col-span-4 flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-2xl shadow-inner border border-primary-container/30 shrink-0 overflow-hidden relative">
-              <span className="absolute inset-0 flex items-center justify-center font-black text-xl text-primary-container">
-                {teamAName.slice(0, 2).toUpperCase()}
-              </span>
-              {selectedMatch?.teamA?.logo && (
-                <img
-                  src={selectedMatch.teamA.logo}
-                  alt=""
-                  className="w-full h-full object-cover relative z-10"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
-              )}
+          <div className="md:col-span-4 flex items-center justify-between md:justify-start gap-3 sm:gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-xl sm:text-2xl shadow-inner border border-primary-container/30 shrink-0 overflow-hidden relative">
+                <span className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-xl text-primary-container">
+                  {teamAName.slice(0, 2).toUpperCase()}
+                </span>
+                {selectedMatch?.teamA?.logo && (
+                  <img
+                    src={selectedMatch.teamA.logo}
+                    alt=""
+                    className="w-full h-full object-cover relative z-10"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
+              </div>
+              <div>
+                <h2 className="font-headline-md text-xl sm:text-2xl font-black text-on-surface leading-tight">
+                  {teamAName}
+                </h2>
+                <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
+                  Home Squad
+                </span>
+              </div>
             </div>
-            <div>
-              <h2 className="font-headline-md text-2xl font-black text-on-surface leading-tight">
-                {teamAName}
-              </h2>
-              <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
-                Home Squad
-              </span>
-              <button
-                type="button"
-                onClick={() => handleOpenGoalModal('A')}
-                disabled={selectedMatch?.status === 'Completed'}
-                className="mt-2 py-1 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Goal ({teamAName.split(' ')[0]})</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleOpenGoalModal('A')}
+              disabled={selectedMatch?.status === 'Completed'}
+              className="py-2 sm:py-1 px-3 sm:px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30 shrink-0 min-h-[38px]"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Goal</span>
+            </button>
           </div>
 
           {/* Middle: Dark Scoreboard matching official reference */}
-          <div className="md:col-span-4 flex flex-col items-center justify-center text-center p-4 bg-surface-container-low rounded-2xl border border-surface-container shadow-inner">
+          <div className="md:col-span-4 flex flex-col items-center justify-center text-center p-3 sm:p-4 bg-surface-container-low rounded-2xl border border-surface-container shadow-inner">
             <span className="font-label-caps text-[10px] text-primary-container font-extrabold uppercase mb-1 tracking-wider bg-primary-container/10 px-3 py-0.5 rounded-full border border-primary-container/20">
               Official Match Score
             </span>
 
             {/* Dark Scoreboard Box matching user screenshot */}
-            <div className="bg-[#1e2025] px-8 py-3.5 rounded-2xl border border-white/10 shadow-lg flex flex-col items-center gap-1 my-2 min-w-[210px]">
-              <div className="flex items-center justify-center gap-6">
-                <span className="font-display-score text-4xl sm:text-5xl font-black text-white tabular-nums">
+            <div className="bg-[#1e2025] px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-white/10 shadow-lg flex flex-col items-center gap-1 my-1.5 sm:my-2 w-full max-w-[240px] transition-transform hover:scale-[1.02]">
+              <div className="flex items-center justify-center gap-5 sm:gap-6">
+                <span className="font-display-score text-3xl sm:text-5xl font-black text-white tabular-nums tracking-tight">
                   {scoreA}
                 </span>
-                <span className="font-display-score text-3xl font-light text-slate-400">
+                <span className="font-display-score text-2xl sm:text-3xl font-light text-slate-400">
                   -
                 </span>
-                <span className="font-display-score text-4xl sm:text-5xl font-black text-white tabular-nums">
+                <span className="font-display-score text-3xl sm:text-5xl font-black text-white tabular-nums tracking-tight">
                   {scoreB}
                 </span>
               </div>
@@ -1246,13 +1243,13 @@ export default function AdminLiveControlPage() {
             </div>
 
             {/* Direct Score Adjustment Controls */}
-            <div className="flex items-center justify-center gap-6 mt-1">
+            <div className="flex items-center justify-center gap-4 sm:gap-6 mt-1">
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => handleScoreAdjust('A', -1)}
                   disabled={selectedMatch?.status === 'Completed'}
-                  className="w-6 h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-xs disabled:opacity-30"
+                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-xs disabled:opacity-30 transition-all active:scale-95"
                   title="Decrease Team A score"
                 >
                   -
@@ -1261,7 +1258,7 @@ export default function AdminLiveControlPage() {
                   type="button"
                   onClick={() => handleScoreAdjust('A', 1)}
                   disabled={selectedMatch?.status === 'Completed'}
-                  className="w-6 h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-xs disabled:opacity-30"
+                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-xs disabled:opacity-30 transition-all active:scale-95"
                   title="Increase Team A score"
                 >
                   +
@@ -1273,7 +1270,7 @@ export default function AdminLiveControlPage() {
                   type="button"
                   onClick={() => handleScoreAdjust('B', -1)}
                   disabled={selectedMatch?.status === 'Completed'}
-                  className="w-6 h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-xs disabled:opacity-30"
+                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-xs disabled:opacity-30 transition-all active:scale-95"
                   title="Decrease Team B score"
                 >
                   -
@@ -1282,7 +1279,7 @@ export default function AdminLiveControlPage() {
                   type="button"
                   onClick={() => handleScoreAdjust('B', 1)}
                   disabled={selectedMatch?.status === 'Completed'}
-                  className="w-6 h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-xs disabled:opacity-30"
+                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-xs disabled:opacity-30 transition-all active:scale-95"
                   title="Increase Team B score"
                 >
                   +
@@ -1290,8 +1287,9 @@ export default function AdminLiveControlPage() {
               </div>
             </div>
 
-            <div className="font-stat-numeral text-2xl font-black text-primary-container tabular-nums mt-2 tracking-tight">
-              {formatTime(remainingSeconds)}
+            <div className="font-stat-numeral text-2xl sm:text-3xl font-black text-primary-container tabular-nums mt-1.5 tracking-tight flex items-center justify-center gap-2">
+              {timerRunning && <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+              <span>{formatTime(remainingSeconds)}</span>
             </div>
             <span className="font-label-caps text-[10px] text-on-surface-variant uppercase mt-0.5">
               Stage: <strong>{currentStage}</strong>
@@ -1299,110 +1297,117 @@ export default function AdminLiveControlPage() {
           </div>
 
           {/* Team B */}
-          <div className="md:col-span-4 flex items-center justify-between md:justify-end gap-4 text-right">
-            <div>
-              <h2 className="font-headline-md text-2xl font-black text-on-surface leading-tight">
-                {teamBName}
-              </h2>
-              <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
-                Visiting Team
-              </span>
-              <button
-                type="button"
-                onClick={() => handleOpenGoalModal('B')}
-                disabled={selectedMatch?.status === 'Completed'}
-                className="mt-2 py-1 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Goal ({teamBName.split(' ')[0]})</span>
-              </button>
-            </div>
-            <div className="w-16 h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-2xl shadow-inner border border-secondary/30 shrink-0 overflow-hidden relative">
-              <span className="absolute inset-0 flex items-center justify-center font-black text-xl text-secondary">
-                {teamBName.slice(0, 2).toUpperCase()}
-              </span>
-              {selectedMatch?.teamB?.logo && (
-                <img
-                  src={selectedMatch.teamB.logo}
-                  alt=""
-                  className="w-full h-full object-cover relative z-10"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
-              )}
+          <div className="md:col-span-4 flex items-center justify-between md:justify-end gap-3 sm:gap-4 text-right">
+            <button
+              type="button"
+              onClick={() => handleOpenGoalModal('B')}
+              disabled={selectedMatch?.status === 'Completed'}
+              className="py-2 sm:py-1 px-3 sm:px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30 shrink-0 md:order-1 min-h-[38px]"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Goal</span>
+            </button>
+            <div className="flex items-center gap-3 md:order-2">
+              <div className="text-right">
+                <h2 className="font-headline-md text-xl sm:text-2xl font-black text-on-surface leading-tight">
+                  {teamBName}
+                </h2>
+                <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
+                  Visiting Team
+                </span>
+              </div>
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-xl sm:text-2xl shadow-inner border border-secondary/30 shrink-0 overflow-hidden relative">
+                <span className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-xl text-secondary">
+                  {teamBName.slice(0, 2).toUpperCase()}
+                </span>
+                {selectedMatch?.teamB?.logo && (
+                  <img
+                    src={selectedMatch.teamB.logo}
+                    alt=""
+                    className="w-full h-full object-cover relative z-10"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Primary Action Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-2">
           {/* Pause / Resume Clock / Restart Match Button */}
           {selectedMatch?.status === 'Completed' ? (
             <button
               type="button"
               onClick={() => handleRestartMatch(selectedMatch)}
-              className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-600 transition-all shadow-xs active:scale-95 cursor-pointer"
+              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-600 transition-all shadow-xs active:scale-95 cursor-pointer min-h-[46px]"
               title="Reset scores and restart this match at 0-0"
             >
-              <RotateCcw className="w-4 h-4 text-emerald-400" />
+              <RotateCcw className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Restart (0:0)</span>
             </button>
           ) : timerRunning ? (
             <button
+              type="button"
               onClick={handlePause}
-              className="py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95"
+              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 min-h-[46px]"
             >
-              <Pause className="w-4 h-4 text-amber-600" />
+              <Pause className="w-4 h-4 text-amber-600 shrink-0" />
               <span>Pause Clock</span>
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleStartOrResume}
-              className="py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95"
+              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 cursor-pointer min-h-[46px]"
             >
-              <Play className="w-4 h-4" />
+              <Play className="w-4 h-4 fill-white shrink-0" />
               <span>{selectedMatch?.status === 'Upcoming' ? 'Start Match' : 'Resume Clock'}</span>
             </button>
           )}
 
-          {/* Goal Team A */}
+          {/* Direct Goal Record for Team A */}
           <button
+            type="button"
             onClick={() => handleOpenGoalModal('A')}
             disabled={selectedMatch?.status === 'Completed'}
-            className="py-3 px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-40"
+            className="py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-primary-container font-bold text-[11px] sm:text-xs tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 disabled:opacity-40 min-h-[46px] truncate"
           >
-            <Plus className="w-4 h-4 text-primary-container" />
-            <span>+ Goal ({teamAName.split(' ')[0]})</span>
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">+ Goal ({teamAName.split(' ')[0]})</span>
           </button>
 
-          {/* Goal Team B */}
+          {/* Direct Goal Record for Team B */}
           <button
+            type="button"
             onClick={() => handleOpenGoalModal('B')}
             disabled={selectedMatch?.status === 'Completed'}
-            className="py-3 px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-all shadow-xs disabled:opacity-40"
+            className="py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-primary-container font-bold text-[11px] sm:text-xs tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 disabled:opacity-40 min-h-[46px] truncate"
           >
-            <Plus className="w-4 h-4 text-primary-container" />
-            <span>+ Goal ({teamBName.split(' ')[0]})</span>
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">+ Goal ({teamBName.split(' ')[0]})</span>
           </button>
 
-          {/* Finalize / Choose Next Match Button */}
+          {/* Finalize Match Button */}
           {selectedMatch?.status === 'Completed' ? (
             <button
               type="button"
               onClick={() => setShowMatchPickerModal(true)}
-              className="py-3 px-4 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-400/40"
+              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-400/40 min-h-[46px]"
               title="Select which fixture to start next"
             >
-              <Play className="w-4 h-4 fill-white" />
+              <Play className="w-4 h-4 fill-white shrink-0" />
               <span>⚡ Start Match</span>
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleFinalizeMatch}
-              className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95"
+              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 min-h-[46px]"
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Finalize Match</span>
             </button>
           )}
@@ -1410,10 +1415,10 @@ export default function AdminLiveControlPage() {
       </div>
 
       {/* Stage Transitions & Shootout Controller Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         {/* Left Column (7 cols): Official 10-Minute Match Stage Transitions */}
-        <div className="lg:col-span-7 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4">
-          <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
+        <div className="lg:col-span-7 bg-surface-container-lowest p-4 sm:p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-surface-container-high">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary-container" />
               <h3 className="font-headline-md text-base font-extrabold text-on-surface">
@@ -1422,9 +1427,9 @@ export default function AdminLiveControlPage() {
             </div>
             <button
               onClick={handleAdvanceNextStage}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs shadow-xs transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-container hover:bg-primary text-white font-bold text-xs shadow-xs transition-all active:scale-95"
             >
-              <Zap className="w-3.5 h-3.5" />
+              <Zap className="w-3.5 h-3.5 fill-white" />
               <span>Advance Next Stage ⚡</span>
             </button>
           </div>
@@ -1433,7 +1438,7 @@ export default function AdminLiveControlPage() {
             Standard match timeline: 4m 1st Half &rarr; 2m Half-Time Break &rarr; 4m 2nd Half &rarr; +2m Extra Time if tied. Completed stages are locked and cannot be re-triggered.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
             {/* 1. First Half */}
             <button
               type="button"
@@ -1641,7 +1646,7 @@ export default function AdminLiveControlPage() {
 
         {/* Right Column (5 cols): 3-Kick Penalty Shootout + Sudden Death Coin Toss (Conditional Tie-Breaker) */}
         {(Boolean(selectedMatch?.shootout?.isShootout) || currentStage.includes('Penalty') || (isExtraTimeDone && scoreA === scoreB)) ? (
-          <div id="penalty-shootout-console" className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4 animate-in fade-in">
+          <div id="penalty-shootout-console" className="lg:col-span-5 bg-surface-container-lowest p-4 sm:p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4 animate-in fade-in">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary-container" />
@@ -1980,7 +1985,7 @@ export default function AdminLiveControlPage() {
           </div>
         ) : (
           /* Penalty Shootout Inactive Placeholder when not tied */
-          <div className="lg:col-span-5 bg-surface-container-lowest p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col items-center justify-center text-center py-12">
+          <div className="lg:col-span-5 bg-surface-container-lowest p-4 sm:p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col items-center justify-center text-center py-8 sm:py-12">
             <div className="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface-variant/40 mb-3 border border-surface-container-high">
               <Target className="w-6 h-6" />
             </div>
@@ -2001,8 +2006,8 @@ export default function AdminLiveControlPage() {
 
       {/* Goal Recorder Modal - Shows ONLY the Scoring Team's Players */}
       {showGoalModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="max-w-lg w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 space-y-4 max-h-[92vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+          <div className="max-w-lg w-full bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-container-high shadow-2xl p-4 sm:p-6 space-y-3.5 sm:space-y-4 max-h-[92vh] flex flex-col animate-scale-in">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
               <div className="flex items-center gap-2.5">
@@ -2176,8 +2181,8 @@ export default function AdminLiveControlPage() {
       )}
       {/* Match Selection & Launch Modal (Choose Which Match to Start) */}
       {showMatchPickerModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="max-w-3xl w-full bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-2xl p-6 sm:p-7 space-y-4 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+          <div className="max-w-3xl w-full bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-container-high shadow-2xl p-4 sm:p-7 space-y-3.5 sm:space-y-4 max-h-[92vh] flex flex-col animate-scale-in">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high shrink-0">
               <div className="flex items-center gap-3">

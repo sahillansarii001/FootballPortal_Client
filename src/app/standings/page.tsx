@@ -34,7 +34,7 @@ export default function StandingsPage() {
         action={
           <div className="flex items-center gap-3 bg-surface-container-low px-4 py-2 rounded-xl text-xs font-bold text-on-surface border border-surface-container">
             <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
-            <span>Live Sync Verified • Tournament ID #VFL-2025</span>
+            <span>Live Sync Verified • Tournament Championship 2026</span>
           </div>
         }
       />

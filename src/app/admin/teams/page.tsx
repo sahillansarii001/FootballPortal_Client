@@ -300,7 +300,7 @@ export default function AdminTeamsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-6 select-none">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col gap-4 sm:gap-6 select-none animate-slide-up">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-container-high">
         <div>

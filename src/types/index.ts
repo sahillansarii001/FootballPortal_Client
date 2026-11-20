@@ -98,14 +98,18 @@ export interface MatchEvent {
 }
 
 export interface MatchTimerState {
-  currentStage: 'First Half' | 'Transition Gap' | 'Half-Time' | 'Second Half' | 'Match Completed' | 'Penalty Shootout' | string;
+  currentStage: 'First Half' | 'Transition Gap' | 'Half-Time' | 'Second Half' | 'Extra Time' | 'Match Completed' | 'Penalty Shootout' | string;
   stageDuration: number;
   remainingTime: number;
+  remainingMs?: number;
   isRunning: boolean;
   isPaused: boolean;
+  phaseEndsAt?: string | null;
   startedTimestamp?: string | null;
   pausedTimestamp?: string | null;
   totalPausedDuration?: number;
+  timerStatus?: 'IDLE' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | string;
+  serverTime?: number;
 }
 
 export interface PenaltyKick {

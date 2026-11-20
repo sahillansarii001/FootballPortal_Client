@@ -11,6 +11,7 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
   const [match, setMatch] = useState<Match | null>(initialMatch || null);
   const [timeline, setTimeline] = useState<MatchEvent[]>(initialMatch?.events || []);
   const [isConnected, setIsConnected] = useState(false);
+  const [loading, setLoading] = useState(!initialMatch);
   const [lastEvent, setLastEvent] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -18,16 +19,30 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
-      const liveData = await matchService.getAuthoritativeLiveState(matchId);
-      if (isMounted && liveData) {
-        setMatch(liveData);
-        if (liveData.events && liveData.events.length > 0) {
-          setTimeline(liveData.events);
-        }
+      if (!matchId) {
+        setLoading(false);
+        return;
       }
-      const timelineData = await matchService.getMatchTimeline(matchId);
-      if (isMounted && timelineData && timelineData.length > 0) {
-        setTimeline(timelineData);
+      setLoading(true);
+      try {
+        let matchResult = await matchService.getAuthoritativeLiveState(matchId);
+        if (!matchResult) {
+          matchResult = await matchService.getMatchById(matchId);
+        }
+        if (isMounted && matchResult) {
+          setMatch(matchResult);
+          if (matchResult.events && matchResult.events.length > 0) {
+            setTimeline(matchResult.events);
+          }
+        }
+        const timelineData = await matchService.getMatchTimeline(matchId);
+        if (isMounted && timelineData && timelineData.length > 0) {
+          setTimeline(timelineData);
+        }
+      } catch (err) {
+        console.error('Error fetching match data:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     }
     loadData();
@@ -70,51 +85,116 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
     socket.on('match:sync', handleSync);
     socket.on('sync:state', handleSync);
 
-    // Timer updates
-    socket.on('timer:update', (data: { remainingTime: number; stage?: string }) => {
+    // Timer updates & authoritative synchronization
+    socket.on('timer:sync', (data: any) => {
       setMatch((prev) => {
         if (!prev) return prev;
+        const remainingTime = data.remainingTime ?? prev.timer?.remainingTime ?? 240;
         return {
           ...prev,
+          currentStage: data.currentStage || prev.currentStage,
           timer: {
-            ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: true, isPaused: false }),
-            remainingTime: data.remainingTime,
-            currentStage: data.stage || prev.timer?.currentStage || prev.currentStage || 'First Half',
-            isRunning: true,
-            isPaused: false,
+            ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: false, isPaused: false }),
+            remainingTime,
+            stageDuration: data.stageDuration ?? prev.timer?.stageDuration ?? 240,
+            currentStage: data.currentStage || prev.timer?.currentStage || 'First Half',
+            phaseEndsAt: data.phaseEndsAt,
+            isRunning: Boolean(data.isRunning),
+            isPaused: Boolean(data.isPaused),
           },
         };
       });
     });
 
-    socket.on('timer:updated', (data: { remainingTime: number; stage?: string }) => {
+    socket.on('timer:update', (data: any) => {
       setMatch((prev) => {
         if (!prev) return prev;
+        const remainingTime = data.remainingTime ?? prev.timer?.remainingTime ?? 240;
         return {
           ...prev,
+          currentStage: data.currentStage || data.stage || prev.currentStage,
           timer: {
             ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: true, isPaused: false }),
-            remainingTime: data.remainingTime,
-            currentStage: data.stage || prev.timer?.currentStage || prev.currentStage || 'First Half',
-            isRunning: true,
-            isPaused: false,
+            remainingTime,
+            phaseEndsAt: data.phaseEndsAt ?? prev.timer?.phaseEndsAt,
+            currentStage: data.currentStage || data.stage || prev.timer?.currentStage || 'First Half',
+            isRunning: data.isRunning !== undefined ? Boolean(data.isRunning) : true,
+            isPaused: data.isPaused !== undefined ? Boolean(data.isPaused) : false,
           },
         };
       });
     });
 
-    socket.on('timer:started', () => {
-      setMatch((prev) => prev ? { ...prev, status: 'Live', timer: { ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: true, isPaused: false }), isRunning: true, isPaused: false } } : prev);
+    socket.on('timer:updated', (data: any) => {
+      setMatch((prev) => {
+        if (!prev) return prev;
+        const remainingTime = data.remainingTime ?? prev.timer?.remainingTime ?? 240;
+        return {
+          ...prev,
+          currentStage: data.currentStage || data.stage || prev.currentStage,
+          timer: {
+            ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: true, isPaused: false }),
+            remainingTime,
+            phaseEndsAt: data.phaseEndsAt ?? prev.timer?.phaseEndsAt,
+            currentStage: data.currentStage || data.stage || prev.timer?.currentStage || 'First Half',
+            isRunning: data.isRunning !== undefined ? Boolean(data.isRunning) : true,
+            isPaused: data.isPaused !== undefined ? Boolean(data.isPaused) : false,
+          },
+        };
+      });
+    });
+
+    socket.on('timer:started', (data: any) => {
+      setMatch((prev) => {
+        if (!prev) return prev;
+        const stage = data?.currentStage || prev.timer?.currentStage || 'First Half';
+        return {
+          ...prev,
+          status: stage === 'Half-Time' ? 'Half-Time' : 'Live',
+          currentStage: stage,
+          timer: {
+            ...(prev.timer || { currentStage: stage, stageDuration: 240, remainingTime: 240, isRunning: true, isPaused: false }),
+            remainingTime: data?.remainingTime ?? prev.timer?.remainingTime ?? 240,
+            phaseEndsAt: data?.phaseEndsAt ?? null,
+            isRunning: true,
+            isPaused: false,
+          },
+        };
+      });
       setLastEvent('Timer Started');
     });
 
     socket.on('timer:paused', (data: any) => {
-      setMatch((prev) => prev ? { ...prev, timer: { ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: false, isPaused: true }), isRunning: false, isPaused: true, remainingTime: data?.remainingTime ?? prev.timer?.remainingTime } } : prev);
+      setMatch((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          timer: {
+            ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: false, isPaused: true }),
+            remainingTime: data?.remainingTime ?? prev.timer?.remainingTime,
+            phaseEndsAt: null,
+            isRunning: true,
+            isPaused: true,
+          },
+        };
+      });
       setLastEvent('Timer Paused');
     });
 
     socket.on('timer:resumed', (data: any) => {
-      setMatch((prev) => prev ? { ...prev, timer: { ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: true, isPaused: false }), isRunning: true, isPaused: false, remainingTime: data?.remainingTime ?? prev.timer?.remainingTime } } : prev);
+      setMatch((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          timer: {
+            ...(prev.timer || { currentStage: 'First Half', stageDuration: 240, remainingTime: 240, isRunning: true, isPaused: false }),
+            remainingTime: data?.remainingTime ?? prev.timer?.remainingTime,
+            phaseEndsAt: data?.phaseEndsAt ?? null,
+            isRunning: true,
+            isPaused: false,
+          },
+        };
+      });
       setLastEvent('Timer Resumed');
     });
 
@@ -150,16 +230,43 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
       });
     });
 
-    // Stage changes
-    socket.on('stage:change', (data: any) => {
-      setLastEvent(`Stage changed: ${data?.stage || data}`);
-      setMatch((prev) => prev ? { ...prev, currentStage: data?.stage || data } : prev);
-    });
+    // Stage / Phase changes
+    const handlePhaseChange = (data: any) => {
+      const stage = data?.currentStage || data?.phase || data?.stage || data;
+      setLastEvent(`Stage changed: ${stage}`);
+      setMatch((prev) => {
+        if (!prev) return prev;
+        const status = data?.status || (stage === 'Half-Time' ? 'Half-Time' : stage === 'Penalty Shootout' ? 'Penalty Shootout' : 'Live');
+        return {
+          ...prev,
+          status,
+          currentStage: stage,
+          timer: {
+            ...(prev.timer || { currentStage: stage, stageDuration: data?.stageDuration ?? 240, remainingTime: data?.remainingTime ?? 240, isRunning: true, isPaused: false }),
+            currentStage: stage,
+            remainingTime: data?.remainingTime ?? prev.timer?.remainingTime ?? 240,
+            stageDuration: data?.stageDuration ?? prev.timer?.stageDuration ?? 240,
+            phaseEndsAt: data?.phaseEndsAt ?? null,
+            isRunning: stage !== 'Penalty Shootout' && stage !== 'Match Completed',
+            isPaused: false,
+          },
+        };
+      });
+    };
+
+    socket.on('stage:change', handlePhaseChange);
+    socket.on('match:phase_changed', handlePhaseChange);
 
     // Match completed
     socket.on('match:completed', (data: any) => {
       setLastEvent('Match Completed');
-      setMatch((prev) => prev ? { ...prev, status: 'Completed', isFinalized: true, ...data } : prev);
+      setMatch((prev) => prev ? {
+        ...prev,
+        status: 'Completed',
+        isFinalized: true,
+        timer: prev.timer ? { ...prev.timer, isRunning: false, isPaused: false, remainingTime: 0, phaseEndsAt: null } : prev.timer,
+        ...data
+      } : prev);
     });
 
     return () => {
@@ -168,5 +275,32 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
     };
   }, [matchId]);
 
-  return { match, timeline, isConnected, lastEvent };
+  // Smooth local countdown calculation synchronized with authoritative phaseEndsAt
+  useEffect(() => {
+    if (!match?.timer?.isRunning || match.timer.isPaused) return;
+
+    const ticker = setInterval(() => {
+      setMatch((prev) => {
+        if (!prev || !prev.timer || !prev.timer.isRunning || prev.timer.isPaused) return prev;
+        let remaining = prev.timer.remainingTime;
+        if (prev.timer.phaseEndsAt) {
+          const diffMs = new Date(prev.timer.phaseEndsAt).getTime() - Date.now();
+          remaining = Math.max(0, Math.ceil(diffMs / 1000));
+        } else {
+          remaining = Math.max(0, remaining - 1);
+        }
+        return {
+          ...prev,
+          timer: {
+            ...prev.timer,
+            remainingTime: remaining,
+          },
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(ticker);
+  }, [match?.timer?.isRunning, match?.timer?.isPaused, match?.timer?.phaseEndsAt]);
+
+  return { match, timeline, isConnected, lastEvent, loading };
 }

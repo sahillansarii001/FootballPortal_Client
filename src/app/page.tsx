@@ -25,6 +25,7 @@ export default async function HomePage() {
   let teams: any[] = [];
   let scorers: any[] = [];
   let standings: any[] = [];
+  let tournamentName = '';
 
   try {
     const results = await Promise.allSettled([
@@ -35,6 +36,7 @@ export default async function HomePage() {
       teamService.getAllTeams(),
       playerService.getTopScorers(5),
       standingsService.getStandings(),
+      tournamentService.getTournaments(),
     ]);
 
     if (results[0].status === 'fulfilled' && results[0].value) stats = results[0].value;
@@ -44,6 +46,9 @@ export default async function HomePage() {
     if (results[4].status === 'fulfilled' && Array.isArray(results[4].value)) teams = results[4].value;
     if (results[5].status === 'fulfilled' && Array.isArray(results[5].value)) scorers = results[5].value;
     if (results[6].status === 'fulfilled' && Array.isArray(results[6].value)) standings = results[6].value;
+    if (results[7].status === 'fulfilled' && Array.isArray(results[7].value) && results[7].value.length > 0) {
+      tournamentName = results[7].value[0].name;
+    }
   } catch (err) {
     console.error('Error fetching home page data:', err);
   }
@@ -53,7 +58,7 @@ export default async function HomePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Editorial Sports Hero Section with Atmospheric Photography */}
-      <HeroSection stats={stats} />
+      <HeroSection stats={stats} tournamentName={tournamentName} />
 
       {/* Live Broadcast Marquee Card (if active) */}
       <LiveMatchesSection liveMatch={activeLiveMatch} />

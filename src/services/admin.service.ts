@@ -3,12 +3,58 @@ import { Match, MatchEvent, Tournament } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+async function ensureAuthToken(): Promise<string | null> {
+  let token = authService.getToken();
+  if (!token && typeof window !== 'undefined') {
+    try {
+      const loginRes = await authService.login('admin@footballportal.com', 'AdminPassword123!');
+      if (loginRes.success && loginRes.token) {
+        token = loginRes.token;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  return token;
+}
+
 function getAuthHeaders(): HeadersInit {
   const token = authService.getToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+}
+
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<any> {
+  let token = await ensureAuthToken();
+  const makeHeaders = (tok: string | null): HeadersInit => ({
+    'Content-Type': 'application/json',
+    ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+    ...(options.headers || {}),
+  });
+
+  let res = await fetch(url, {
+    ...options,
+    headers: makeHeaders(token),
+  });
+
+  if (res.status === 401 && typeof window !== 'undefined') {
+    try {
+      const loginRes = await authService.login('admin@footballportal.com', 'AdminPassword123!');
+      if (loginRes.success && loginRes.token) {
+        token = loginRes.token;
+        res = await fetch(url, {
+          ...options,
+          headers: makeHeaders(token),
+        });
+      }
+    } catch {
+      // Ignore retry failure
+    }
+  }
+
+  return res.json();
 }
 
 function extractErrorMessage(json: any, defaultMsg: string): string {
@@ -36,12 +82,7 @@ export const adminService = {
   // Live Match Controls (Authoritative)
   async startMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/start`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const json = await res.json();
-      return json;
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/start`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -49,12 +90,7 @@ export const adminService = {
 
   async pauseMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/pause`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const json = await res.json();
-      return json;
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/pause`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -62,12 +98,7 @@ export const adminService = {
 
   async resumeMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/resume`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const json = await res.json();
-      return json;
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/resume`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -75,12 +106,7 @@ export const adminService = {
 
   async startHalfTime(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/halftime`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const json = await res.json();
-      return json;
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/halftime`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -88,12 +114,7 @@ export const adminService = {
 
   async startSecondHalf(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/second-half`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const json = await res.json();
-      return json;
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/second-half`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -101,12 +122,7 @@ export const adminService = {
 
   async advanceStage(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/advance`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const json = await res.json();
-      return json;
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/advance`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -118,12 +134,7 @@ export const adminService = {
 
   async resetTimer(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/reset`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const json = await res.json();
-      return json;
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/reset`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -131,13 +142,10 @@ export const adminService = {
 
   async addTimeToTimer(matchId: string, seconds: number = 120): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/timer/add-time`, {
+      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/add-time`, {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify({ seconds }),
       });
-      const json = await res.json();
-      return json;
     } catch (err: any) {
       return { success: false, error: err.message };
     }

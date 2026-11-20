@@ -105,10 +105,10 @@ export default function AdminOverviewPage() {
   const goalsPerMatch = completedMatches > 0 ? (totalGoals / completedMatches).toFixed(2) : '0.00';
 
   return (
-    <div className="flex flex-col w-full pb-16">
+    <div className="flex flex-col w-full pb-16 animate-slide-up">
       {/* Operational Sub-Header Bar */}
-      <div className="w-full bg-surface-container-lowest px-6 py-3.5 border-b border-surface-container-high shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 max-w-7xl mx-auto w-full">
+      <div className="w-full bg-surface-container-lowest px-3 sm:px-6 py-3 sm:py-3.5 border-b border-surface-container-high shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 max-w-7xl mx-auto w-full">
           {/* Status & Feeds */}
           <div className="flex items-center flex-wrap gap-3">
             <div className="flex items-center gap-1.5 bg-emerald-50 text-primary-container px-3 py-1 rounded-full text-[11px] font-bold border border-emerald-200">
@@ -151,7 +151,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Main Executive Content Body */}
-      <div className="w-full px-6 py-6 max-w-7xl mx-auto flex flex-col gap-6">
+      <div className="w-full px-3 sm:px-6 py-4 sm:py-6 max-w-7xl mx-auto flex flex-col gap-4 sm:gap-6">
         {/* Title + Date Strip */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>
