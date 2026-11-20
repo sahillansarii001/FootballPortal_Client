@@ -348,15 +348,14 @@ export default function AdminTopScorersPage() {
                       {/* Position */}
                       <td className="py-3.5 px-4">
                         <span
-                          className={`font-label-caps text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                            player.position === 'Forward'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : player.position === 'Midfielder'
+                          className={`font-label-caps text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${player.position === 'Forward'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : player.position === 'Midfielder'
                               ? 'bg-blue-50 text-blue-700 border border-blue-200'
                               : player.position === 'Defender'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          }`}
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
                         >
                           {player.position}
                         </span>
@@ -377,11 +376,10 @@ export default function AdminTopScorersPage() {
                       {/* Goals Scored */}
                       <td className="py-3.5 px-4 text-center">
                         <span
-                          className={`inline-block px-3 py-1 rounded-xl font-display-score text-sm font-black tabular-nums ${
-                            goals > 0
-                              ? 'bg-primary-container text-white shadow-xs'
-                              : 'bg-surface-container text-on-surface-variant font-bold'
-                          }`}
+                          className={`inline-block px-3 py-1 rounded-xl font-display-score text-sm font-black tabular-nums ${goals > 0
+                            ? 'bg-primary-container text-white shadow-xs'
+                            : 'bg-surface-container text-on-surface-variant font-bold'
+                            }`}
                         >
                           {goals}
                         </span>

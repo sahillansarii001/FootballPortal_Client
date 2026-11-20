@@ -55,18 +55,24 @@
 
 /* Enhanced smooth animations */
 @keyframes pulse-subtle {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
 }
 
 @keyframes live-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45);
   }
+
   50% {
     box-shadow: 0 0 0 8px rgba(21, 128, 61, 0);
   }
@@ -76,10 +82,12 @@
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.15);
     color: #10b981;
   }
+
   100% {
     transform: scale(1);
   }
@@ -90,6 +98,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -101,6 +110,7 @@
     opacity: 0;
     transform: scale(0.97);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
