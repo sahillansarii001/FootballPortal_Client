@@ -380,6 +380,10 @@ export const adminService = {
       club?: string;
       position?: string;
       team?: string;
+      goals?: number;
+      penaltiesScored?: number;
+      penaltiesSaved?: number;
+      matchesPlayed?: number;
     }
   ): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {

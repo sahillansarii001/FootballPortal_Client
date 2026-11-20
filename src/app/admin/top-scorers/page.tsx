@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Trophy,
   Award,
@@ -14,8 +14,15 @@ import {
   Sparkles,
   ArrowUpDown,
   RefreshCw,
+  Pencil,
+  X,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { playerService } from '@/services/player.service';
+import { adminService } from '@/services/admin.service';
+import { useSocket } from '@/hooks/useSocket';
 import { Player } from '@/types';
 import { LoadingState } from '@/components/common/LoadingState';
 
@@ -26,7 +33,18 @@ export default function AdminTopScorersPage() {
   const [positionFilter, setPositionFilter] = useState('ALL');
   const [teamFilter, setTeamFilter] = useState('ALL');
 
-  const loadPlayers = async () => {
+  // Edit Goals Modal State
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editGoals, setEditGoals] = useState<number | ''>(0);
+  const [editPenalties, setEditPenalties] = useState<number | ''>(0);
+  const [editMatches, setEditMatches] = useState<number | ''>(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const { socket } = useSocket();
+
+  const loadPlayers = useCallback(async () => {
     setLoading(true);
     try {
       const data = await playerService.getAllPlayers();
@@ -46,11 +64,65 @@ export default function AdminTopScorersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadPlayers();
-  }, []);
+  }, [loadPlayers]);
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      loadPlayers();
+    };
+    socket.on('player:updated', handleUpdate);
+    socket.on('player:created', handleUpdate);
+    socket.on('player:deleted', handleUpdate);
+    return () => {
+      socket.off('player:updated', handleUpdate);
+      socket.off('player:created', handleUpdate);
+      socket.off('player:deleted', handleUpdate);
+    };
+  }, [socket, loadPlayers]);
+
+  const handleOpenEdit = (player: Player) => {
+    setEditingPlayer(player);
+    setEditGoals(player.goals ?? 0);
+    setEditPenalties(player.penaltiesScored ?? 0);
+    setEditMatches(player.matchesPlayed ?? 0);
+    setSaveError(null);
+  };
+
+  const handleSaveStats = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlayer) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const res = await adminService.updatePlayer(editingPlayer._id, {
+        goals: editGoals === '' ? 0 : Math.max(0, Number(editGoals)),
+        penaltiesScored: editPenalties === '' ? 0 : Math.max(0, Number(editPenalties)),
+        matchesPlayed: editMatches === '' ? 0 : Math.max(0, Number(editMatches)),
+      });
+
+      if (!res.success) {
+        setSaveError(res.error || 'Failed to update athlete goals');
+        setIsSaving(false);
+        return;
+      }
+
+      setToastMsg(`Updated goals for ${editingPlayer.name}!`);
+      setTimeout(() => setToastMsg(null), 3000);
+      setEditingPlayer(null);
+      await loadPlayers();
+    } catch (err: any) {
+      setSaveError(err.message || 'Error updating statistics');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Filter logic
   const filteredPlayers = players.filter((player) => {
@@ -262,6 +334,7 @@ export default function AdminTopScorersPage() {
                     <th className="py-3.5 px-4 text-center">Penalties</th>
                     <th className="py-3.5 px-4 text-center text-primary-container font-black">Goals</th>
                     <th className="py-3.5 px-4 text-center">G / Match</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-container-high text-xs">
@@ -389,6 +462,18 @@ export default function AdminTopScorersPage() {
                         <td className="py-3.5 px-4 text-center font-mono text-xs font-bold text-on-surface-variant">
                           {gpm}
                         </td>
+
+                        {/* Actions */}
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            onClick={() => handleOpenEdit(player)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container hover:bg-primary-container hover:text-white text-on-surface text-xs font-bold transition-all shadow-xs border border-surface-container-high"
+                            title="Edit Goals & Performance"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Edit Goals</span>
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -406,6 +491,129 @@ export default function AdminTopScorersPage() {
             </div>
           </div>
         )}
+
+        {/* Toast Notification */}
+        {toastMsg && (
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-slate-900 text-white text-xs font-bold rounded-2xl shadow-xl animate-in slide-in-from-bottom duration-200">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>{toastMsg}</span>
+          </div>
+        )}
+
+        {/* QUICK EDIT GOALS MODAL */}
+        {editingPlayer && (
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+            <div className="relative bg-surface-container-lowest w-full max-w-md rounded-3xl border border-surface-container-high shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-surface-container-high bg-surface-container-low/40">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-primary-container/15 text-primary-container flex items-center justify-center font-bold">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-on-surface">Update Athlete Goals & Record</h3>
+                    <p className="text-[10px] text-on-surface-variant">Adjust official statistics for Top Scorers Leaderboard</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingPlayer(null)}
+                  className="w-7 h-7 rounded-lg text-on-surface-variant hover:bg-surface-container flex items-center justify-center transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSaveStats} className="p-6 space-y-4">
+                {saveError && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{saveError}</span>
+                  </div>
+                )}
+
+                {/* Player Summary Pill */}
+                <div className="p-3 bg-surface-container-low rounded-xl border border-surface-container flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-sm text-on-surface block">{editingPlayer.name}</span>
+                    <span className="text-[11px] text-on-surface-variant">
+                      #{editingPlayer.jerseyNumber} • {editingPlayer.position} • {typeof editingPlayer.team === 'object' ? (editingPlayer.team as any)?.name : 'Team'}
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-surface-container-high text-on-surface border border-surface-container-high">
+                    {editingPlayer.club || 'Independent Club'}
+                  </span>
+                </div>
+
+                {/* Goals Scored */}
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">
+                    Total Goals Scored ⚽ <span className="text-primary-container">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editGoals}
+                    onChange={(e) => setEditGoals(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-base font-black text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container/30"
+                  />
+                  <p className="text-[10px] text-on-surface-variant mt-1">
+                    Directly updates the official Golden Boot & Top Scorer ranking.
+                  </p>
+                </div>
+
+                {/* Penalties & Matches */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Penalties Scored 🥅
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editPenalties}
+                      onChange={(e) => setEditPenalties(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container/30"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Matches Played 🏟️
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editMatches}
+                      onChange={(e) => setEditMatches(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container/30"
+                    />
+                  </div>
+                </div>
+
+                {/* Modal Actions */}
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-surface-container-high">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPlayer(null)}
+                    className="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-bold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-5 py-2 rounded-xl bg-primary-container hover:bg-primary text-on-primary text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Save Record</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
-      );
+    );
 }

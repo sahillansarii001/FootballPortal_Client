@@ -52,6 +52,9 @@ export default function AdminPlayersPage() {
   const [editJersey, setEditJersey] = useState<number | ''>('');
   const [editPosition, setEditPosition] = useState('Forward');
   const [editClub, setEditClub] = useState('');
+  const [editGoals, setEditGoals] = useState<number | ''>(0);
+  const [editPenaltiesScored, setEditPenaltiesScored] = useState<number | ''>(0);
+  const [editMatchesPlayed, setEditMatchesPlayed] = useState<number | ''>(0);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -197,6 +200,9 @@ export default function AdminPlayersPage() {
     setEditJersey(player.jerseyNumber ?? '');
     setEditPosition(player.position || 'Forward');
     setEditClub(player.club || '');
+    setEditGoals(player.goals ?? 0);
+    setEditPenaltiesScored(player.penaltiesScored ?? 0);
+    setEditMatchesPlayed(player.matchesPlayed ?? 0);
     setEditError(null);
   };
 
@@ -227,6 +233,9 @@ export default function AdminPlayersPage() {
         jerseyNumber: Number(editJersey),
         position: editPosition,
         club: editClub.trim() || 'Independent Athletic Club',
+        goals: editGoals === '' ? 0 : Math.max(0, Number(editGoals)),
+        penaltiesScored: editPenaltiesScored === '' ? 0 : Math.max(0, Number(editPenaltiesScored)),
+        matchesPlayed: editMatchesPlayed === '' ? 0 : Math.max(0, Number(editMatchesPlayed)),
       });
 
       if (!res.success) {
@@ -785,6 +794,54 @@ export default function AdminPlayersPage() {
                   onChange={(e) => setEditClub(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container/30"
                 />
+              </div>
+
+              {/* Performance Stats: Goals, Penalties, Matches */}
+              <div className="p-3.5 bg-surface-container-low/80 rounded-2xl border border-surface-container-high space-y-2">
+                <div className="text-[11px] font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Cumulative Tournament Statistics</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-primary-container mb-1">
+                      Goals ⚽
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editGoals}
+                      onChange={(e) => setEditGoals(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-black text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-on-surface mb-1">
+                      PKs Scored 🥅
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editPenaltiesScored}
+                      onChange={(e) => setEditPenaltiesScored(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-on-surface mb-1">
+                      Matches 🏟️
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editMatchesPlayed}
+                      onChange={(e) => setEditMatchesPlayed(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Modal Actions */}
