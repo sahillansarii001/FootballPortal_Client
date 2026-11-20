@@ -316,6 +316,46 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
     socket.on('stage:change', handlePhaseChange);
     socket.on('match:phase_changed', handlePhaseChange);
 
+    // Penalty Shootout Events
+    const handlePenaltyUpdate = (data: any) => {
+      setLastEvent(data.outcome ? `Penalty: ${data.outcome}` : 'Penalty taken');
+      setMatch((prev) => {
+        if (!prev) return prev;
+        const shootout = data.shootoutState || data.shootout || prev.shootout;
+        const existingKicks = prev.penalties?.kicks || [];
+        const newKicks = data.penalty ? [...existingKicks.filter((k: any) => k._id !== data.penalty._id), data.penalty] : existingKicks;
+        return {
+          ...prev,
+          status: data.isDecided ? 'Completed' : 'Penalty Shootout',
+          currentStage: data.isDecided ? 'Match Completed' : 'Penalty Shootout',
+          shootout,
+          penalties: {
+            shootoutState: shootout,
+            kicks: newKicks,
+          },
+          ...(data.isDecided && data.winner ? { winner: data.winner, matchResult: data.matchResult } : {}),
+        };
+      });
+      matchService.getMatchById(matchId).then((res) => {
+        if (res) setMatch(res);
+      });
+      matchService.getMatchTimeline(matchId).then((res) => {
+        if (res) setTimeline(res);
+      });
+    };
+
+    socket.on('penalty:update', handlePenaltyUpdate);
+    socket.on('penalty:taken', handlePenaltyUpdate);
+    socket.on('penalty:saved', handlePenaltyUpdate);
+    socket.on('penalty:missed', handlePenaltyUpdate);
+    socket.on('penalty:completed', handlePenaltyUpdate);
+    socket.on('toss:completed', () => {
+      setLastEvent('Coin Toss Completed');
+      matchService.getMatchById(matchId).then((res) => {
+        if (res) setMatch(res);
+      });
+    });
+
     // Match completed
     socket.on('match:completed', (data: any) => {
       setLastEvent('Match Completed');
@@ -326,6 +366,9 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
         timer: prev.timer ? { ...prev.timer, isRunning: false, isPaused: false, remainingTime: 0, phaseEndsAt: null } : prev.timer,
         ...data
       } : prev);
+      matchService.getMatchById(matchId).then((res) => {
+        if (res) setMatch(res);
+      });
     });
 
     return () => {

@@ -93,9 +93,9 @@ export default function MatchDetailPage() {
 
       {/* Penalty Shootout section (if applicable) */}
       <PenaltyShootoutView
-        penalties={match.penalties}
-        teamAName={match.teamA.name}
-        teamBName={match.teamB.name}
+        penalties={(match.penalties || (match.shootout ? { shootoutState: match.shootout, kicks: [] } : undefined)) as any}
+        teamAName={match.teamA?.name || 'Team A'}
+        teamBName={match.teamB?.name || 'Team B'}
       />
 
       {/* Navigation Tabs for Match Center */}

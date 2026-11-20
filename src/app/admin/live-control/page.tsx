@@ -814,11 +814,26 @@ export default function AdminLiveControlPage() {
     }
 
     // Call backend authoritative penalty endpoint
-    const teamId = team === 'A' ? selectedMatch.teamA._id : selectedMatch.teamB._id;
+    const rawTeamA = selectedMatch.teamA;
+    const rawTeamB = selectedMatch.teamB;
+    const teamAId = typeof rawTeamA === 'object' && rawTeamA ? (rawTeamA as any)._id : rawTeamA;
+    const teamBId = typeof rawTeamB === 'object' && rawTeamB ? (rawTeamB as any)._id : rawTeamB;
+    const teamId = team === 'A' ? teamAId : teamBId;
+
     await adminService.recordPenalty(selectedMatch._id, {
       team: teamId,
+      teamId: teamId,
       player: kicker._id,
+      playerId: kicker._id,
       outcome,
+    });
+
+    await adminService.updateShootout(selectedMatch._id, {
+      isShootout: true,
+      teamAPenaltyScore: newPenA,
+      teamBPenaltyScore: newPenB,
+      round: currentRound,
+      isCompleted: false,
     });
 
     // Advance kicker selection to next player in squad
@@ -978,26 +993,30 @@ export default function AdminLiveControlPage() {
     setCurrentStage('Completed');
     setRemainingSeconds(0);
 
-    await adminService.finalizeMatch(selectedMatch._id);
+    const rawTeamA = selectedMatch.teamA;
+    const rawTeamB = selectedMatch.teamB;
+    const teamAId = typeof rawTeamA === 'object' && rawTeamA ? (rawTeamA as any)._id : rawTeamA;
+    const teamBId = typeof rawTeamB === 'object' && rawTeamB ? (rawTeamB as any)._id : rawTeamB;
 
     let winnerId: string | null = null;
     let winnerName: string | null = null;
     let resultStr = 'Full Time Draw';
+    const hasShootout = penaltyScoreA > 0 || penaltyScoreB > 0 || selectedMatch.shootout?.isShootout;
 
     if (scoreA > scoreB) {
-      winnerId = selectedMatch.teamA?._id || null;
+      winnerId = teamAId;
       winnerName = teamAName;
       resultStr = `${teamAName} Victory`;
     } else if (scoreB > scoreA) {
-      winnerId = selectedMatch.teamB?._id || null;
+      winnerId = teamBId;
       winnerName = teamBName;
       resultStr = `${teamBName} Victory`;
     } else if (penaltyScoreA > penaltyScoreB) {
-      winnerId = selectedMatch.teamA?._id || null;
+      winnerId = teamAId;
       winnerName = teamAName;
       resultStr = `${teamAName} won on penalties (${penaltyScoreA} - ${penaltyScoreB})`;
     } else if (penaltyScoreB > penaltyScoreA) {
-      winnerId = selectedMatch.teamB?._id || null;
+      winnerId = teamBId;
       winnerName = teamBName;
       resultStr = `${teamBName} won on penalties (${penaltyScoreA} - ${penaltyScoreB})`;
     } else if (selectedMatch.shootout?.shootoutWinner) {
@@ -1005,13 +1024,38 @@ export default function AdminLiveControlPage() {
         ? (selectedMatch.shootout.shootoutWinner as any)._id
         : selectedMatch.shootout.shootoutWinner;
       winnerId = swId;
-      winnerName = swId === selectedMatch.teamA?._id ? teamAName : teamBName;
+      winnerName = swId === teamAId ? teamAName : teamBName;
       resultStr = `${winnerName} won on penalties (${penaltyScoreA} - ${penaltyScoreB})`;
     } else if (tossState.tossWinner) {
       winnerName = tossState.tossWinner === 'A' ? teamAName : teamBName;
-      winnerId = tossState.tossWinner === 'A' ? selectedMatch.teamA?._id : selectedMatch.teamB?._id;
+      winnerId = tossState.tossWinner === 'A' ? teamAId : teamBId;
       resultStr = `${winnerName} Sudden Death Victory`;
     }
+
+    const shootoutData = {
+      isShootout: Boolean(hasShootout || (winnerId && scoreA === scoreB)),
+      teamAPenaltyScore: penaltyScoreA,
+      teamBPenaltyScore: penaltyScoreB,
+      isCompleted: true,
+      shootoutWinner: winnerId,
+    };
+
+    await adminService.finalizeMatch(selectedMatch._id, {
+      penaltyScoreA,
+      penaltyScoreB,
+      shootout: shootoutData,
+      winner: winnerId,
+      shootoutWinner: winnerId,
+      matchResult: resultStr,
+    });
+
+    await adminService.updateMatch(selectedMatch._id, {
+      status: 'Completed',
+      isFinalized: true,
+      winner: winnerId,
+      matchResult: resultStr,
+      shootout: shootoutData,
+    } as any);
 
     const finalizedMatch: Match = {
       ...selectedMatch,

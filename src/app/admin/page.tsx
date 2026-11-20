@@ -338,20 +338,33 @@ export default function AdminOverviewPage() {
                 const scoreA = m.score?.teamA ?? m.teamAScore ?? 0;
                 const scoreB = m.score?.teamB ?? m.teamBScore ?? 0;
                 const isTied = (isLive || isCompleted) && scoreA === scoreB;
-                const penA = m.shootout?.teamAPenaltyScore ?? (isTied ? 4 : 0);
-                const penB = m.shootout?.teamBPenaltyScore ?? (isTied ? 2 : 0);
+                const penA = m.shootout?.teamAPenaltyScore ?? 0;
+                const penB = m.shootout?.teamBPenaltyScore ?? 0;
+                const hasShootout = Boolean(m.shootout?.isShootout || penA > 0 || penB > 0);
 
                 const teamAName = m.teamA?.name || 'Team A';
                 const teamBName = m.teamB?.name || 'Team B';
                 let winnerName = '';
                 if (m.winner) {
-                  winnerName = typeof m.winner === 'object' && m.winner ? m.winner.name : String(m.winner);
+                  if (typeof m.winner === 'object' && m.winner.name) {
+                    winnerName = m.winner.name;
+                  } else {
+                    const wId = String(m.winner);
+                    const tAId = typeof m.teamA === 'object' ? String(m.teamA?._id) : String(m.teamA);
+                    winnerName = wId === tAId ? teamAName : teamBName;
+                  }
                 } else if (scoreA > scoreB) {
                   winnerName = teamAName;
                 } else if (scoreB > scoreA) {
                   winnerName = teamBName;
-                } else if (m.shootout?.teamAPenaltyScore !== undefined && m.shootout?.teamBPenaltyScore !== undefined && m.shootout.teamAPenaltyScore !== m.shootout.teamBPenaltyScore) {
-                  winnerName = m.shootout.teamAPenaltyScore > m.shootout.teamBPenaltyScore ? teamAName : teamBName;
+                } else if (penA > penB) {
+                  winnerName = teamAName;
+                } else if (penB > penA) {
+                  winnerName = teamBName;
+                } else if (m.shootout?.shootoutWinner) {
+                  const swId = typeof m.shootout.shootoutWinner === 'object' ? String((m.shootout.shootoutWinner as any)._id) : String(m.shootout.shootoutWinner);
+                  const tAId = typeof m.teamA === 'object' ? String(m.teamA?._id) : String(m.teamA);
+                  winnerName = swId === tAId ? teamAName : teamBName;
                 }
 
                 return (
@@ -381,7 +394,7 @@ export default function AdminOverviewPage() {
                         {isLive
                           ? `LIVE IN PLAY • ${scoreA} - ${scoreB}`
                           : isCompleted
-                            ? `FINAL RESULT • ${scoreA} - ${scoreB}${isTied ? ` (Pen: ${penA}-${penB})` : ''}`
+                            ? `FINAL RESULT • ${scoreA} - ${scoreB}${hasShootout ? ` (Pen: ${penA}-${penB})` : ''}`
                             : 'UPCOMING FIXTURE'}
                       </span>
                     </div>
@@ -400,17 +413,20 @@ export default function AdminOverviewPage() {
                               <span className="text-primary-container font-display-score text-base">{scoreB}</span>{' '}
                               {teamBName}
                             </span>
+                            {hasShootout && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-extrabold text-xs border border-purple-200">
+                                Shootout: {penA} - {penB}
+                              </span>
+                            )}
                             {winnerName ? (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 font-extrabold text-xs shadow-2xs">
                                 <Trophy className="w-3.5 h-3.5 text-amber-600 fill-amber-500 shrink-0" />
                                 <span>
                                   Winner: <strong className="font-black text-amber-950">{winnerName}</strong>
                                 </span>
-                                {isTied && <span className="text-[10px] text-amber-800 font-medium">(on Penalties)</span>}
+                                {hasShootout && <span className="text-[10px] text-amber-800 font-medium">({penA} - {penB} on penalties)</span>}
                               </span>
-                            ) : (
-                              <span className="text-xs font-bold text-slate-600">Match Drawn</span>
-                            )}
+                            ) : null}
                           </div>
                         ) : isLive ? (
                           <div className="flex items-center gap-2 flex-wrap">

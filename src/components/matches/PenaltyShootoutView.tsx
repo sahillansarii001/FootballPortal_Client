@@ -13,13 +13,34 @@ export const PenaltyShootoutView: React.FC<PenaltyShootoutViewProps> = ({
   teamAName,
   teamBName,
 }) => {
-  if (!penalties || !penalties.shootoutState?.isShootout) {
+  const shootout = penalties?.shootoutState || (penalties as any);
+  const penA = shootout?.teamAPenaltyScore ?? 0;
+  const penB = shootout?.teamBPenaltyScore ?? 0;
+  const hasShootout = Boolean(shootout?.isShootout || penA > 0 || penB > 0);
+
+  if (!shootout || !hasShootout) {
     return null;
   }
 
-  const { teamAPenaltyScore, teamBPenaltyScore, round, isSuddenDeath, isCompleted, winner } =
-    penalties.shootoutState;
-  const kicks = penalties.kicks || [];
+  const teamAPenaltyScore = shootout.teamAPenaltyScore ?? penA;
+  const teamBPenaltyScore = shootout.teamBPenaltyScore ?? penB;
+  const round = shootout.round || 1;
+  const isSuddenDeath = Boolean(shootout.isSuddenDeath);
+  const isCompleted = Boolean(shootout.isCompleted);
+  const winner = shootout.shootoutWinner
+    ? typeof shootout.shootoutWinner === 'object'
+      ? shootout.shootoutWinner.name || (shootout.shootoutWinner._id === teamAName ? teamAName : teamBName)
+      : String(shootout.shootoutWinner)
+    : shootout.winner
+      ? typeof shootout.winner === 'object'
+        ? shootout.winner.name
+        : String(shootout.winner)
+      : penA > penB
+        ? teamAName
+        : penB > penA
+          ? teamBName
+          : null;
+  const kicks = penalties?.kicks || [];
 
   return (
     <div className="relative rounded-3xl overflow-hidden shadow-sm border border-slate-200 bg-white text-slate-900 p-6 sm:p-7 mb-8">

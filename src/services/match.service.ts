@@ -8,6 +8,8 @@ function normalizeMatch(match: any): Match {
   const teamAScore = match.score?.teamA ?? match.teamAScore ?? 0;
   const teamBScore = match.score?.teamB ?? match.teamBScore ?? 0;
   const rawGoals = match.goals || match.events?.filter((e: any) => (e.type === 'GOAL_SCORED' || e.type === 'GOAL') && !e.isUndone) || [];
+  const shootout = match.shootout || match.penalties?.shootoutState;
+  const penalties = match.penalties || (shootout ? { shootoutState: shootout, kicks: [] } : undefined);
   return {
     ...match,
     _id: id,
@@ -18,6 +20,8 @@ function normalizeMatch(match: any): Match {
       teamB: teamBScore,
     },
     goals: rawGoals,
+    shootout,
+    penalties,
   };
 }
 

@@ -37,9 +37,28 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
     stage.toLowerCase().includes('penalty') ||
     stage.toLowerCase().includes('shootout');
   const hasPenalties = Boolean(
-    shootoutState?.isShootout || shootoutState?.isCompleted || penA > 0 || penB > 0 || isShootoutPhase
+    shootoutState?.isShootout || penA > 0 || penB > 0 || isShootoutPhase
   );
-  const showPenalties = hasPenalties || (isTied && (isCompleted || isShootoutPhase));
+  const showPenalties = hasPenalties;
+
+  let winnerDisplayName = '';
+  if (match.winner) {
+    if (typeof match.winner === 'object' && match.winner.name) {
+      winnerDisplayName = match.winner.name;
+    } else {
+      const wId = String(match.winner);
+      const tAId = typeof match.teamA === 'object' ? String(match.teamA?._id) : String(match.teamA);
+      winnerDisplayName = wId === tAId ? (match.teamA?.name || 'Team A') : (match.teamB?.name || 'Team B');
+    }
+  } else if (penA > penB) {
+    winnerDisplayName = match.teamA?.name || 'Team A';
+  } else if (penB > penA) {
+    winnerDisplayName = match.teamB?.name || 'Team B';
+  } else if (shootoutWinnerId) {
+    const swId = typeof shootoutWinnerId === 'object' ? String((shootoutWinnerId as any)._id) : String(shootoutWinnerId);
+    const tAId = typeof match.teamA === 'object' ? String(match.teamA?._id) : String(match.teamA);
+    winnerDisplayName = swId === tAId ? (match.teamA?.name || 'Team A') : (match.teamB?.name || 'Team B');
+  }
 
   React.useEffect(() => {
     if (match.score) {
@@ -249,9 +268,9 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                   <div className="text-xs font-bold text-slate-300">
                     Shootout: <span className="text-amber-400 font-extrabold">{penA} — {penB}</span>
                   </div>
-                  {isCompleted && (penA !== penB || Boolean(shootoutWinnerId)) && (
+                  {isCompleted && (winnerDisplayName || penA !== penB || Boolean(shootoutWinnerId)) && (
                     <div className="text-[10px] font-black text-emerald-400 uppercase tracking-wider mt-0.5">
-                      🏆 {penA > penB ? match.teamA?.name : match.teamB?.name} WINS
+                      🏆 {winnerDisplayName || (penA > penB ? match.teamA?.name : match.teamB?.name)} WON ({penA} - {penB} ON PENALTIES)
                     </div>
                   )}
                 </div>

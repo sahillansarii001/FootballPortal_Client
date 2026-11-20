@@ -239,13 +239,39 @@ export const adminService = {
 
   async recordPenalty(
     matchId: string,
-    payload: { team: string; player: string; goalkeeper?: string; outcome: 'Goal' | 'Saved' | 'Missed' }
+    payload: { team?: string; teamId?: string; player?: string; playerId?: string; goalkeeper?: string; goalkeeperId?: string; outcome: string }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/matches/${matchId}/penalties`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async updateShootout(
+    matchId: string,
+    shootout: {
+      isShootout?: boolean;
+      teamAPenaltyScore?: number;
+      teamBPenaltyScore?: number;
+      teamAPenaltiesTaken?: number;
+      teamBPenaltiesTaken?: number;
+      round?: number;
+      isCompleted?: boolean;
+      shootoutWinner?: string | null;
+    }
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ shootout }),
       });
       const json = await res.json();
       return json;
@@ -301,11 +327,22 @@ export const adminService = {
     }
   },
 
-  async finalizeMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+  async finalizeMatch(
+    matchId: string,
+    payload?: {
+      penaltyScoreA?: number;
+      penaltyScoreB?: number;
+      shootout?: any;
+      winner?: string | null;
+      shootoutWinner?: string | null;
+      matchResult?: string;
+    }
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/matches/${matchId}/finalize`, {
         method: 'POST',
         headers: getAuthHeaders(),
+        body: payload ? JSON.stringify(payload) : undefined,
       });
       const json = await res.json();
       return json;
