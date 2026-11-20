@@ -285,14 +285,53 @@ export const adminService = {
     club?: string;
     position?: string;
     team: string;
-  }): Promise<{ success: boolean; data?: any; error?: string }> {
+  }): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/players`, {
+      const json = await fetchWithAuth(`${API_BASE_URL}/players`, {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
-      const json = await res.json();
+      if (!json || !json.success) {
+        return { success: false, error: extractErrorMessage(json, 'Failed to create player'), message: json?.message };
+      }
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async updatePlayer(
+    playerId: string,
+    payload: {
+      name?: string;
+      jerseyNumber?: number;
+      club?: string;
+      position?: string;
+      team?: string;
+    }
+  ): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    try {
+      const json = await fetchWithAuth(`${API_BASE_URL}/players/${playerId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+      if (!json || !json.success) {
+        return { success: false, error: extractErrorMessage(json, 'Failed to update player'), message: json?.message };
+      }
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async deletePlayer(playerId: string): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    try {
+      const json = await fetchWithAuth(`${API_BASE_URL}/players/${playerId}`, {
+        method: 'DELETE',
+      });
+      if (!json || !json.success) {
+        return { success: false, error: extractErrorMessage(json, 'Failed to delete player'), message: json?.message };
+      }
       return json;
     } catch (err: any) {
       return { success: false, error: err.message };

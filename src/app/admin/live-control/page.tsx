@@ -786,14 +786,52 @@ export default function AdminLiveControlPage() {
 
     await adminService.finalizeMatch(selectedMatch._id);
 
-    const winnerName = scoreA > scoreB ? teamAName : scoreB > scoreA ? teamBName : null;
-    const resultStr = winnerName ? `${winnerName} Victory` : 'Full Time Draw';
+    let winnerId: string | null = null;
+    let winnerName: string | null = null;
+    let resultStr = 'Full Time Draw';
+
+    if (scoreA > scoreB) {
+      winnerId = selectedMatch.teamA?._id || null;
+      winnerName = teamAName;
+      resultStr = `${teamAName} Victory`;
+    } else if (scoreB > scoreA) {
+      winnerId = selectedMatch.teamB?._id || null;
+      winnerName = teamBName;
+      resultStr = `${teamBName} Victory`;
+    } else if (penaltyScoreA > penaltyScoreB) {
+      winnerId = selectedMatch.teamA?._id || null;
+      winnerName = teamAName;
+      resultStr = `${teamAName} won on penalties (${penaltyScoreA} - ${penaltyScoreB})`;
+    } else if (penaltyScoreB > penaltyScoreA) {
+      winnerId = selectedMatch.teamB?._id || null;
+      winnerName = teamBName;
+      resultStr = `${teamBName} won on penalties (${penaltyScoreA} - ${penaltyScoreB})`;
+    } else if (selectedMatch.shootout?.shootoutWinner) {
+      const swId = typeof selectedMatch.shootout.shootoutWinner === 'object'
+        ? (selectedMatch.shootout.shootoutWinner as any)._id
+        : selectedMatch.shootout.shootoutWinner;
+      winnerId = swId;
+      winnerName = swId === selectedMatch.teamA?._id ? teamAName : teamBName;
+      resultStr = `${winnerName} won on penalties (${penaltyScoreA} - ${penaltyScoreB})`;
+    } else if (tossState.tossWinner) {
+      winnerName = tossState.tossWinner === 'A' ? teamAName : teamBName;
+      winnerId = tossState.tossWinner === 'A' ? selectedMatch.teamA?._id : selectedMatch.teamB?._id;
+      resultStr = `${winnerName} Sudden Death Victory`;
+    }
 
     const finalizedMatch: Match = {
       ...selectedMatch,
       status: 'Completed',
       isFinalized: true,
+      winner: winnerId,
       matchResult: resultStr,
+      shootout: {
+        isShootout: penaltyScoreA > 0 || penaltyScoreB > 0,
+        teamAPenaltyScore: penaltyScoreA,
+        teamBPenaltyScore: penaltyScoreB,
+        isCompleted: true,
+        shootoutWinner: winnerId,
+      },
       timer: {
         stageDuration: selectedMatch.timer?.stageDuration || 240,
         ...selectedMatch.timer,
@@ -810,7 +848,7 @@ export default function AdminLiveControlPage() {
     );
 
     showNotification(
-      `Match officially marked as Completed (${scoreA} - ${scoreB})! Standings updated. Choose another fixture or restart anytime.`
+      `Match officially marked as Completed (${scoreA} - ${scoreB})! Result: ${resultStr}. Standings updated.`
     );
   };
 
@@ -1148,7 +1186,20 @@ export default function AdminLiveControlPage() {
                   </span>
                 </div>
                 <div className="text-xs text-slate-300 mt-0.5">
-                  Final Result: <strong className="text-white font-extrabold">{teamAName} {scoreA} - {scoreB} {teamBName}</strong> • {selectedMatch.matchResult || (scoreA > scoreB ? `${teamAName} Win` : scoreB > scoreA ? `${teamBName} Win` : 'Draw')}
+                  Final Result: <strong className="text-white font-extrabold">{teamAName} {scoreA} - {scoreB} {teamBName}</strong> • {(() => {
+                    const penLeader = penaltyScoreA > penaltyScoreB ? teamAName : penaltyScoreB > penaltyScoreA ? teamBName : null;
+                    const winnerByName = scoreA > scoreB ? teamAName : scoreB > scoreA ? teamBName : penLeader;
+                    if (winnerByName && scoreA === scoreB && (penaltyScoreA > 0 || penaltyScoreB > 0)) {
+                      return `${winnerByName} Won on Penalties (${penaltyScoreA}-${penaltyScoreB})`;
+                    }
+                    if (winnerByName && scoreA !== scoreB) {
+                      return `${winnerByName} Win`;
+                    }
+                    if (selectedMatch.matchResult && !selectedMatch.matchResult.toLowerCase().includes('draw')) {
+                      return selectedMatch.matchResult;
+                    }
+                    return 'Full Time Draw';
+                  })()}
                 </div>
               </div>
             </div>
@@ -1240,51 +1291,6 @@ export default function AdminLiveControlPage() {
                   Penalties: <span className="text-white font-extrabold">{penaltyScoreA} - {penaltyScoreB}</span>
                 </div>
               )}
-            </div>
-
-            {/* Direct Score Adjustment Controls */}
-            <div className="flex items-center justify-center gap-4 sm:gap-6 mt-1">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleScoreAdjust('A', -1)}
-                  disabled={selectedMatch?.status === 'Completed'}
-                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-xs disabled:opacity-30 transition-all active:scale-95"
-                  title="Decrease Team A score"
-                >
-                  -
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleScoreAdjust('A', 1)}
-                  disabled={selectedMatch?.status === 'Completed'}
-                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-xs disabled:opacity-30 transition-all active:scale-95"
-                  title="Increase Team A score"
-                >
-                  +
-                </button>
-              </div>
-              <span className="text-[10px] text-on-surface-variant font-semibold">Adjust Score</span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleScoreAdjust('B', -1)}
-                  disabled={selectedMatch?.status === 'Completed'}
-                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-on-surface-variant font-black flex items-center justify-center text-xs disabled:opacity-30 transition-all active:scale-95"
-                  title="Decrease Team B score"
-                >
-                  -
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleScoreAdjust('B', 1)}
-                  disabled={selectedMatch?.status === 'Completed'}
-                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md bg-surface-container hover:bg-surface-container-high border border-surface-container-high text-primary-container font-black flex items-center justify-center text-xs disabled:opacity-30 transition-all active:scale-95"
-                  title="Increase Team B score"
-                >
-                  +
-                </button>
-              </div>
             </div>
 
             <div className="font-stat-numeral text-2xl sm:text-3xl font-black text-primary-container tabular-nums mt-1.5 tracking-tight flex items-center justify-center gap-2">

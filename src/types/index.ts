@@ -26,7 +26,9 @@ export interface Team {
   coach?: string;
   captain?: string | { _id: string; name: string; jerseyNumber?: number; position?: string };
   conference?: string;
+  club?: string;
   seed?: string | number;
+  position?: number;
   players?: Player[] | string[];
   matchesPlayed?: number;
   matchesWon?: number;

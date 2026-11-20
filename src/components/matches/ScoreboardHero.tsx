@@ -17,13 +17,16 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
   const [localScoreA, setLocalScoreA] = React.useState(match.score?.teamA ?? match.teamAScore ?? 0);
   const [localScoreB, setLocalScoreB] = React.useState(match.score?.teamB ?? match.teamBScore ?? 0);
 
+  const stage = match.timer?.currentStage || match.currentStage || 'First Half';
+  const remaining = match.timer?.remainingTime ?? 240;
+
   const shootoutState = match.shootout || match.penalties?.shootoutState;
   const isTied = localScoreA === localScoreB;
-  const penA = shootoutState?.teamAPenaltyScore ?? (isTied ? 4 : 0);
-  const penB = shootoutState?.teamBPenaltyScore ?? (isTied ? 2 : 0);
-  const showPenalties = isTied || Boolean(shootoutState && ((shootoutState.teamAPenaltyScore ?? 0) > 0 || (shootoutState.teamBPenaltyScore ?? 0) > 0));
-  const remaining = match.timer?.remainingTime ?? 240;
-  const stage = match.timer?.currentStage || match.currentStage || 'First Half';
+  const penA = shootoutState?.teamAPenaltyScore ?? 0;
+  const penB = shootoutState?.teamBPenaltyScore ?? 0;
+  const isShootoutPhase = match.status === 'Penalty Shootout' || stage.toLowerCase().includes('penalty') || stage.toLowerCase().includes('shootout');
+  const hasPenalties = Boolean(shootoutState?.isShootout || shootoutState?.isCompleted || (penA > 0 || penB > 0) || isShootoutPhase);
+  const showPenalties = hasPenalties || (isTied && (isCompleted || isShootoutPhase));
 
   React.useEffect(() => {
     if (match.score) {
@@ -72,7 +75,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               </span>
             )}
             <span className="bg-surface-container-high text-on-surface font-label-caps text-label-caps px-3 py-1 rounded-full font-semibold uppercase tracking-wider">
-              {match.stage || 'NCAA Tier-1 Championship'}
+              {match.stage || (match.tournament as any)?.name || '2026 Inter-College Championship'}
             </span>
           </div>
 
@@ -166,8 +169,15 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
 
               {/* Tied Match / Penalty Shootout Result Display */}
               {showPenalties && (
-                <div className="text-sm sm:text-base font-semibold text-[#8a94a6] mt-0.5 font-label-ui tracking-wide">
-                  Penalties: <span className="text-white font-extrabold">{penA} - {penB}</span>
+                <div className="flex flex-col items-center mt-1">
+                  <div className="text-sm sm:text-base font-semibold text-[#8a94a6] font-label-ui tracking-wide">
+                    Penalties: <span className="text-white font-extrabold">{penA} - {penB}</span>
+                  </div>
+                  {isCompleted && (penA !== penB || shootoutState?.shootoutWinner) && (
+                    <div className="text-[11px] font-bold text-emerald-400 mt-0.5 uppercase tracking-wider">
+                      {penA > penB ? `${match.teamA.name} won on penalties` : penB > penA ? `${match.teamB.name} won on penalties` : shootoutState?.shootoutWinner === match.teamA._id ? `${match.teamA.name} won on penalties` : `${match.teamB.name} won on penalties`}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Shield, Menu, X, Trophy, LogIn } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { tournamentService } from '@/services/tournament.service';
 
 interface NavItem {
   name: string;
@@ -25,6 +26,19 @@ const NAV_ITEMS: NavItem[] = [
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [tournamentTitle, setTournamentTitle] = useState('2026 Inter-College Championship');
+
+  useEffect(() => {
+    async function loadTournament() {
+      try {
+        const res = await tournamentService.getTournaments();
+        if (res && res.length > 0 && res[0]?.name) {
+          setTournamentTitle(res[0].name);
+        }
+      } catch {}
+    }
+    loadTournament();
+  }, []);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -43,8 +57,8 @@ export const Navbar: React.FC = () => {
             <span className="font-headline-sm text-headline-sm text-on-surface leading-tight tracking-tight font-extrabold uppercase">
               Varsity Football League
             </span>
-            <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold">
-              Inter-College Championship 2025
+            <span className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold truncate max-w-[200px] sm:max-w-xs">
+              {tournamentTitle}
             </span>
           </div>
         </Link>

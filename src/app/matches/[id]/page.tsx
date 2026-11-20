@@ -7,7 +7,6 @@ import { useLiveMatch } from '@/hooks/useLiveMatch';
 import { ScoreboardHero } from '@/components/matches/ScoreboardHero';
 import { MatchTimeline } from '@/components/matches/MatchTimeline';
 import { PenaltyShootoutView } from '@/components/matches/PenaltyShootoutView';
-import { MatchStatsComparison } from '@/components/matches/MatchStatsComparison';
 import { TacticalPitch } from '@/components/matches/TacticalPitch';
 import { BylawsNotice } from '@/components/matches/BylawsNotice';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -19,7 +18,7 @@ export default function MatchDetailPage() {
   const params = useParams();
   const matchId = (params?.id as string) || '';
   const { match, timeline, isConnected, lastEvent, loading } = useLiveMatch(matchId);
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'tactics' | 'stats'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'tactics'>('overview');
 
   if (loading) {
     return (
@@ -132,16 +131,6 @@ export default function MatchDetailPage() {
         >
           Tactical Formations & Bench
         </button>
-        <button
-          onClick={() => setActiveTab('stats')}
-          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${
-            activeTab === 'stats'
-              ? 'text-primary-container border-primary-container'
-              : 'text-on-surface-variant border-transparent hover:text-on-surface'
-          }`}
-        >
-          Match Statistics
-        </button>
       </div>
 
       {/* Content depending on selected tab */}
@@ -153,14 +142,9 @@ export default function MatchDetailPage() {
             <BylawsNotice />
           </div>
 
-          {/* Right Column (5 cols): Live Timeline & Stats */}
+          {/* Right Column (5 cols): Live Timeline */}
           <div className="lg:col-span-5 flex flex-col gap-6">
             <MatchTimeline timeline={timeline} />
-            <MatchStatsComparison
-              teamAName={match.teamA.name}
-              teamBName={match.teamB.name}
-              stats={match.stats}
-            />
           </div>
         </div>
       )}
@@ -175,16 +159,6 @@ export default function MatchDetailPage() {
         <div className="max-w-4xl mx-auto flex flex-col gap-6">
           <TacticalPitch teamAName={match.teamA.name} teamBName={match.teamB.name} />
           <BylawsNotice />
-        </div>
-      )}
-
-      {activeTab === 'stats' && (
-        <div className="max-w-3xl mx-auto">
-          <MatchStatsComparison
-            teamAName={match.teamA.name}
-            teamBName={match.teamB.name}
-            stats={match.stats}
-          />
         </div>
       )}
     </div>

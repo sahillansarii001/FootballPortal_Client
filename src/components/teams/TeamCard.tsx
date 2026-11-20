@@ -6,9 +6,10 @@ import { getCaptainDisplayName } from '@/utils/formatters';
 
 interface TeamCardProps {
   team: Team;
+  index?: number;
 }
 
-export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
+export const TeamCard: React.FC<TeamCardProps> = ({ team, index }) => {
   const stats = team.stats || {
     matchesPlayed: team.matchesPlayed ?? 0,
     matchesWon: team.matchesWon ?? 0,
@@ -19,8 +20,9 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
     totalPoints: team.totalPoints ?? 0,
   };
 
-  const captainName = getCaptainDisplayName(team.captain);
+  const captainName = getCaptainDisplayName(team.captain || (team as any).captainName);
   const rosterCount = Array.isArray(team.players) ? `${team.players.length} Athletes` : 'Squad Roster';
+  const seedLabel = team.seed ? String(team.seed) : team.position ? `#${team.position} SEED` : typeof index === 'number' ? `#${index + 1} SEED` : '#1 SEED';
 
   return (
     <article className="bg-surface-container-lowest rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between border border-surface-container-high group">
@@ -38,7 +40,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
             </div>
           </div>
           <span className="px-2 py-1 rounded bg-secondary-container/50 text-on-secondary-container font-label-caps text-label-caps font-bold">
-            {team.seed || '#1 SEED'}
+            {seedLabel}
           </span>
         </div>
 
@@ -86,25 +88,37 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team }) => {
 
         {/* Form Pills */}
         <div className="mb-4">
-          <div className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5 font-bold">
-            Last Matches
+          <div className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5 font-bold flex items-center justify-between">
+            <span>Last Matches</span>
+            {Array.isArray(team.form) && team.form.length > 0 && (
+              <span className="text-[10px] text-on-surface-variant/70 font-semibold tracking-normal capitalize">Recent Form</span>
+            )}
           </div>
-          <div className="flex items-center gap-1.5">
-            {(team.form || ['W', 'W', 'D', 'W', 'W']).map((res, i) => (
-              <span
-                key={i}
-                className={`w-6 h-6 rounded-full font-label-caps text-label-caps flex items-center justify-center font-bold ${
-                  res === 'W'
-                    ? 'bg-on-tertiary-container text-primary-container'
-                    : res === 'D'
-                    ? 'bg-surface-container-highest text-on-surface'
-                    : 'bg-error-container text-error'
-                }`}
-              >
-                {res}
+          {Array.isArray(team.form) && team.form.length > 0 ? (
+            <div className="flex items-center gap-1.5">
+              {team.form.map((res, i) => (
+                <span
+                  key={i}
+                  className={`w-6 h-6 rounded-full font-label-caps text-label-caps flex items-center justify-center font-bold shadow-2xs ${
+                    res === 'W'
+                      ? 'bg-on-tertiary-container text-primary-container'
+                      : res === 'D'
+                      ? 'bg-surface-container-highest text-on-surface'
+                      : 'bg-error-container text-error'
+                  }`}
+                  title={res === 'W' ? 'Win' : res === 'D' ? 'Draw' : 'Loss'}
+                >
+                  {res}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-on-surface-variant/70 italic bg-surface-container-low px-2.5 py-1 rounded-md border border-surface-container">
+                No matches played yet
               </span>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Squad Players Roster */}

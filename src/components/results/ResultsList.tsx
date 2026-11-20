@@ -14,9 +14,10 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
       {results.map((match) => {
         const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
         const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
-        const isTeamAWinner = scoreA > scoreB;
-        const isTeamBWinner = scoreB > scoreA;
-        const isDraw = scoreA === scoreB;
+        const winnerId = typeof match.winner === 'object' && match.winner ? (match.winner as any)._id : match.winner;
+        const isTeamAWinner = scoreA > scoreB || Boolean(winnerId && winnerId.toString() === match.teamA._id.toString());
+        const isTeamBWinner = scoreB > scoreA || Boolean(winnerId && winnerId.toString() === match.teamB._id.toString());
+        const isDraw = scoreA === scoreB && !isTeamAWinner && !isTeamBWinner;
 
         return (
           <div
@@ -68,9 +69,20 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
                     {scoreB}
                   </span>
                 </div>
-                <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold mt-0.5">
-                  {match.matchResult || (isDraw ? 'DRAW' : 'OFFICIAL RESULT')}
+                <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 text-center px-1">
+                  {isTeamAWinner
+                    ? `${match.teamA.name} Win${match.shootout ? ` (${penA}-${penB} Pen)` : ''}`
+                    : isTeamBWinner
+                    ? `${match.teamB.name} Win${match.shootout ? ` (${penA}-${penB} Pen)` : ''}`
+                    : (match.matchResult && !match.matchResult.toLowerCase().includes('draw'))
+                    ? match.matchResult
+                    : 'Draw'}
                 </span>
+                {match.shootout && ((match.shootout.teamAPenaltyScore ?? 0) > 0 || (match.shootout.teamBPenaltyScore ?? 0) > 0) && (
+                  <span className="text-[10px] text-primary-container font-extrabold mt-0.5 bg-primary-container/10 px-2 py-0.5 rounded-full border border-primary-container/20">
+                    Penalties: {match.shootout.teamAPenaltyScore ?? 0} - {match.shootout.teamBPenaltyScore ?? 0}
+                  </span>
+                )}
               </div>
 
               {/* Team B */}
