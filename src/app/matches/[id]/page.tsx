@@ -7,7 +7,6 @@ import { useLiveMatch } from '@/hooks/useLiveMatch';
 import { ScoreboardHero } from '@/components/matches/ScoreboardHero';
 import { MatchTimeline } from '@/components/matches/MatchTimeline';
 import { PenaltyShootoutView } from '@/components/matches/PenaltyShootoutView';
-import { TacticalPitch } from '@/components/matches/TacticalPitch';
 import { BylawsNotice } from '@/components/matches/BylawsNotice';
 import { LoadingState } from '@/components/common/LoadingState';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -18,7 +17,7 @@ export default function MatchDetailPage() {
   const params = useParams();
   const matchId = (params?.id as string) || '';
   const { match, timeline, isConnected, lastEvent, loading } = useLiveMatch(matchId);
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'tactics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('overview');
 
   if (loading) {
     return (
@@ -119,43 +118,26 @@ export default function MatchDetailPage() {
         >
           Event Log & Timeline ({timeline.length})
         </button>
-        <button
-          onClick={() => setActiveTab('tactics')}
-          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${activeTab === 'tactics'
-            ? 'text-primary-container border-primary-container'
-            : 'text-on-surface-variant border-transparent hover:text-on-surface'
-            }`}
-        >
-          Tactical Formations & Bench
-        </button>
       </div>
 
       {/* Content depending on selected tab */}
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column (7 cols): Tactical pitch & bylaws */}
+          {/* Main Column (7 cols): Live Timeline & Events */}
           <div className="lg:col-span-7 flex flex-col gap-6">
-            <TacticalPitch teamAName={match.teamA.name} teamBName={match.teamB.name} />
-            <BylawsNotice />
+            <MatchTimeline timeline={timeline} />
           </div>
 
-          {/* Right Column (5 cols): Live Timeline */}
+          {/* Side Column (5 cols): Rules & Bylaws */}
           <div className="lg:col-span-5 flex flex-col gap-6">
-            <MatchTimeline timeline={timeline} />
+            <BylawsNotice />
           </div>
         </div>
       )}
 
       {activeTab === 'timeline' && (
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <MatchTimeline timeline={timeline} />
-        </div>
-      )}
-
-      {activeTab === 'tactics' && (
-        <div className="max-w-4xl mx-auto flex flex-col gap-6">
-          <TacticalPitch teamAName={match.teamA.name} teamBName={match.teamB.name} />
-          <BylawsNotice />
         </div>
       )}
     </div>
