@@ -118,11 +118,11 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ standings }) => 
                     </td>
 
                   {/* MP, W, L, GF, GA, GD */}
-                  <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.matchesPlayed}</td>
-                  <td className="py-4 px-2 text-center text-on-surface font-bold tabular-nums">{row.matchesWon}</td>
-                  <td className="py-4 px-2 text-center text-on-surface-variant tabular-nums">{row.matchesLost}</td>
-                  <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.goalsScored}</td>
-                  <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.goalsConceded}</td>
+                  <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.matchesPlayed ?? 0}</td>
+                  <td className="py-4 px-2 text-center text-on-surface font-bold tabular-nums">{row.matchesWon ?? (row as any).won ?? 0}</td>
+                  <td className="py-4 px-2 text-center text-on-surface-variant tabular-nums">{row.matchesLost ?? (row as any).lost ?? 0}</td>
+                  <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.goalsScored ?? (row as any).goalsFor ?? 0}</td>
+                  <td className="py-4 px-2 text-center text-on-surface font-medium tabular-nums">{row.goalsConceded ?? (row as any).goalsAgainst ?? 0}</td>
                   <td
                     className={`py-4 px-2 text-center font-headline-sm text-headline-sm font-extrabold tabular-nums ${
                       row.goalDifference > 0
@@ -132,12 +132,12 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ standings }) => 
                         : 'text-on-surface-variant'
                     }`}
                   >
-                    {row.goalDifference > 0 ? `+${row.goalDifference}` : row.goalDifference}
+                    {row.goalDifference > 0 ? `+${row.goalDifference}` : (row.goalDifference ?? 0)}
                   </td>
 
                   {/* PTS */}
                   <td className="py-4 px-4 text-center bg-surface-container/60 font-stat-numeral text-headline-md text-primary-container font-black tabular-nums">
-                    {row.totalPoints}
+                    {row.totalPoints ?? (row as any).points ?? 0}
                   </td>
 
                   {/* Form (Last 3) */}

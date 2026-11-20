@@ -83,15 +83,15 @@ export const StandingsPreview: React.FC<StandingsPreviewProps> = ({ standings })
                       )}
                     </td>
                     <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesPlayed || 0}</td>
-                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesWon || 0}</td>
-                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesLost || 0}</td>
-                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.goalsScored || 0}</td>
-                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.goalsConceded || 0}</td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesWon ?? (row as any).won ?? 0}</td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.matchesLost ?? (row as any).lost ?? 0}</td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.goalsScored ?? (row as any).goalsFor ?? 0}</td>
+                    <td className="py-2.5 px-1 text-center text-on-surface-variant font-medium tabular-nums">{row.goalsConceded ?? (row as any).goalsAgainst ?? 0}</td>
                     <td className="py-2.5 px-1 text-center font-bold tabular-nums">
                       {(row.goalDifference || 0) > 0 ? `+${row.goalDifference}` : (row.goalDifference || 0)}
                     </td>
                     <td className="py-2.5 px-2 text-right font-headline-sm text-headline-sm text-primary-container font-extrabold tabular-nums">
-                      {row.totalPoints || 0}
+                      {row.totalPoints ?? (row as any).points ?? 0}
                     </td>
                   </tr>
                 );

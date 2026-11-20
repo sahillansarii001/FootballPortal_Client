@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import { getApiBaseUrl } from '@/utils/envConfig';
 
 export interface AuthUser {
   _id: string;
@@ -21,7 +21,7 @@ export interface LoginResult {
 export const authService = {
   async login(email: string, password: string): Promise<LoginResult> {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

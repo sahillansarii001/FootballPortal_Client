@@ -1,7 +1,6 @@
 import { authService } from './auth.service';
 import { Match, MatchEvent, Tournament } from '@/types';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import { getApiBaseUrl } from '@/utils/envConfig';
 
 async function ensureAuthToken(): Promise<string | null> {
   let token = authService.getToken();
@@ -82,7 +81,7 @@ export const adminService = {
   // Live Match Controls (Authoritative)
   async startMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/start`, { method: 'POST' });
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/start`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -90,7 +89,7 @@ export const adminService = {
 
   async pauseMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/pause`, { method: 'POST' });
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/pause`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -98,7 +97,7 @@ export const adminService = {
 
   async resumeMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/resume`, { method: 'POST' });
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/resume`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -106,7 +105,7 @@ export const adminService = {
 
   async startHalfTime(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/stage`, {
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/stage`, {
         method: 'POST',
         body: JSON.stringify({ stage: 'Half-Time', duration: 120 }),
       });
@@ -117,7 +116,7 @@ export const adminService = {
 
   async startSecondHalf(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/stage`, {
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/stage`, {
         method: 'POST',
         body: JSON.stringify({ stage: 'Second Half', duration: 240 }),
       });
@@ -132,7 +131,7 @@ export const adminService = {
     duration?: number
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/stage`, {
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/stage`, {
         method: 'POST',
         body: JSON.stringify({ stage, duration }),
       });
@@ -146,7 +145,7 @@ export const adminService = {
     seconds: number
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/set-time`, {
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/set-time`, {
         method: 'POST',
         body: JSON.stringify({ seconds }),
       });
@@ -157,7 +156,7 @@ export const adminService = {
 
   async advanceStage(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/advance`, { method: 'POST' });
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/advance`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -169,7 +168,7 @@ export const adminService = {
 
   async resetTimer(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/reset`, { method: 'POST' });
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/reset`, { method: 'POST' });
     } catch (err: any) {
       return { success: false, error: err.message };
     }
@@ -177,7 +176,7 @@ export const adminService = {
 
   async addTimeToTimer(matchId: string, seconds: number = 120): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      return await fetchWithAuth(`${API_BASE_URL}/matches/${matchId}/timer/add-time`, {
+      return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/add-time`, {
         method: 'POST',
         body: JSON.stringify({ seconds }),
       });
@@ -192,7 +191,7 @@ export const adminService = {
     teamBScore: number
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ teamAScore, teamBScore }),
@@ -209,7 +208,7 @@ export const adminService = {
     payload: { teamId: string; playerId?: string; minute?: string; type?: string }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/goal`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/goal`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -226,7 +225,7 @@ export const adminService = {
     goalId: string
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/goal/${goalId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/goal/${goalId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
@@ -242,7 +241,7 @@ export const adminService = {
     payload: { team?: string; teamId?: string; player?: string; playerId?: string; goalkeeper?: string; goalkeeperId?: string; outcome: string }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/penalties`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/penalties`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -268,7 +267,7 @@ export const adminService = {
     }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ shootout }),
@@ -285,7 +284,7 @@ export const adminService = {
     payload: { tossWinner: string; choice: 'ATTACK' | 'DEFEND' | 'shoot' | 'save' }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/toss`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/toss`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -302,7 +301,7 @@ export const adminService = {
     payload: { player: string; goalkeeper?: string; outcome: 'Goal' | 'Saved' | 'Missed' }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/toss/decisive-kick`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/toss/decisive-kick`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -316,7 +315,7 @@ export const adminService = {
 
   async endMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/end`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/end`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -339,7 +338,7 @@ export const adminService = {
     }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}/finalize`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/finalize`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: payload ? JSON.stringify(payload) : undefined,
@@ -359,7 +358,7 @@ export const adminService = {
     team: string;
   }): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
-      const json = await fetchWithAuth(`${API_BASE_URL}/players`, {
+      const json = await fetchWithAuth(`${getApiBaseUrl()}/players`, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -387,7 +386,7 @@ export const adminService = {
     }
   ): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
-      const json = await fetchWithAuth(`${API_BASE_URL}/players/${playerId}`, {
+      const json = await fetchWithAuth(`${getApiBaseUrl()}/players/${playerId}`, {
         method: 'PUT',
         body: JSON.stringify(payload),
       });
@@ -402,7 +401,7 @@ export const adminService = {
 
   async deletePlayer(playerId: string): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
-      const json = await fetchWithAuth(`${API_BASE_URL}/players/${playerId}`, {
+      const json = await fetchWithAuth(`${getApiBaseUrl()}/players/${playerId}`, {
         method: 'DELETE',
       });
       if (!json || !json.success) {
@@ -420,7 +419,7 @@ export const adminService = {
     payload: { name?: string; logo?: string; captain?: string; coach?: string; conference?: string; description?: string }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/teams/${teamId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/teams/${teamId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -445,7 +444,7 @@ export const adminService = {
     matchNumber?: number;
   }): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -477,7 +476,7 @@ export const adminService = {
     }
   ): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -495,7 +494,7 @@ export const adminService = {
   // Delete Match
   async deleteMatch(matchId: string): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/matches/${matchId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
@@ -519,7 +518,7 @@ export const adminService = {
     conference?: string;
   }): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/teams`, {
+      const res = await fetch(`${getApiBaseUrl()}/teams`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -543,7 +542,7 @@ export const adminService = {
     participatingTeams?: string[];
   }): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/tournaments`, {
+      const res = await fetch(`${getApiBaseUrl()}/tournaments`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
@@ -558,7 +557,7 @@ export const adminService = {
   // Force recalculate tournament point table
   async recalculateStandings(tournamentId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/standings/${tournamentId}/recalculate`, {
+      const res = await fetch(`${getApiBaseUrl()}/standings/${tournamentId}/recalculate`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });

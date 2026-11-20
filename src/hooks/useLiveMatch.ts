@@ -5,7 +5,7 @@ import { io, Socket } from 'socket.io-client';
 import { Match, MatchEvent } from '@/types';
 import { matchService } from '@/services/match.service';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+import { getSocketUrl } from '@/utils/envConfig';
 
 export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
   const [match, setMatch] = useState<Match | null>(initialMatch || null);
@@ -65,7 +65,7 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
 
   // Socket setup
   useEffect(() => {
-    const socket = io(SOCKET_URL, {
+    const socket = io(getSocketUrl(), {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
