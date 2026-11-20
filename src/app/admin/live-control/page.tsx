@@ -850,6 +850,33 @@ export default function AdminLiveControlPage() {
   };
 
   // Sudden Death Coin Toss Handler
+  const handleSetTossWinner = (winner: 'A' | 'B') => {
+    const winnerName = winner === 'A' ? teamAName : teamBName;
+    setTossState((prev) => ({
+      ...prev,
+      isFlipping: false,
+      tossWinner: winner,
+      tossChoice: null, // Reset choice so the chosen team can choose SHOOT or SAVE
+      isResolved: false,
+      winnerTeamName: null,
+      selectedDecisiveShooterId: winner === 'A' ? teamAPlayers[0]?._id || '' : teamBPlayers[0]?._id || '',
+    }));
+    showNotification(`🪙 Coin Toss Winner Set: ${winnerName} won the toss! Please choose SHOOT or SAVE.`);
+  };
+
+  const handleResetToss = () => {
+    setTossState((prev) => ({
+      ...prev,
+      isFlipping: false,
+      tossWinner: null,
+      tossChoice: null,
+      isResolved: false,
+      winnerTeamName: null,
+      selectedDecisiveShooterId: '',
+    }));
+    showNotification(`🪙 Coin toss reset. Select who won the toss.`);
+  };
+
   const handleFlipCoin = () => {
     setTossState((prev) => ({ ...prev, isFlipping: true, tossWinner: null, tossChoice: null }));
     setTimeout(() => {
@@ -862,7 +889,7 @@ export default function AdminLiveControlPage() {
         selectedDecisiveShooterId: winner === 'A' ? teamAPlayers[0]?._id || '' : teamBPlayers[0]?._id || '',
       }));
       showNotification(`🪙 Coin Toss Result: ${winnerName} won the toss! The winner must choose to SHOOT or SAVE.`);
-    }, 1000);
+    }, 800);
   };
 
   const handleSelectTossChoice = async (choice: 'shoot' | 'save') => {
@@ -2085,27 +2112,69 @@ export default function AdminLiveControlPage() {
                 </div>
 
                 {!tossState.tossWinner ? (
-                  <div className="flex flex-col gap-2">
-                    <p className="text-xs text-amber-900 leading-relaxed font-medium">
-                      All 3 regulation penalties are tied! Flip the coin to decide which team chooses their decisive role.
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs text-amber-900 leading-relaxed font-semibold">
+                      All 3 regulation penalties are tied! Who won the referee&apos;s official coin toss? Choose the winning team:
                     </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSetTossWinner('A')}
+                        className="py-3 px-4 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95"
+                      >
+                        <span className="text-base">🪙</span>
+                        <span>{teamAName} Won Toss</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetTossWinner('B')}
+                        className="py-3 px-4 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95"
+                      >
+                        <span className="text-base">🪙</span>
+                        <span>{teamBName} Won Toss</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-px bg-amber-300 flex-1" />
+                      <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider">or digital simulation</span>
+                      <div className="h-px bg-amber-300 flex-1" />
+                    </div>
                     <button
                       type="button"
                       onClick={handleFlipCoin}
                       disabled={tossState.isFlipping}
-                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                      className="w-full py-2 bg-white hover:bg-amber-100 text-amber-900 font-bold text-xs uppercase tracking-wider rounded-xl border border-amber-300 shadow-2xs transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
                     >
-                      <Coins className={`w-4 h-4 ${tossState.isFlipping ? 'animate-spin' : ''}`} />
-                      <span>{tossState.isFlipping ? 'Flipping Coin...' : '🪙 Flip Coin for Sudden Death'}</span>
+                      <Coins className={`w-3.5 h-3.5 text-amber-600 ${tossState.isFlipping ? 'animate-spin' : ''}`} />
+                      <span>{tossState.isFlipping ? 'Flipping Digital Coin...' : '🎲 Random Digital Coin Flip'}</span>
                     </button>
                   </div>
                 ) : !tossState.tossChoice ? (
                   <div className="flex flex-col gap-2.5">
-                    <div className="bg-amber-100 p-2.5 rounded-lg border border-amber-300 text-xs font-black text-amber-950">
-                      🪙 {tossState.tossWinner === 'A' ? teamAName : teamBName} WON THE COIN TOSS!
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-amber-100 p-2.5 rounded-xl border border-amber-300">
+                      <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                        <span className="text-base">🪙</span>
+                        <span>{tossState.tossWinner === 'A' ? teamAName : teamBName} WON THE COIN TOSS!</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSetTossWinner(tossState.tossWinner === 'A' ? 'B' : 'A')}
+                          className="px-2.5 py-1 text-[11px] font-bold text-amber-900 bg-amber-200 hover:bg-amber-300 rounded-lg transition-all"
+                        >
+                          Switch to {tossState.tossWinner === 'A' ? teamBName : teamAName}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetToss}
+                          className="px-2 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-amber-200 rounded-lg transition-all"
+                        >
+                          Reset
+                        </button>
+                      </div>
                     </div>
                     <p className="text-xs text-amber-900 font-medium">
-                      The coin toss winner must decide: do you take the decisive kick (SHOOT) or defend the goal (SAVE)?
+                      The coin toss winner ({tossState.tossWinner === 'A' ? teamAName : teamBName}) must decide: take the decisive kick (SHOOT) or defend the goal (SAVE)?
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -2126,6 +2195,28 @@ export default function AdminLiveControlPage() {
                   </div>
                 ) : !tossState.isResolved ? (
                   <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-900 bg-amber-100/70 px-3 py-1.5 rounded-lg border border-amber-200">
+                      <span>
+                        Toss Winner: <strong className="text-amber-950 font-black">{tossState.tossWinner === 'A' ? teamAName : teamBName}</strong> (Chose <strong className="text-emerald-800 font-black">{tossState.tossChoice.toUpperCase()}</strong>)
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTossState((prev) => ({ ...prev, tossChoice: null }))}
+                          className="text-amber-800 hover:text-amber-950 underline font-semibold text-[11px]"
+                        >
+                          Change Choice
+                        </button>
+                        <span>•</span>
+                        <button
+                          type="button"
+                          onClick={handleResetToss}
+                          className="text-amber-800 hover:text-amber-950 underline font-semibold text-[11px]"
+                        >
+                          Change Winner
+                        </button>
+                      </div>
+                    </div>
                     {(() => {
                       const winner = tossState.tossWinner;
                       const choice = tossState.tossChoice;
