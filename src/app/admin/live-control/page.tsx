@@ -143,6 +143,8 @@ export default function AdminLiveControlPage() {
     socket.on('timer:resumed', handleTimerSync);
     socket.on('timer:paused', handleTimerSync);
     socket.on('timer:sync', handleTimerSync);
+    socket.on('timer:update', handleTimerSync);
+    socket.on('timer:updated', handleTimerSync);
     socket.on('match:phase_changed', handleTimerSync);
     socket.on('stage:change', handleTimerSync);
 
@@ -152,6 +154,8 @@ export default function AdminLiveControlPage() {
       socket.off('timer:resumed', handleTimerSync);
       socket.off('timer:paused', handleTimerSync);
       socket.off('timer:sync', handleTimerSync);
+      socket.off('timer:update', handleTimerSync);
+      socket.off('timer:updated', handleTimerSync);
       socket.off('match:phase_changed', handleTimerSync);
       socket.off('stage:change', handleTimerSync);
     };
@@ -394,11 +398,75 @@ export default function AdminLiveControlPage() {
   // Add Time Handler (+1 Min, +2 Min Extra Time)
   const handleAddTime = async (seconds: number = 120) => {
     if (!selectedMatch) return;
-    setRemainingSeconds((prev) => prev + seconds);
+    const baseSec = (typeof remainingSeconds === 'number' && remainingSeconds > 0) ? remainingSeconds : 0;
+    const optimisticRemaining = baseSec + seconds;
+    setRemainingSeconds(optimisticRemaining);
     setTimerRunning(true);
-    await adminService.addTimeToTimer(selectedMatch._id, seconds);
+    if (selectedMatch.status === 'Penalty Shootout' || currentStage.includes('Penalty')) {
+      setCurrentStage('Extra Time');
+      setSelectedMatch((prev) => prev ? { ...prev, status: 'Live' } : null);
+    }
+    const res = await adminService.addTimeToTimer(selectedMatch._id, seconds);
+    if (res?.success && res.data) {
+      const matchData = res.data;
+      if (matchData.remainingTime !== undefined) {
+        setRemainingSeconds(matchData.remainingTime);
+      }
+      if (matchData.currentStage || matchData.phase) {
+        setCurrentStage(matchData.currentStage || matchData.phase);
+      }
+      setTimerRunning(Boolean(matchData.isRunning && !matchData.isPaused));
+      setSelectedMatch((prev) => prev ? {
+        ...prev,
+        status: matchData.status || (matchData.isRunning ? 'Live' : prev.status),
+        timer: matchData.timer || {
+          ...prev.timer,
+          remainingTime: matchData.remainingTime,
+          currentStage: matchData.currentStage || matchData.phase,
+          isRunning: Boolean(matchData.isRunning),
+          isPaused: Boolean(matchData.isPaused)
+        }
+      } : null);
+    }
     showNotification(
       `Added +${seconds >= 60 ? `${Math.floor(seconds / 60)} minute${seconds > 60 ? 's' : ''}` : `${seconds}s`} to match clock!`
+    );
+  };
+
+  // Reset Clock Handler (Reset 4:00, Reset 2:00)
+  const handleResetClock = async (seconds: number) => {
+    if (!selectedMatch) return;
+    setRemainingSeconds(seconds);
+    setTimerRunning(true);
+    const targetStage = seconds === 240 ? 'Second Half' : 'Extra Time';
+    if (selectedMatch.status === 'Penalty Shootout' || currentStage.includes('Penalty')) {
+      setCurrentStage(targetStage);
+      setSelectedMatch((prev) => prev ? { ...prev, status: 'Live' } : null);
+    }
+    const res = await adminService.setClockTime(selectedMatch._id, seconds);
+    if (res?.success && res.data) {
+      const matchData = res.data;
+      if (matchData.remainingTime !== undefined) {
+        setRemainingSeconds(matchData.remainingTime);
+      }
+      if (matchData.currentStage || matchData.phase) {
+        setCurrentStage(matchData.currentStage || matchData.phase);
+      }
+      setTimerRunning(Boolean(matchData.isRunning && !matchData.isPaused));
+      setSelectedMatch((prev) => prev ? {
+        ...prev,
+        status: matchData.status || (matchData.isRunning ? 'Live' : prev.status),
+        timer: matchData.timer || {
+          ...prev.timer,
+          remainingTime: matchData.remainingTime,
+          currentStage: matchData.currentStage || matchData.phase,
+          isRunning: Boolean(matchData.isRunning),
+          isPaused: Boolean(matchData.isPaused)
+        }
+      } : null);
+    }
+    showNotification(
+      `Clock reset to ${Math.floor(seconds / 60)}:00!`
     );
   };
 
@@ -1672,20 +1740,14 @@ export default function AdminLiveControlPage() {
                 +2 Min Extra Time
               </button>
               <button
-                onClick={async () => {
-                  setRemainingSeconds(240);
-                  if (selectedMatch?._id) await adminService.setClockTime(selectedMatch._id, 240);
-                }}
-                className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors"
+                onClick={() => handleResetClock(240)}
+                className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors active:scale-95"
               >
                 Reset 4:00
               </button>
               <button
-                onClick={async () => {
-                  setRemainingSeconds(120);
-                  if (selectedMatch?._id) await adminService.setClockTime(selectedMatch._id, 120);
-                }}
-                className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors"
+                onClick={() => handleResetClock(120)}
+                className="px-2.5 py-1 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors active:scale-95"
               >
                 Reset 2:00
               </button>
