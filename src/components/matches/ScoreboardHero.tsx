@@ -121,13 +121,14 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               </span>
 
               {/* Team A Goalscorers */}
-              {match.goals && (
+              {match.goals && localScoreA > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5 justify-start md:justify-end">
                   {match.goals
                     .filter((g) => {
                       const tId = typeof g.team === 'string' ? g.team : g.team?._id;
                       return tId === match.teamA._id || (g.team as any)?.name === match.teamA.name;
                     })
+                    .slice(0, localScoreA)
                     .map((g, i) => (
                       <span
                         key={i}
@@ -220,13 +221,14 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               </span>
 
               {/* Team B Goalscorers */}
-              {match.goals && (
+              {match.goals && localScoreB > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5 justify-start">
                   {match.goals
                     .filter((g) => {
                       const tId = typeof g.team === 'string' ? g.team : g.team?._id;
                       return tId === match.teamB._id || (g.team as any)?.name === match.teamB.name;
                     })
+                    .slice(0, localScoreB)
                     .map((g, i) => (
                       <span
                         key={i}
@@ -244,7 +246,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
 
         {/* Match Stages Multi-Segment Ribbon (Tournament Cycle with 2-Minute Draw Decider) */}
         <div className="flex flex-col gap-3 pt-4 bg-surface-container-low p-4 rounded-xl border border-surface-container-high">
-          {isDraw && (
+          {isDraw && (stage.toLowerCase().includes('extra') || stage.toLowerCase().includes('draw') || activeIdx >= 4) && (
             <div className="bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 px-3.5 py-2 rounded-xl text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow-xs">
               <span className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
