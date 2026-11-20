@@ -77,6 +77,24 @@ export default function AdminOverviewPage() {
         if (sorted.length > 0) {
           setTopScorer(sorted[0]);
         }
+
+        // Extract real audit logs from matches goals
+        const realLogs: any[] = [];
+        allMatches.forEach((m) => {
+          if (m.goals && Array.isArray(m.goals)) {
+            m.goals.forEach((g: any, gIdx: number) => {
+              realLogs.push({
+                id: g._id || `${m._id}_g_${gIdx}`,
+                type: 'goal',
+                title: `Goal: ${g.player?.name || 'Athlete'} (${typeof g.team === 'object' ? g.team.name : 'Team'})`,
+                desc: `${g.detail?.goalType || 'Normal Goal'} in ${m.stage || 'APL Season 9'}`,
+                minute: g.matchTime || 'In Match',
+                official: m.referee || 'APL Certified Official',
+              });
+            });
+          }
+        });
+        setAuditLogs(realLogs);
       } catch (err) {
         console.error('Failed to load dynamic dashboard data:', err);
       } finally {
@@ -381,6 +399,31 @@ export default function AdminOverviewPage() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Goalscorers pill display */}
+                    {m.goals && m.goals.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-surface-container-high/60">
+                        <span className="font-bold text-on-surface-variant flex items-center gap-1 text-[11px] uppercase tracking-wider">
+                          <span>⚽ Scorers:</span>
+                        </span>
+                        {m.goals.map((g: any, i: number) => (
+                          <span
+                            key={g._id || i}
+                            className="inline-flex items-center gap-1 bg-surface-container border border-surface-container-high px-2 py-0.5 rounded-lg text-on-surface text-xs font-semibold"
+                          >
+                            <span>{g.player?.name || 'Athlete'}</span>
+                            {g.player?.jerseyNumber && (
+                              <span className="text-[10px] text-primary-container font-mono font-bold">
+                                #{g.player.jerseyNumber}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-on-surface-variant font-mono">
+                              ({g.matchTime || 'Goal'})
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between pt-2 border-t border-surface-container-high">
                       <span className="text-xs text-on-surface-variant font-medium">

@@ -66,6 +66,7 @@ export default function AdminLiveControlPage() {
   const [goalTeam, setGoalTeam] = useState<'A' | 'B'>('A');
   const [goalPlayerName, setGoalPlayerName] = useState('');
   const [goalMinute, setGoalMinute] = useState('02:30 (1H)');
+  const [matchGoals, setMatchGoals] = useState<any[]>([]);
 
   // Completed Match Protocol Stages tracker
   const [completedStages, setCompletedStages] = useState<string[]>([]);
@@ -104,6 +105,18 @@ export default function AdminLiveControlPage() {
 
   const teamAName = selectedMatch?.teamA?.name || 'Team A';
   const teamBName = selectedMatch?.teamB?.name || 'Team B';
+  const targetTeamAId = typeof selectedMatch?.teamA === 'object' ? selectedMatch?.teamA?._id : selectedMatch?.teamA;
+  const targetTeamBId = typeof selectedMatch?.teamB === 'object' ? selectedMatch?.teamB?._id : selectedMatch?.teamB;
+
+  const teamAGoals = matchGoals.filter((g) => {
+    const tId = typeof g.team === 'string' ? g.team : g.team?._id;
+    return (targetTeamAId && tId === targetTeamAId) || (g.team as any)?.name === teamAName;
+  });
+
+  const teamBGoals = matchGoals.filter((g) => {
+    const tId = typeof g.team === 'string' ? g.team : g.team?._id;
+    return (targetTeamBId && tId === targetTeamBId) || (g.team as any)?.name === teamBName;
+  });
 
   const { socket } = useSocket();
 
@@ -139,6 +152,34 @@ export default function AdminLiveControlPage() {
       });
     };
 
+    const handleGoalRecorded = (data: any) => {
+      if (data?.event) {
+        setMatchGoals((prev) => {
+          const exists = prev.some((g) => g._id === data.event._id);
+          if (exists) return prev;
+          return [...prev, data.event];
+        });
+      }
+      if (data?.score) {
+        setScoreA(data.score.teamA);
+        setScoreB(data.score.teamB);
+      } else if (data?.teamAScore !== undefined) {
+        setScoreA(data.teamAScore);
+        setScoreB(data.teamBScore);
+      }
+    };
+
+    const handleGoalUndone = (data: any) => {
+      const removedId = data?.eventId || data?.id;
+      if (removedId) {
+        setMatchGoals((prev) => prev.filter((g) => g._id !== removedId));
+      }
+      if (data?.score) {
+        setScoreA(data.score.teamA);
+        setScoreB(data.score.teamB);
+      }
+    };
+
     socket.on('timer:started', handleTimerSync);
     socket.on('timer:resumed', handleTimerSync);
     socket.on('timer:paused', handleTimerSync);
@@ -147,6 +188,10 @@ export default function AdminLiveControlPage() {
     socket.on('timer:updated', handleTimerSync);
     socket.on('match:phase_changed', handleTimerSync);
     socket.on('stage:change', handleTimerSync);
+    socket.on('goal:scored', handleGoalRecorded);
+    socket.on('goal:recorded', handleGoalRecorded);
+    socket.on('goal:undone', handleGoalUndone);
+    socket.on('goal:removed', handleGoalUndone);
 
     return () => {
       socket.emit('leave:match', matchId);
@@ -158,6 +203,10 @@ export default function AdminLiveControlPage() {
       socket.off('timer:updated', handleTimerSync);
       socket.off('match:phase_changed', handleTimerSync);
       socket.off('stage:change', handleTimerSync);
+      socket.off('goal:scored', handleGoalRecorded);
+      socket.off('goal:recorded', handleGoalRecorded);
+      socket.off('goal:undone', handleGoalUndone);
+      socket.off('goal:removed', handleGoalUndone);
     };
   }, [socket, selectedMatch?._id]);
 
@@ -190,6 +239,7 @@ export default function AdminLiveControlPage() {
     setRemainingSeconds(match.timer?.remainingTime ?? 240);
     setTimerRunning(Boolean(match.timer?.isRunning && !match.timer?.isPaused));
     setCurrentStage(match.timer?.currentStage || match.stage || 'First Half');
+    setMatchGoals(match.goals || []);
     setPenaltyKicks([]);
     setPenaltyScoreA(match.shootout?.teamAPenaltyScore ?? 0);
     setPenaltyScoreB(match.shootout?.teamBPenaltyScore ?? 0);
@@ -201,6 +251,15 @@ export default function AdminLiveControlPage() {
       winnerTeamName: typeof match.winner === 'object' && match.winner ? match.winner.name : null,
       selectedDecisiveShooterId: '',
     });
+
+    // Fetch authoritative match goals
+    if (match._id) {
+      matchService.getMatchGoals(match._id).then((goals) => {
+        if (goals && Array.isArray(goals)) {
+          setMatchGoals(goals);
+        }
+      }).catch(() => {});
+    }
 
     // Synchronize completed stages based on match state
     if (match.status === 'Completed') {
@@ -248,6 +307,9 @@ export default function AdminLiveControlPage() {
           if (liveData.timer?.currentStage) {
             setCurrentStage(liveData.timer.currentStage);
           }
+          if (liveData.goals && Array.isArray(liveData.goals)) {
+            setMatchGoals(liveData.goals);
+          }
           setSelectedMatch((prev) => {
             if (!prev) return liveData;
             return {
@@ -256,7 +318,8 @@ export default function AdminLiveControlPage() {
               timer: liveData.timer,
               score: liveData.score,
               teamAScore: liveData.teamAScore,
-              teamBScore: liveData.teamBScore
+              teamBScore: liveData.teamBScore,
+              goals: liveData.goals || prev.goals
             };
           });
         }
@@ -657,7 +720,7 @@ export default function AdminLiveControlPage() {
     const matchedPlayer = players.find((p) => p.name === goalPlayerName);
 
     // Save goal and sync score
-    await adminService.recordGoal(selectedMatch._id, {
+    const res = await adminService.recordGoal(selectedMatch._id, {
       teamId,
       playerId: matchedPlayer?._id,
       minute: calculatedMinute,
@@ -665,7 +728,45 @@ export default function AdminLiveControlPage() {
     });
     await adminService.updateScore(selectedMatch._id, newScoreA, newScoreB);
 
+    if (res?.success && res.data?.event) {
+      setMatchGoals((prev) => {
+        const exists = prev.some((g) => g._id === res.data.event._id);
+        return exists ? prev : [...prev, res.data.event];
+      });
+    } else {
+      const fallbackGoal = {
+        _id: 'goal_' + Date.now(),
+        team: { _id: teamId, name: teamName },
+        player: matchedPlayer || { name: goalPlayerName, jerseyNumber: 10 },
+        matchTime: calculatedMinute,
+        detail: { goalType: 'Normal Goal' },
+        timestamp: new Date().toISOString()
+      };
+      setMatchGoals((prev) => [...prev, fallbackGoal]);
+    }
+
     showNotification(`Goal recorded for ${teamName} (${goalPlayerName || 'Athlete'} • ${calculatedMinute})!`);
+  };
+
+  const handleDeleteGoal = async (goalId: string, teamId?: string) => {
+    if (!selectedMatch) return;
+    try {
+      await adminService.removeGoal(selectedMatch._id, goalId);
+      setMatchGoals((prev) => prev.filter((g) => g._id !== goalId));
+      const targetAId = typeof selectedMatch.teamA === 'object' ? selectedMatch.teamA?._id : selectedMatch.teamA;
+      if (teamId === targetAId) {
+        const nextA = Math.max(0, scoreA - 1);
+        setScoreA(nextA);
+        await adminService.updateScore(selectedMatch._id, nextA, scoreB);
+      } else {
+        const nextB = Math.max(0, scoreB - 1);
+        setScoreB(nextB);
+        await adminService.updateScore(selectedMatch._id, scoreA, nextB);
+      }
+      showNotification('Goal removed and score updated');
+    } catch (err: any) {
+      showError('Failed to remove goal');
+    }
   };
 
   // 3-Kick Regulation Penalty Recorder
@@ -996,6 +1097,7 @@ export default function AdminLiveControlPage() {
       setPenaltyScoreA(0);
       setPenaltyScoreB(0);
       setPenaltyKicks([]);
+      setMatchGoals([]);
       setRemainingSeconds(240);
       setCurrentStage('First Half');
       setCompletedStages([]);
@@ -1324,41 +1426,72 @@ export default function AdminLiveControlPage() {
         {/* Central Score Display */}
         <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4 sm:gap-6">
           {/* Team A */}
-          <div className="md:col-span-4 flex items-center justify-between md:justify-start gap-3 sm:gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-xl sm:text-2xl shadow-inner border border-primary-container/30 shrink-0 overflow-hidden relative">
-                <span className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-xl text-primary-container">
-                  {teamAName.slice(0, 2).toUpperCase()}
-                </span>
-                {selectedMatch?.teamA?.logo && (
-                  <img
-                    src={selectedMatch.teamA.logo}
-                    alt=""
-                    className="w-full h-full object-cover relative z-10"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                )}
+          <div className="md:col-span-4 flex flex-col items-start gap-2">
+            <div className="w-full flex items-center justify-between md:justify-start gap-3 sm:gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-xl sm:text-2xl shadow-inner border border-primary-container/30 shrink-0 overflow-hidden relative">
+                  <span className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-xl text-primary-container">
+                    {teamAName.slice(0, 2).toUpperCase()}
+                  </span>
+                  {selectedMatch?.teamA?.logo && (
+                    <img
+                      src={selectedMatch.teamA.logo}
+                      alt=""
+                      className="w-full h-full object-cover relative z-10"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                </div>
+                <div>
+                  <h2 className="font-headline-md text-xl sm:text-2xl font-black text-on-surface leading-tight">
+                    {teamAName}
+                  </h2>
+                  <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
+                    Home Squad
+                  </span>
+                </div>
               </div>
-              <div>
-                <h2 className="font-headline-md text-xl sm:text-2xl font-black text-on-surface leading-tight">
-                  {teamAName}
-                </h2>
-                <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
-                  Home Squad
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleOpenGoalModal('A')}
+                disabled={selectedMatch?.status === 'Completed'}
+                className="py-2 sm:py-1 px-3 sm:px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30 shrink-0 min-h-[38px]"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Goal</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => handleOpenGoalModal('A')}
-              disabled={selectedMatch?.status === 'Completed'}
-              className="py-2 sm:py-1 px-3 sm:px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30 shrink-0 min-h-[38px]"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Goal</span>
-            </button>
+
+            {/* Team A Goalscorers Pill Badges */}
+            {teamAGoals.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {teamAGoals.map((g, idx) => (
+                  <span
+                    key={g._id || idx}
+                    className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-lg text-xs text-emerald-950 font-medium shadow-2xs transition-all"
+                  >
+                    <span>⚽</span>
+                    <span className="font-bold text-slate-900">{g.player?.name || 'Goal'}</span>
+                    {g.player?.jerseyNumber && (
+                      <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100 px-1 rounded font-bold">
+                        #{g.player.jerseyNumber}
+                      </span>
+                    )}
+                    <span className="text-emerald-700 font-mono text-[11px] font-semibold">{g.matchTime || 'Goal'}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGoal(g._id, targetTeamAId)}
+                      title={`Remove goal by ${g.player?.name || 'player'}`}
+                      className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Middle: Dark Scoreboard matching official reference */}
@@ -1368,7 +1501,7 @@ export default function AdminLiveControlPage() {
             </span>
 
             {/* Dark Scoreboard Box matching user screenshot */}
-            <div className="bg-[#1e2025] px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-white/10 shadow-lg flex flex-col items-center gap-1 my-1.5 sm:my-2 w-full max-w-[240px] transition-transform hover:scale-[1.02]">
+            <div className="bg-[#1e2025] px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-white/10 shadow-lg flex flex-col items-center gap-1 my-1.5 sm:2 w-full max-w-[240px] transition-transform hover:scale-[1.02]">
               <div className="flex items-center justify-center gap-5 sm:gap-6">
                 <span className="font-display-score text-3xl sm:text-5xl font-black text-white tabular-nums tracking-tight">
                   {scoreA}
@@ -1398,41 +1531,72 @@ export default function AdminLiveControlPage() {
           </div>
 
           {/* Team B */}
-          <div className="md:col-span-4 flex items-center justify-between md:justify-end gap-3 sm:gap-4 text-right">
-            <button
-              type="button"
-              onClick={() => handleOpenGoalModal('B')}
-              disabled={selectedMatch?.status === 'Completed'}
-              className="py-2 sm:py-1 px-3 sm:px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30 shrink-0 md:order-1 min-h-[38px]"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Goal</span>
-            </button>
-            <div className="flex items-center gap-3 md:order-2">
-              <div className="text-right">
-                <h2 className="font-headline-md text-xl sm:text-2xl font-black text-on-surface leading-tight">
-                  {teamBName}
-                </h2>
-                <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
-                  Visiting Team
-                </span>
-              </div>
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-xl sm:text-2xl shadow-inner border border-secondary/30 shrink-0 overflow-hidden relative">
-                <span className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-xl text-secondary">
-                  {teamBName.slice(0, 2).toUpperCase()}
-                </span>
-                {selectedMatch?.teamB?.logo && (
-                  <img
-                    src={selectedMatch.teamB.logo}
-                    alt=""
-                    className="w-full h-full object-cover relative z-10"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                )}
+          <div className="md:col-span-4 flex flex-col items-end gap-2 text-right">
+            <div className="w-full flex items-center justify-between md:justify-end gap-3 sm:gap-4 text-right">
+              <button
+                type="button"
+                onClick={() => handleOpenGoalModal('B')}
+                disabled={selectedMatch?.status === 'Completed'}
+                className="py-2 sm:py-1 px-3 sm:px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30 shrink-0 md:order-1 min-h-[38px]"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Goal</span>
+              </button>
+              <div className="flex items-center gap-3 md:order-2">
+                <div className="text-right">
+                  <h2 className="font-headline-md text-xl sm:text-2xl font-black text-on-surface leading-tight">
+                    {teamBName}
+                  </h2>
+                  <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
+                    Visiting Team
+                  </span>
+                </div>
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-xl sm:text-2xl shadow-inner border border-secondary/30 shrink-0 overflow-hidden relative">
+                  <span className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-xl text-secondary">
+                    {teamBName.slice(0, 2).toUpperCase()}
+                  </span>
+                  {selectedMatch?.teamB?.logo && (
+                    <img
+                      src={selectedMatch.teamB.logo}
+                      alt=""
+                      className="w-full h-full object-cover relative z-10"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Team B Goalscorers Pill Badges */}
+            {teamBGoals.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 justify-end">
+                {teamBGoals.map((g, idx) => (
+                  <span
+                    key={g._id || idx}
+                    className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-300 px-2 py-0.5 rounded-lg text-xs text-blue-950 font-medium shadow-2xs transition-all"
+                  >
+                    <span>⚽</span>
+                    <span className="font-bold text-slate-900">{g.player?.name || 'Goal'}</span>
+                    {g.player?.jerseyNumber && (
+                      <span className="text-[10px] font-mono text-blue-800 bg-blue-100 px-1 rounded font-bold">
+                        #{g.player.jerseyNumber}
+                      </span>
+                    )}
+                    <span className="text-blue-700 font-mono text-[11px] font-semibold">{g.matchTime || 'Goal'}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGoal(g._id, targetTeamBId)}
+                      title={`Remove goal by ${g.player?.name || 'player'}`}
+                      className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1511,6 +1675,73 @@ export default function AdminLiveControlPage() {
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Finalize Match</span>
             </button>
+          )}
+        </div>
+
+        {/* Official Match Goalscorers Summary & Management Strip */}
+        <div className="pt-3 border-t border-surface-container-high/80 mt-1">
+          <div className="flex items-center justify-between gap-2 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚽</span>
+              <h4 className="font-headline-sm text-xs sm:text-sm font-black text-on-surface uppercase tracking-wider">
+                Official Match Goalscorers ({matchGoals.length})
+              </h4>
+            </div>
+            {matchGoals.length > 0 && (
+              <span className="text-[10px] font-bold text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                Live Feed Active
+              </span>
+            )}
+          </div>
+
+          {matchGoals.length === 0 ? (
+            <div className="py-2.5 px-3 rounded-xl bg-surface-container-low/50 border border-surface-container text-xs text-on-surface-variant flex items-center justify-between">
+              <span>No goals logged yet ({scoreA} - {scoreB}). Click <strong>+ Goal</strong> above to assign a goal to any team roster athlete.</span>
+              <span className="font-mono text-[10px] text-slate-400 font-bold">0 GOALS</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+              {matchGoals.map((g, idx) => {
+                const isTeamA = (typeof g.team === 'string' ? g.team : g.team?._id) === targetTeamAId || (g.team as any)?.name === teamAName;
+                const teamName = isTeamA ? teamAName : teamBName;
+                return (
+                  <div
+                    key={g._id || idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-low border border-surface-container shadow-2xs hover:border-surface-container-high transition-all"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-display-score text-xs font-black shrink-0 ${
+                          isTeamA ? 'bg-primary-container text-white shadow-xs' : 'bg-secondary text-white shadow-xs'
+                        }`}
+                      >
+                        {g.player?.jerseyNumber ? `#${g.player.jerseyNumber}` : '⚽'}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs text-on-surface truncate">
+                          {g.player?.name || 'Athlete Goal'}
+                        </div>
+                        <div className="text-[10px] text-on-surface-variant font-medium flex items-center gap-1.5">
+                          <span className={`font-bold ${isTeamA ? 'text-primary-container' : 'text-secondary'}`}>
+                            {teamName}
+                          </span>
+                          <span>•</span>
+                          <span className="font-mono text-emerald-700 font-bold">{g.matchTime || 'In Match'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGoal(g._id, isTeamA ? targetTeamAId : targetTeamBId)}
+                      title={`Undo / delete goal by ${g.player?.name || 'player'}`}
+                      className="p-1.5 rounded-lg bg-surface-container hover:bg-rose-100 text-on-surface-variant hover:text-rose-700 transition-colors shrink-0 ml-2"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

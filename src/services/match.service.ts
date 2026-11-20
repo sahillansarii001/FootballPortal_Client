@@ -7,6 +7,7 @@ function normalizeMatch(match: any): Match {
   const id = match._id || match.matchId || match.id;
   const teamAScore = match.score?.teamA ?? match.teamAScore ?? 0;
   const teamBScore = match.score?.teamB ?? match.teamBScore ?? 0;
+  const rawGoals = match.goals || match.events?.filter((e: any) => (e.type === 'GOAL_SCORED' || e.type === 'GOAL') && !e.isUndone) || [];
   return {
     ...match,
     _id: id,
@@ -16,6 +17,7 @@ function normalizeMatch(match: any): Match {
       teamA: teamAScore,
       teamB: teamBScore,
     },
+    goals: rawGoals,
   };
 }
 
@@ -79,5 +81,13 @@ export const matchService = {
     }
     const match = MOCK_MATCHES.find((m) => m._id === id) || MOCK_LIVE_MATCH;
     return match?.events || [];
+  },
+
+  async getMatchGoals(id: string): Promise<any[]> {
+    const res = await fetchApi<any[]>(`/matches/${id}/goals`);
+    if (res?.success && Array.isArray(res.data)) {
+      return res.data;
+    }
+    return [];
   },
 };
