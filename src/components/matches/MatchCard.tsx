@@ -15,10 +15,15 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
   const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
   const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
   const isTied = (isLive || isCompleted) && scoreA === scoreB;
-  const shootoutState = match.shootout || match.penalties?.shootoutState;
-  const penA = shootoutState?.teamAPenaltyScore ?? (isTied ? 4 : 0);
-  const penB = shootoutState?.teamBPenaltyScore ?? (isTied ? 2 : 0);
-  const showPenalties = isTied || Boolean(shootoutState && ((shootoutState.teamAPenaltyScore ?? 0) > 0 || (shootoutState.teamBPenaltyScore ?? 0) > 0));
+  const shootoutState: any = match.shootout || match.penalties?.shootoutState;
+  const penA = shootoutState?.teamAPenaltyScore ?? 0;
+  const penB = shootoutState?.teamBPenaltyScore ?? 0;
+  const showPenalties = Boolean(
+    shootoutState?.isShootout ||
+    shootoutState?.isCompleted ||
+    penA > 0 ||
+    penB > 0
+  );
 
   return (
     <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container-high hover:border-primary-container/40 hover:shadow-md transition-all flex flex-col justify-between p-5 group">
@@ -51,10 +56,20 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
           {/* Team A */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center p-1 shadow-inner border border-surface-container-high">
-                <span className="font-headline-sm text-on-surface font-black text-sm">
-                  {match.teamA.name.slice(0, 1)}
+              <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center p-1 shadow-inner border border-surface-container-high overflow-hidden relative shrink-0">
+                <span className="font-headline-sm text-on-surface font-black text-sm select-none">
+                  {match.teamA.name.slice(0, 2).toUpperCase()}
                 </span>
+                {match.teamA.logo && (
+                  <img
+                    src={match.teamA.logo}
+                    alt={match.teamA.name}
+                    className="absolute inset-0 w-full h-full object-contain p-1 bg-white"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
               <div className="flex flex-col">
                 <span className="font-headline-sm text-headline-sm text-on-surface font-extrabold group-hover:text-primary-container transition-colors">
@@ -88,10 +103,20 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
           {/* Team B */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center p-1 shadow-inner border border-surface-container-high">
-                <span className="font-headline-sm text-on-surface font-black text-sm">
-                  {match.teamB.name.slice(0, 1)}
+              <div className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center p-1 shadow-inner border border-surface-container-high overflow-hidden relative shrink-0">
+                <span className="font-headline-sm text-on-surface font-black text-sm select-none">
+                  {match.teamB.name.slice(0, 2).toUpperCase()}
                 </span>
+                {match.teamB.logo && (
+                  <img
+                    src={match.teamB.logo}
+                    alt={match.teamB.name}
+                    className="absolute inset-0 w-full h-full object-contain p-1 bg-white"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
               <div className="flex flex-col">
                 <span className="font-headline-sm text-headline-sm text-on-surface font-extrabold group-hover:text-primary-container transition-colors">
