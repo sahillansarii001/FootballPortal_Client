@@ -20,10 +20,11 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
   const stage = match.timer?.currentStage || match.currentStage || 'First Half';
   const remaining = match.timer?.remainingTime ?? 240;
 
-  const shootoutState = match.shootout || match.penalties?.shootoutState;
+  const shootoutState: any = match.shootout || match.penalties?.shootoutState;
   const isTied = localScoreA === localScoreB;
   const penA = shootoutState?.teamAPenaltyScore ?? 0;
   const penB = shootoutState?.teamBPenaltyScore ?? 0;
+  const shootoutWinnerId = shootoutState?.shootoutWinner || shootoutState?.winner;
   const isShootoutPhase = match.status === 'Penalty Shootout' || stage.toLowerCase().includes('penalty') || stage.toLowerCase().includes('shootout');
   const hasPenalties = Boolean(shootoutState?.isShootout || shootoutState?.isCompleted || (penA > 0 || penB > 0) || isShootoutPhase);
   const showPenalties = hasPenalties || (isTied && (isCompleted || isShootoutPhase));
@@ -173,11 +174,17 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                   <div className="text-sm sm:text-base font-semibold text-[#8a94a6] font-label-ui tracking-wide">
                     Penalties: <span className="text-white font-extrabold">{penA} - {penB}</span>
                   </div>
-                  {isCompleted && (penA !== penB || shootoutState?.shootoutWinner) && (
-                    <div className="text-[11px] font-bold text-emerald-400 mt-0.5 uppercase tracking-wider">
-                      {penA > penB ? `${match.teamA.name} won on penalties` : penB > penA ? `${match.teamB.name} won on penalties` : shootoutState?.shootoutWinner === match.teamA._id ? `${match.teamA.name} won on penalties` : `${match.teamB.name} won on penalties`}
-                    </div>
-                  )}
+                    { isCompleted && (penA !== penB || Boolean(shootoutWinnerId)) && (
+                      <div className="text-[11px] font-bold text-emerald-400 mt-0.5 uppercase tracking-wider">
+                        {penA > penB
+                          ? `${match.teamA.name} won on penalties`
+                          : penB > penA
+                            ? `${match.teamB.name} won on penalties`
+                            : shootoutWinnerId === match.teamA._id
+                              ? `${match.teamA.name} won on penalties`
+                              : `${match.teamB.name} won on penalties`}
+                      </div>
+                    )}
                 </div>
               )}
             </div>

@@ -103,31 +103,28 @@ export default function MatchDetailPage() {
       <div className="flex items-center gap-2 border-b border-surface-container-high mb-8 overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${
-            activeTab === 'overview'
-              ? 'text-primary-container border-primary-container'
-              : 'text-on-surface-variant border-transparent hover:text-on-surface'
-          }`}
+          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${activeTab === 'overview'
+            ? 'text-primary-container border-primary-container'
+            : 'text-on-surface-variant border-transparent hover:text-on-surface'
+            }`}
         >
           Match Center Overview
         </button>
         <button
           onClick={() => setActiveTab('timeline')}
-          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${
-            activeTab === 'timeline'
-              ? 'text-primary-container border-primary-container'
-              : 'text-on-surface-variant border-transparent hover:text-on-surface'
-          }`}
+          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${activeTab === 'timeline'
+            ? 'text-primary-container border-primary-container'
+            : 'text-on-surface-variant border-transparent hover:text-on-surface'
+            }`}
         >
           Event Log & Timeline ({timeline.length})
         </button>
         <button
           onClick={() => setActiveTab('tactics')}
-          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${
-            activeTab === 'tactics'
-              ? 'text-primary-container border-primary-container'
-              : 'text-on-surface-variant border-transparent hover:text-on-surface'
-          }`}
+          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${activeTab === 'tactics'
+            ? 'text-primary-container border-primary-container'
+            : 'text-on-surface-variant border-transparent hover:text-on-surface'
+            }`}
         >
           Tactical Formations & Bench
         </button>

@@ -138,6 +138,7 @@ export interface PenaltyShootoutState {
     isSuddenDeath?: boolean;
     isCompleted?: boolean;
     winner?: string | null;
+    shootoutWinner?: string | null;
   };
   kicks?: PenaltyKick[];
 }
