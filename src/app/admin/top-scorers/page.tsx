@@ -95,7 +95,7 @@ export default function AdminTopScorersPage() {
               Top Goal Scorers & Player Registry
             </h1>
             <p className="text-xs text-on-surface-variant font-medium mt-1">
-              Official ranking of certified athletes across all collegiate varsities with origin club affiliations and scoring records.
+              Official ranking of certified athletes across all tournament teams with origin club affiliations and scoring records.
             </p>
           </div>
 
@@ -190,7 +190,7 @@ export default function AdminTopScorersPage() {
             <Search className="w-4 h-4 text-on-surface-variant absolute left-3.5 top-3" />
             <input
               type="text"
-              placeholder="Search by athlete name, origin club, or varsity..."
+              placeholder="Search by athlete name, origin club, or team..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
@@ -219,7 +219,7 @@ export default function AdminTopScorersPage() {
             {uniqueTeams.length > 0 && (
               <div className="flex items-center gap-2">
                 <label className="text-[10px] uppercase font-bold font-label-caps text-on-surface-variant">
-                  Varsity:
+                  Team:
                 </label>
                 <select
                   value={teamFilter}
@@ -256,7 +256,7 @@ export default function AdminTopScorersPage() {
                     <th className="py-3.5 px-4 text-center w-16">Rank</th>
                     <th className="py-3.5 px-4">Athlete Details</th>
                     <th className="py-3.5 px-4">Origin Club Affiliation</th>
-                    <th className="py-3.5 px-4">Varsity Team</th>
+                    <th className="py-3.5 px-4">Team</th>
                     <th className="py-3.5 px-4">Position</th>
                     <th className="py-3.5 px-4 text-center">Matches</th>
                     <th className="py-3.5 px-4 text-center">Penalties</th>
@@ -267,7 +267,7 @@ export default function AdminTopScorersPage() {
                 <tbody className="divide-y divide-surface-container-high text-xs">
                   {filteredPlayers.map((player, index) => {
                     const rank = index + 1;
-                    const teamName = typeof player.team === 'object' ? (player.team as any)?.name : 'Varsity';
+                    const teamName = typeof player.team === 'object' ? (player.team as any)?.name : 'Team';
                     const teamLogo = typeof player.team === 'object' ? (player.team as any)?.logo : null;
                     const goals = player.goals || 0;
                     const matches = player.matchesPlayed || 0;
@@ -329,7 +329,7 @@ export default function AdminTopScorersPage() {
                           </span>
                         </td>
 
-                        {/* Varsity Team */}
+                        {/* Team */}
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-md bg-surface-container flex items-center justify-center font-black text-[10px] text-primary-container overflow-hidden shrink-0 border border-surface-container-high">

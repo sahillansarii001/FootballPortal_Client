@@ -15,7 +15,7 @@ export const FeaturedTeams: React.FC<FeaturedTeamsProps> = ({ teams }) => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 pb-2 border-b border-surface-container">
         <div>
           <span className="font-label-caps text-label-caps text-primary-container uppercase tracking-wider font-extrabold">
-            Varsity Franchises
+            Championship Teams
           </span>
           <h3 className="font-headline-lg text-headline-lg text-on-surface mt-1 font-bold tracking-tight">
             Featured Championship Teams

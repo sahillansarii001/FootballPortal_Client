@@ -8,7 +8,7 @@ interface PlayerCardProps {
 }
 
 export const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
-  const teamName = typeof player.team === 'object' && player.team ? player.team.name : 'Varsity FC';
+  const teamName = typeof player.team === 'object' && player.team ? player.team.name : 'League FC';
 
   return (
     <article className="bg-surface-container-lowest rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between border border-surface-container-high group">

@@ -140,7 +140,7 @@ export default function TeamsPage() {
 
       {/* Teams Grid */}
       {loading ? (
-        <LoadingState message="Loading varsity team rosters..." />
+        <LoadingState message="Loading team rosters..." />
       ) : filteredTeams.length === 0 ? (
         <EmptyState
           title="No Teams Found"

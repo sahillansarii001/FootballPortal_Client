@@ -13,7 +13,7 @@ export const MediaFocusSection: React.FC = () => {
     {
       category: 'Squad Depth',
       title: 'The Freshmen Phenomenon: 6 Underclassmen Fueling the Championship Charge',
-      excerpt: 'From decisive stoppage-time strikes to impenetrable defensive tackles, first-year recruits are rewriting varsity records.',
+      excerpt: 'From decisive stoppage-time strikes to impenetrable defensive tackles, first-year recruits are rewriting league records.',
       image: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=600&q=80',
     },
     {

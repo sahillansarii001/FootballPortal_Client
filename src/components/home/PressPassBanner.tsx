@@ -11,7 +11,7 @@ export const PressPassBanner: React.FC = () => {
         </div>
         <div>
           <h4 className="font-headline-md text-headline-md text-on-primary font-bold tracking-tight">
-            Official Varsity Team Accreditation & Press Pass
+            Official Team Accreditation & Press Pass
           </h4>
           <p className="font-body-md text-body-md text-on-primary-container font-medium mt-1">
             Are you a university athletic director or accredited collegiate broadcaster? Access real-time match data exports and media assets.

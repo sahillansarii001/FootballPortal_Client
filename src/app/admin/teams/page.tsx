@@ -201,7 +201,7 @@ export default function AdminTeamsPage() {
         name: trimmedName,
         captain: captain.trim() || undefined,
         logo: logoUrl.trim() || undefined,
-        description: 'Varsity Collegiate Football Team',
+        description: 'APL Football Team',
       });
 
       if (res.success && res.data) {

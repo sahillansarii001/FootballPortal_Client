@@ -147,7 +147,7 @@ export default function AdminPlayersPage() {
       return;
     }
     if (!addTeamId) {
-      setAddError('Please select a varsity team');
+      setAddError('Please select a team');
       return;
     }
     if (addJersey === '' || Number(addJersey) < 1 || Number(addJersey) > 99) {
@@ -209,7 +209,7 @@ export default function AdminPlayersPage() {
       return;
     }
     if (!editTeamId) {
-      setEditError('Please select a varsity team');
+      setEditError('Please select a team');
       return;
     }
     if (editJersey === '' || Number(editJersey) < 1 || Number(editJersey) > 99) {
@@ -312,7 +312,7 @@ export default function AdminPlayersPage() {
             Player Management & Roster Directory
           </h1>
           <p className="text-xs text-on-surface-variant mt-1 max-w-2xl font-medium">
-            Manage all enrolled varsity athletes, jersey numbers, positional designations, and team transfers across the 2026 championship.
+            Manage all enrolled team athletes, jersey numbers, positional designations, and team transfers across the 2026 championship.
           </p>
         </div>
 
@@ -428,7 +428,7 @@ export default function AdminPlayersPage() {
                 <tr className="bg-surface-container-low/60 border-b border-surface-container-high text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
                   <th className="py-3 px-4">Jersey</th>
                   <th className="py-3 px-4">Athlete Name</th>
-                  <th className="py-3 px-4">Varsity Team</th>
+                  <th className="py-3 px-4">Team</th>
                   <th className="py-3 px-4">Position</th>
                   <th className="py-3 px-4 text-center">Matches</th>
                   <th className="py-3 px-4 text-center">Goals</th>
@@ -545,8 +545,8 @@ export default function AdminPlayersPage() {
                   <UserCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-on-surface">Add New Varsity Athlete</h3>
-                  <p className="text-[10px] text-on-surface-variant">Enroll an athlete into a university squad</p>
+                  <h3 className="font-bold text-sm text-on-surface">Add New Athlete</h3>
+                  <p className="text-[10px] text-on-surface-variant">Enroll an athlete into a team squad</p>
                 </div>
               </div>
               <button
@@ -584,7 +584,7 @@ export default function AdminPlayersPage() {
               {/* Team Selection */}
               <div>
                 <label className="block text-xs font-bold text-on-surface mb-1">
-                  Assigned Varsity Team <span className="text-error">*</span>
+                  Assigned Team <span className="text-error">*</span>
                 </label>
                 <select
                   required
@@ -724,7 +724,7 @@ export default function AdminPlayersPage() {
               {/* Team Selection */}
               <div>
                 <label className="block text-xs font-bold text-on-surface mb-1">
-                  Assigned Varsity Team <span className="text-error">*</span>
+                  Assigned Team <span className="text-error">*</span>
                 </label>
                 <select
                   required

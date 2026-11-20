@@ -9,7 +9,7 @@ interface PlayerProfileHeaderProps {
 
 export const PlayerProfileHeader: React.FC<PlayerProfileHeaderProps> = ({ player }) => {
   const teamId = typeof player.team === 'object' && player.team ? player.team._id : '';
-  const teamName = typeof player.team === 'object' && player.team ? player.team.name : 'Varsity Football Club';
+  const teamName = typeof player.team === 'object' && player.team ? player.team.name : 'Alliance Football Club';
 
   return (
     <div className="relative bg-surface-container-lowest rounded-2xl p-6 sm:p-8 shadow-md border border-surface-container-high overflow-hidden mb-8">
@@ -28,7 +28,7 @@ export const PlayerProfileHeader: React.FC<PlayerProfileHeaderProps> = ({ player
               {player.position}
             </span>
             <span className="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps font-semibold">
-              Certified Varsity Athlete
+              Certified League Athlete
             </span>
           </div>
 

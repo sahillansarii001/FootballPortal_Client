@@ -166,7 +166,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               </h2>
 
               <span className="text-xs font-bold text-slate-500 tracking-wide mt-0.5">
-                {match.teamA?.captain ? `(C) ${getCaptainDisplayName(match.teamA.captain).toUpperCase()}` : 'VARSITY ROSTER'}
+                {match.teamA?.captain ? `(C) ${getCaptainDisplayName(match.teamA.captain).toUpperCase()}` : 'OFFICIAL ROSTER'}
               </span>
 
               {/* Team A Goalscorers */}
@@ -291,7 +291,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               </h2>
 
               <span className="text-xs font-bold text-slate-500 tracking-wide mt-0.5">
-                {match.teamB?.captain ? `(C) ${getCaptainDisplayName(match.teamB.captain).toUpperCase()}` : 'VARSITY ROSTER'}
+                {match.teamB?.captain ? `(C) ${getCaptainDisplayName(match.teamB.captain).toUpperCase()}` : 'OFFICIAL ROSTER'}
               </span>
 
               {/* Team B Goalscorers */}
@@ -398,7 +398,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
           <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
             <div className="flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{match.venue || 'Varsity National Field #1'} • Natural Turf Pitch</span>
+              <span>{match.venue || 'Alliance National Field #1'} • Natural Turf Pitch</span>
             </div>
             <div className="flex items-center gap-3 font-semibold">
               <span>Ref: {match.referee || 'FIFA Certified Official'}</span>

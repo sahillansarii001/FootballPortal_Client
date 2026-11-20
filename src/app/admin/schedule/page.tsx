@@ -23,7 +23,7 @@ export default function AdminSchedulePage() {
   const [teamB, setTeamB] = useState('');
   const [matchDate, setMatchDate] = useState('2026-03-24');
   const [matchTime, setMatchTime] = useState('14:00');
-  const [venue, setVenue] = useState('Varsity National Field #1');
+  const [venue, setVenue] = useState('Alliance National Field #1');
   const [stage, setStage] = useState('Group Stage');
 
   // Edit Modal State
@@ -111,7 +111,7 @@ export default function AdminSchedulePage() {
     setEditTeamB(match.teamB?._id || '');
     setEditMatchDate(match.matchDate ? match.matchDate.substring(0, 10) : '2026-03-24');
     setEditMatchTime(match.matchTime || '14:00');
-    setEditVenue(match.venue || 'Varsity Field #1');
+    setEditVenue(match.venue || 'Alliance Field #1');
     setEditStage(match.stage || 'Quarter Final');
     setEditStatus(match.status || 'Upcoming');
     setEditScoreA(match.score?.teamA ?? match.teamAScore ?? 0);

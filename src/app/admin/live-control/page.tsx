@@ -1248,7 +1248,7 @@ export default function AdminLiveControlPage() {
               {currentStage}
             </span>
             <span className="text-xs text-on-surface-variant font-medium">
-              {selectedMatch?.venue || 'Varsity Stadium'} • Ref: Official Director
+              {selectedMatch?.venue || 'Alliance Stadium'} • Ref: Official Director
             </span>
           </div>
           <div className="flex items-center gap-2">

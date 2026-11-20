@@ -265,7 +265,7 @@ export default function LoginPage() {
               <Shield className="w-3 h-3 text-primary-container" />
               256-bit Encrypted Session
             </span>
-            <span className="text-outline">VarsityKick Auth v1</span>
+            <span className="text-outline">APL Auth v1</span>
           </div>
         </div>
       </div>

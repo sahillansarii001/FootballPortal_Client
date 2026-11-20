@@ -2,7 +2,7 @@ import { Match, Player, Team, Tournament, TournamentOverviewStats, TournamentSta
 
 export const MOCK_TOURNAMENT: Tournament = {
   _id: 'default-tournament',
-  name: 'Varsity Football League',
+  name: 'Alliance Premier League',
   description: 'Official Collegiate Football Championship',
   startDate: new Date().toISOString().split('T')[0],
   endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],

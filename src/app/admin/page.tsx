@@ -200,7 +200,7 @@ export default function AdminOverviewPage() {
             </div>
             <div className="mt-3">
               <div className="font-stat-numeral text-2xl font-black text-on-surface">
-                {teams.length} {teams.length === 1 ? 'Varsity' : 'Varsities'}
+                {teams.length} {teams.length === 1 ? 'Team' : 'Teams'}
               </div>
               <div className="text-[11px] text-primary-container font-semibold mt-0.5">100% verified</div>
             </div>

@@ -32,7 +32,7 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({ team }) => {
             {team.name}
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-2xl mb-4">
-            {team.description || 'Tier-1 Collegiate Varsity Football Program competing in national championship tournament.'}
+            {team.description || 'Premier League Football Program competing in national championship tournament.'}
           </p>
 
           {/* Leaders */}

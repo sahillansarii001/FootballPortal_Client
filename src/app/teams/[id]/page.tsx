@@ -66,7 +66,7 @@ export default function TeamDetailsPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <LoadingState message="Loading varsity team roster & match pack..." />
+        <LoadingState message="Loading team roster & match pack..." />
       </div>
     );
   }
@@ -132,7 +132,7 @@ export default function TeamDetailsPage() {
             <div>
               <div className="flex items-center gap-2.5 mb-1">
                 <span className="px-2.5 py-0.5 rounded-md bg-secondary-container/50 text-on-secondary-container font-label-caps text-xs font-bold">
-                  {team.seed ? String(team.seed) : 'VARSITY CONTENDER'}
+                  {team.seed ? String(team.seed) : 'TEAM CONTENDER'}
                 </span>
                 <span className="text-xs font-bold text-primary-container flex items-center gap-1">
                   <UserCheck className="w-3.5 h-3.5" />
@@ -143,7 +143,7 @@ export default function TeamDetailsPage() {
                 {team.name}
               </h1>
               <p className="text-sm text-on-surface-variant font-medium mt-1">
-                Captain: <span className="text-on-surface font-bold">{captainName}</span> • Club: <span className="font-semibold">{team.club || 'Varsity Inter-College'}</span>
+                Captain: <span className="text-on-surface font-bold">{captainName}</span> • Club: <span className="font-semibold">{team.club || 'Independent Club'}</span>
               </p>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function TeamDetailsPage() {
             </div>
             <div className="flex justify-between py-2 border-b border-surface-container">
               <span className="text-on-surface-variant font-medium">Club Affiliation:</span>
-              <span className="font-bold text-on-surface">{team.club || 'Varsity Association'}</span>
+              <span className="font-bold text-on-surface">{team.club || 'Football Association'}</span>
             </div>
             <div className="flex justify-between py-2 border-b border-surface-container">
               <span className="text-on-surface-variant font-medium">Official Squad Size:</span>
