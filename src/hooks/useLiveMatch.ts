@@ -29,6 +29,18 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
         if (!matchResult) {
           matchResult = await matchService.getMatchById(matchId);
         }
+        // Fallback: If matchId is obsolete/deleted, load active live match so page never 404s
+        if (!matchResult) {
+          const liveList = await matchService.getLiveMatches();
+          if (liveList && liveList.length > 0) {
+            matchResult = liveList[0];
+          } else {
+            const allMatches = await matchService.getAllMatches();
+            if (allMatches && allMatches.length > 0) {
+              matchResult = allMatches[0];
+            }
+          }
+        }
         if (isMounted && matchResult) {
           setMatch(matchResult);
           if (matchResult.events && matchResult.events.length > 0) {
