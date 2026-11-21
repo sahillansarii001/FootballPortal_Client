@@ -25,11 +25,17 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
       }
       setLoading(true);
       try {
-        let matchResult = await matchService.getAuthoritativeLiveState(matchId);
-        if (!matchResult) {
-          matchResult = await matchService.getMatchById(matchId);
+        let matchResult: Match | null = null;
+        const isValidId = /^[0-9a-fA-F]{24}$/.test(matchId) || (!isNaN(Number(matchId)) && matchId !== 'live');
+
+        if (isValidId) {
+          matchResult = await matchService.getAuthoritativeLiveState(matchId);
+          if (!matchResult) {
+            matchResult = await matchService.getMatchById(matchId);
+          }
         }
-        // Fallback: If matchId is obsolete/deleted, load active live match so page never 404s
+
+        // Fallback: If matchId is 'live' or obsolete/deleted, load active live match so page never 404s
         if (!matchResult) {
           const liveList = await matchService.getLiveMatches();
           if (liveList && liveList.length > 0) {
@@ -47,9 +53,12 @@ export function useLiveMatch(matchId: string, initialMatch?: Match | null) {
             setTimeline(matchResult.events);
           }
         }
-        const timelineData = await matchService.getMatchTimeline(matchId);
-        if (isMounted && timelineData && timelineData.length > 0) {
-          setTimeline(timelineData);
+        const resolvedId = matchResult?._id || (isValidId ? matchId : null);
+        if (resolvedId) {
+          const timelineData = await matchService.getMatchTimeline(resolvedId);
+          if (isMounted && timelineData && timelineData.length > 0) {
+            setTimeline(timelineData);
+          }
         }
       } catch (err) {
         console.error('Error fetching match data:', err);

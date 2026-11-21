@@ -146,7 +146,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 px-3.5 py-1.5 rounded-full shadow-xs">
               <Clock className="w-3.5 h-3.5 text-emerald-600" />
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Clock:</span>
-              <span className="text-sm font-black tabular-nums tracking-tight text-slate-900 font-mono">
+              <span className="text-sm font-black tabular-nums tracking-tight text-slate-900 font-mono" data-testid="spectator-clock">
                 {formatTime(currentRemaining)}
               </span>
               <span className="text-slate-300">/</span>

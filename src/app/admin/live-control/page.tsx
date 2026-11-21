@@ -223,7 +223,10 @@ export default function AdminLiveControlPage() {
         setNewTeamA(teams[0]._id);
         setNewTeamB(teams[1]._id);
       }
-      const live = all.find((m) => m.status === 'Live' || m.status === 'Half-Time') || all[0];
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const targetId = urlParams?.get('matchId') || urlParams?.get('match') || urlParams?.get('id');
+      const targetMatch = targetId ? all.find((m) => m._id === targetId || String(m.matchNumber) === targetId) : null;
+      const live = targetMatch || all.find((m) => m.status === 'Live' || m.status === 'Half-Time') || all.find((m) => m.status === 'Upcoming') || all[0];
       if (live) {
         await selectMatch(live);
       }
@@ -1594,7 +1597,7 @@ export default function AdminLiveControlPage() {
 
             <div className="font-stat-numeral text-2xl sm:text-3xl font-black text-primary-container tabular-nums mt-1.5 tracking-tight flex items-center justify-center gap-2">
               {timerRunning && <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>}
-              <span>{formatTime(remainingSeconds)}</span>
+              <span data-testid="match-clock">{formatTime(remainingSeconds)}</span>
             </div>
             <span className="font-label-caps text-[10px] text-on-surface-variant uppercase mt-0.5">
               Stage: <strong>{currentStage}</strong>
@@ -1687,6 +1690,7 @@ export default function AdminLiveControlPage() {
           ) : timerRunning ? (
             <button
               type="button"
+              data-testid="timer-action-btn"
               onClick={handlePause}
               className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 min-h-[46px]"
             >
@@ -1696,6 +1700,7 @@ export default function AdminLiveControlPage() {
           ) : (
             <button
               type="button"
+              data-testid="timer-action-btn"
               onClick={handleStartOrResume}
               className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 cursor-pointer min-h-[46px]"
             >

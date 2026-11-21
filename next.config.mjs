@@ -9,6 +9,16 @@ const nextConfig = {
         destination: '/login',
         permanent: true,
       },
+      {
+        source: '/matches/live',
+        destination: '/live',
+        permanent: false,
+      },
+      {
+        source: '/matches',
+        destination: '/fixtures',
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
