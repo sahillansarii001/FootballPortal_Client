@@ -181,13 +181,6 @@ export default function TeamDetailsPage() {
               Official Squad Roster ({players.length} Athletes)
             </h2>
           </div>
-          <Link
-            href="/admin/players"
-            className="text-xs font-bold text-primary-container hover:underline flex items-center gap-1"
-          >
-            <span>Manage Players</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
 
         {players.length === 0 ? (
@@ -195,14 +188,8 @@ export default function TeamDetailsPage() {
             <Users className="w-10 h-10 text-on-surface-variant/40 mx-auto mb-2" />
             <p className="text-sm font-bold text-on-surface">No athletes currently assigned</p>
             <p className="text-xs text-on-surface-variant mt-1">
-              Add players to this team through the Player Management panel.
+              Squad roster will appear once athletes are registered for this tournament.
             </p>
-            <Link
-              href="/admin/players"
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container text-white text-xs font-bold rounded-xl"
-            >
-              + Add Athlete
-            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
