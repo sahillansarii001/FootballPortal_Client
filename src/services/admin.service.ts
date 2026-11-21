@@ -431,6 +431,24 @@ export const adminService = {
     }
   },
 
+  // Team Management: Delete Team
+  async deleteTeam(teamId: string): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/teams/${teamId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        const errorDetail = extractErrorMessage(json, 'Failed to delete team');
+        return { success: false, error: errorDetail, message: json.message };
+      }
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
   // Match Scheduling
   async scheduleMatch(payload: {
     tournament?: string;

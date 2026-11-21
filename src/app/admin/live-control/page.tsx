@@ -28,7 +28,8 @@ import {
   Calendar,
   Layers,
   MapPin,
-  ArrowLeft
+  ArrowLeft,
+  Flag
 } from 'lucide-react';
 import Link from 'next/link';
 import { matchService } from '@/services/match.service';
@@ -711,6 +712,35 @@ export default function AdminLiveControlPage() {
     setShowGoalModal(true);
   };
 
+  const handleOpenCardModal = async (team: 'A' | 'B') => {
+    setCardTeam(team);
+    const rawTarget = team === 'A' ? selectedMatch?.teamA : selectedMatch?.teamB;
+    const targetTeamId: string =
+      typeof rawTarget === 'object' && rawTarget ? rawTarget._id : typeof rawTarget === 'string' ? rawTarget : '';
+
+    let players = team === 'A' ? teamAPlayers : teamBPlayers;
+    if (targetTeamId) {
+      try {
+        const fetched = await teamService.getTeamPlayers(targetTeamId);
+        if (team === 'A') {
+          setTeamAPlayers(fetched);
+        } else {
+          setTeamBPlayers(fetched);
+        }
+        players = fetched;
+      } catch (err) {
+        console.error('Failed fetching players for card modal:', err);
+      }
+    }
+
+    if (players.length > 0) {
+      setCardPlayerName(players[0].name);
+    } else {
+      setCardPlayerName('');
+    }
+    setShowCardModal(true);
+  };
+
   const handleSaveGoal = async () => {
     if (!selectedMatch) return;
     const targetTeam = goalTeam === 'A' ? selectedMatch.teamA : selectedMatch.teamB;
@@ -1348,6 +1378,18 @@ export default function AdminLiveControlPage() {
             Switch
           </button>
 
+          {/* End Match quick button in header */}
+          {selectedMatch && selectedMatch.status !== 'Completed' && (
+            <button
+              type="button"
+              onClick={handleFinalizeMatch}
+              className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-extrabold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <Flag className="w-3.5 h-3.5 fill-rose-600 text-rose-600" />
+              <span>End Match</span>
+            </button>
+          )}
+
           {/* LIVE Badge (Screen 8) */}
           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500 text-white font-extrabold text-xs shadow-xs">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
@@ -1422,21 +1464,74 @@ export default function AdminLiveControlPage() {
           {/* Main Scoreboard Card (Screen 8: Team A, Score 2 - 1, Second Half, 02:36 green pill, Team B) */}
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 sm:p-8 flex flex-col items-center gap-6">
             <div className="w-full flex items-center justify-between gap-4">
-              {/* Team A */}
-              <div className="flex flex-col items-center sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1 text-center sm:text-left min-w-0">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
-                  {selectedMatch?.teamA?.logo ? (
-                    <img src={selectedMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
-                  ) : (
-                    <span>{teamAName.slice(0, 2).toUpperCase()}</span>
-                  )}
+              {/* Team A (Home Team) */}
+              <div className="flex flex-col items-center sm:items-start gap-3 flex-1 text-center sm:text-left min-w-0">
+                <div className="flex flex-col items-center sm:flex-row sm:items-center gap-3 sm:gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
+                    {selectedMatch?.teamA?.logo ? (
+                      <img src={selectedMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{teamAName.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-base sm:text-2xl font-black text-slate-900 leading-tight truncate">
+                      {teamAName}
+                    </h2>
+                    <span className="text-xs text-slate-500 font-semibold">Home Team</span>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h2 className="text-base sm:text-2xl font-black text-slate-900 leading-tight truncate">
-                    {teamAName}
-                  </h2>
-                  <span className="text-xs text-slate-500 font-semibold">Home Team</span>
+
+                {/* Team A Direct Actions: Goal & Card Downward of Logo/Name */}
+                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenGoalModal('A')}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    title={`Record goal scored by ${teamAName}`}
+                  >
+                    <span>⚽</span>
+                    <span>+ Goal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCardModal('A')}
+                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title={`Issue caution or card to ${teamAName}`}
+                  >
+                    <span>🟨</span>
+                    <span>+ Card</span>
+                  </button>
                 </div>
+
+                {/* Team A Recorded Goals Downward of Logo & Actions */}
+                {teamAGoals.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mt-1 w-full max-w-xs items-center sm:items-start">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Recorded Goals ({teamAGoals.length})
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                      {teamAGoals.map((g, idx) => (
+                        <span
+                          key={g._id || idx}
+                          className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs"
+                        >
+                          <span>⚽</span>
+                          <span className="font-bold">{g.player?.name || 'Goal'}</span>
+                          <span className="text-slate-400 font-mono text-[11px]">({g.matchTime})</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGoal(g._id, targetTeamAId)}
+                            className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
+                            title="Remove goal"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Center: Score + Stage + Green Digital Clock Pill */}
@@ -1452,32 +1547,85 @@ export default function AdminLiveControlPage() {
                 </div>
               </div>
 
-              {/* Team B */}
-              <div className="flex flex-col items-center sm:flex-row-reverse sm:items-center gap-3 sm:gap-4 flex-1 text-center sm:text-right min-w-0">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
-                  {selectedMatch?.teamB?.logo ? (
-                    <img src={selectedMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
-                  ) : (
-                    <span>{teamBName.slice(0, 2).toUpperCase()}</span>
-                  )}
+              {/* Team B (Away Team) */}
+              <div className="flex flex-col items-center sm:items-end gap-3 flex-1 text-center sm:text-right min-w-0">
+                <div className="flex flex-col items-center sm:flex-row-reverse sm:items-center gap-3 sm:gap-4">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
+                    {selectedMatch?.teamB?.logo ? (
+                      <img src={selectedMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{teamBName.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-base sm:text-2xl font-black text-slate-900 leading-tight truncate">
+                      {teamBName}
+                    </h2>
+                    <span className="text-xs text-slate-500 font-semibold">Away Team</span>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h2 className="text-base sm:text-2xl font-black text-slate-900 leading-tight truncate">
-                    {teamBName}
-                  </h2>
-                  <span className="text-xs text-slate-500 font-semibold">Away Team</span>
+
+                {/* Team B Direct Actions: Goal & Card Downward of Logo/Name */}
+                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenGoalModal('B')}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    title={`Record goal scored by ${teamBName}`}
+                  >
+                    <span>⚽</span>
+                    <span>+ Goal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCardModal('B')}
+                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    title={`Issue caution or card to ${teamBName}`}
+                  >
+                    <span>🟨</span>
+                    <span>+ Card</span>
+                  </button>
                 </div>
+
+                {/* Team B Recorded Goals Downward of Logo & Actions */}
+                {teamBGoals.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mt-1 w-full max-w-xs items-center sm:items-end">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Recorded Goals ({teamBGoals.length})
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 justify-center sm:justify-end">
+                      {teamBGoals.map((g, idx) => (
+                        <span
+                          key={g._id || idx}
+                          className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs"
+                        >
+                          <span>⚽</span>
+                          <span className="font-bold">{g.player?.name || 'Goal'}</span>
+                          <span className="text-slate-400 font-mono text-[11px]">({g.matchTime})</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGoal(g._id, targetTeamBId)}
+                            className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
+                            title="Remove goal"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Timer Controls Row (Screen 8: Amber Pause pill + Royal Blue Resume pill) */}
-            <div className="flex items-center justify-center gap-4 pt-2">
+            {/* Timer Controls Row (Screen 8: Amber Pause pill + Royal Blue Resume pill + Rose End Match) */}
+            <div className="flex items-center justify-center gap-3 sm:gap-4 pt-2 flex-wrap">
               <button
                 type="button"
                 data-testid="timer-action-btn-pause"
                 onClick={handlePause}
                 disabled={!timerRunning}
-                className="px-8 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+                className="px-7 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
               >
                 <Pause className="w-4 h-4 fill-white" />
                 <span>Pause</span>
@@ -1487,122 +1635,60 @@ export default function AdminLiveControlPage() {
                 data-testid="timer-action-btn-resume"
                 onClick={handleStartOrResume}
                 disabled={timerRunning && selectedMatch?.status !== 'Upcoming'}
-                className="px-8 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+                className="px-7 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-white" />
                 <span>Resume</span>
               </button>
+              <button
+                type="button"
+                data-testid="timer-action-btn-end"
+                onClick={handleFinalizeMatch}
+                disabled={selectedMatch?.status === 'Completed'}
+                className="px-7 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Flag className="w-4 h-4 fill-white text-white" />
+                <span>End Match</span>
+              </button>
             </div>
           </div>
 
-          {/* 2x3 Grid of Action Tiles (Screen 8: Add Goal, Add Card, Substitution, Start Extra Time, Penalties, End Match) */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
-            {/* 1. Add Goal */}
-            <button
-              type="button"
-              onClick={() => handleOpenGoalModal('A')}
-              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
-                ⚽
-              </div>
-              <span className="text-xs font-bold text-slate-800">Add Goal</span>
-            </button>
-
-            {/* 2. Add Card */}
-            <button
-              type="button"
-              onClick={() => setShowCardModal(true)}
-              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-amber-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
-            >
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
-                🟨
-              </div>
-              <span className="text-xs font-bold text-slate-800">Add Card</span>
-            </button>
-
-            {/* 3. Substitution */}
+          {/* Quick Operations Toolbar: Substitution & Penalties */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+            {/* 1. Substitution */}
             <button
               type="button"
               onClick={() => setShowSubModal(true)}
-              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
+              className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all flex items-center gap-4 text-left group cursor-pointer active:scale-[0.99]"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
                 🔄
               </div>
-              <span className="text-xs font-bold text-slate-800">Substitution</span>
-            </button>
-
-            {/* 4. Start Extra Time */}
-            <button
-              type="button"
-              onClick={handleExtraTimeDraw}
-              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
-                ⏱
+              <div className="min-w-0 flex-1">
+                <div className="text-xs sm:text-sm font-extrabold text-slate-800">Squad Substitution</div>
+                <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Record player-in & player-out interchanges</div>
               </div>
-              <span className="text-xs font-bold text-slate-800">Start Extra Time</span>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
             </button>
 
-            {/* 5. Penalties */}
+            {/* 2. Penalty Shootout Console */}
             <button
               type="button"
               onClick={() => {
                 document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
+              className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 hover:border-indigo-300 hover:shadow-xs transition-all flex items-center gap-4 text-left group cursor-pointer active:scale-[0.99]"
             >
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
                 🥅
               </div>
-              <span className="text-xs font-bold text-slate-800">Penalties</span>
-            </button>
-
-            {/* 6. End Match */}
-            <button
-              type="button"
-              onClick={handleFinalizeMatch}
-              className="bg-white p-5 rounded-2xl border border-rose-200 hover:bg-rose-50/50 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
-            >
-              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
-                🏁
+              <div className="min-w-0 flex-1">
+                <div className="text-xs sm:text-sm font-extrabold text-slate-800">Penalty Shootout Console</div>
+                <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Regulation 3 kicks & sudden death decider</div>
               </div>
-              <span className="text-xs font-bold text-rose-600">End Match</span>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
             </button>
           </div>
-
-          {/* Goalscorers strip for Team A & Team B with quick delete/undo */}
-          {(teamAGoals.length > 0 || teamBGoals.length > 0) && (
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col gap-2">
-              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                Recorded Goals ({matchGoals.length})
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {matchGoals.map((g, idx) => {
-                  const isTeamA = (typeof g.team === 'string' ? g.team : g.team?._id) === targetTeamAId || (g.team as any)?.name === teamAName;
-                  return (
-                    <span
-                      key={g._id || idx}
-                      className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-800"
-                    >
-                      <span>⚽</span>
-                      <span className="font-bold">{g.player?.name || 'Goal'}</span>
-                      <span className="text-slate-400 font-mono text-[11px]">({isTeamA ? teamAName : teamBName} • {g.matchTime})</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteGoal(g._id, isTeamA ? targetTeamAId : targetTeamBId)}
-                        className="text-slate-400 hover:text-rose-600 transition-colors ml-1"
-                        title="Remove goal"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
       {/* Stage Transitions & Shootout Controller Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
@@ -2249,7 +2335,7 @@ export default function AdminLiveControlPage() {
           </div>
         ) : (
           /* Penalty Shootout Inactive Placeholder when not tied */
-          <div className="lg:col-span-5 bg-surface-container-lowest p-4 sm:p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col items-center justify-center text-center py-8 sm:py-12">
+          <div id="penalty-shootout-console" className="lg:col-span-5 bg-surface-container-lowest p-4 sm:p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col items-center justify-center text-center py-8 sm:py-12">
             <div className="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface-variant/40 mb-3 border border-surface-container-high">
               <Target className="w-6 h-6" />
             </div>

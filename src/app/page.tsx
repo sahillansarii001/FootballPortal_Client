@@ -15,7 +15,8 @@ import { MediaFocusSection } from '@/components/home/MediaFocusSection';
 import { PressPassBanner } from '@/components/home/PressPassBanner';
 import { MOCK_OVERVIEW_STATS } from '@/services/mockData';
 
-export const revalidate = 10; // Incremental static regeneration every 10 seconds
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function HomePage() {
   let stats = MOCK_OVERVIEW_STATS;

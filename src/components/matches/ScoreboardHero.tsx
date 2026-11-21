@@ -129,7 +129,9 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                 {match.teamA?.logo ? (
                   <img src={match.teamA.logo} alt={match.teamA.name} className="w-full h-full object-contain" />
                 ) : (
-                  <span className="text-3xl sm:text-4xl select-none">🐺</span>
+                  <span className="text-2xl sm:text-3xl font-black text-white select-none">
+                    {(match.teamA?.name?.slice(0, 2) || 'A').toUpperCase()}
+                  </span>
                 )}
               </div>
               <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase truncate max-w-full">
@@ -174,7 +176,9 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                 {match.teamB?.logo ? (
                   <img src={match.teamB.logo} alt={match.teamB.name} className="w-full h-full object-contain" />
                 ) : (
-                  <span className="text-3xl sm:text-4xl select-none">🦁</span>
+                  <span className="text-2xl sm:text-3xl font-black text-white select-none">
+                    {(match.teamB?.name?.slice(0, 2) || 'B').toUpperCase()}
+                  </span>
                 )}
               </div>
               <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase truncate max-w-full">

@@ -27,6 +27,24 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
     shootoutState?.isShootout || shootoutState?.isCompleted || penA > 0 || penB > 0
   );
 
+  let winnerName: string | null = null;
+  if (typeof match.winner === 'object' && match.winner?.name) {
+    winnerName = match.winner.name;
+  } else if (typeof shootoutState?.shootoutWinner === 'object' && shootoutState?.shootoutWinner?.name) {
+    winnerName = shootoutState.shootoutWinner.name;
+  } else if (match.winner) {
+    const wId = String(match.winner);
+    const tAId = match.teamA?._id ? String(match.teamA._id) : '';
+    winnerName = wId === tAId ? teamAName : teamBName;
+  } else if (scoreA > scoreB) {
+    winnerName = teamAName;
+  } else if (scoreB > scoreA) {
+    winnerName = teamBName;
+  } else if (showPenalties) {
+    if (penA > penB) winnerName = teamAName;
+    else if (penB > penA) winnerName = teamBName;
+  }
+
   const dateStr = formatShortDate(match.matchDate) || 'Upcoming';
   const timeStr = match.matchTime || '04:00 PM';
 
@@ -49,7 +67,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
         ) : isCompleted ? (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-            FT: {scoreA} - {scoreB}
+            FT: {scoreA} - {scoreB} {showPenalties ? `(${penA}-${penB} PK)` : ''}
           </span>
         ) : (
           <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold text-[10px] uppercase tracking-wider">
@@ -77,10 +95,17 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
         {/* Center: vs or Score */}
         <div className="flex flex-col items-center justify-center px-2 shrink-0">
           {isLive || isCompleted ? (
-            <div className="flex items-center gap-1.5 font-black text-lg text-slate-900 tabular-nums">
-              <span>{scoreA}</span>
-              <span className="text-slate-300">-</span>
-              <span>{scoreB}</span>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-1.5 font-black text-lg text-slate-900 tabular-nums">
+                <span>{scoreA}</span>
+                <span className="text-slate-300">-</span>
+                <span>{scoreB}</span>
+              </div>
+              {showPenalties && (
+                <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 px-2 py-0.2 rounded-full border border-purple-200 mt-0.5 shadow-2xs">
+                  PK: {penA} - {penB}
+                </span>
+              )}
             </div>
           ) : (
             <span className="text-xs font-black text-slate-400 uppercase tracking-wider">
@@ -116,8 +141,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match }) => {
           <span className="truncate">{match.venue || 'Main Ground'}</span>
         </span>
         {showPenalties && (
-          <span className="font-bold text-purple-700 text-[11px]">
-            Penalties: {penA} - {penB}
+          <span className="font-extrabold text-purple-700 text-[11px] flex items-center gap-1">
+            <span>🏆</span>
+            <span>{winnerName ? `${winnerName} Won (${penA}-${penB} PK)` : `Penalties: ${penA} - ${penB}`}</span>
           </span>
         )}
       </div>

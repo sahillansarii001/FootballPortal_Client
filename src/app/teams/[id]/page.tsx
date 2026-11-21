@@ -126,8 +126,12 @@ export default function TeamDetailsPage() {
       <div className="bg-surface-container-lowest rounded-2xl p-6 sm:p-8 border border-surface-container-high shadow-xs mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-primary-container/15 text-primary-container font-black text-3xl flex items-center justify-center ring-4 ring-primary-container/20 shadow-sm">
-              {team.name.slice(0, 2).toUpperCase()}
+            <div className="w-20 h-20 rounded-2xl bg-primary-container/15 text-primary-container font-black text-3xl flex items-center justify-center ring-4 ring-primary-container/20 shadow-sm overflow-hidden p-2">
+              {team.logo ? (
+                <img src={team.logo} alt={team.name} className="w-full h-full object-contain" />
+              ) : (
+                team.name.slice(0, 2).toUpperCase()
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2.5 mb-1">

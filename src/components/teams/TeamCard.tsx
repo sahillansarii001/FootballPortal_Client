@@ -23,16 +23,23 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team, index }) => {
   const captainName = getCaptainDisplayName(team.captain || (team as any).captainName);
   const rosterCount = Array.isArray(team.players) ? `${team.players.length} Players` : 'Roster Squad';
 
-  // Team shield emoji fallback based on name or index
-  const shieldIcons = ['🐺', '🦁', '🦅', '🛡️', '⚡', '👑', '⚔️', '🔥'];
-  const fallbackIcon = shieldIcons[(index || 0) % shieldIcons.length];
+  // Extract clean 2-letter monogram abbreviation (NO emojis)
+  const initials = team.name
+    ? team.name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w) => w[0])
+        .join('')
+        .toUpperCase()
+    : 'FC';
 
   return (
     <Link
       href={`/teams/${team._id}`}
       className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-blue-400/60 hover:-translate-y-1 transition-all flex flex-col items-center justify-center text-center group"
     >
-      {/* Centered Team Shield Logo (Matching Reference Screen 5) */}
+      {/* Centered Team Shield Logo / Monogram (Matching Reference Screen 5) */}
       <div className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200/90 flex items-center justify-center p-2 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative">
         {team.logo ? (
           <img
@@ -41,11 +48,19 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team, index }) => {
             className="w-full h-full object-contain"
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
+              const fallback = (e.target as HTMLElement).nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = 'flex';
             }}
           />
-        ) : (
-          <span className="text-3xl select-none">{fallbackIcon}</span>
-        )}
+        ) : null}
+        <div
+          className={`w-full h-full rounded-xl bg-gradient-to-br from-blue-50 to-slate-100 flex flex-col items-center justify-center text-blue-700 font-black text-xl tracking-wider select-none ${
+            team.logo ? 'hidden' : 'flex'
+          }`}
+        >
+          <Shield className="w-3.5 h-3.5 text-blue-400 mb-0.5 opacity-60" />
+          <span>{initials}</span>
+        </div>
       </div>
 
       {/* Centered Team Name */}

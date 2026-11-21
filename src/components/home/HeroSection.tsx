@@ -29,6 +29,25 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const liveScoreB = liveMatch?.score?.teamB ?? liveMatch?.teamBScore ?? 1;
   const liveStage = liveMatch?.timer?.currentStage || liveMatch?.currentStage || 'Second Half';
   const liveTime = liveMatch?.timer?.remainingTime !== undefined ? formatTime(liveMatch.timer.remainingTime) : '02:36';
+  const livePenA = liveMatch?.shootout?.teamAPenaltyScore ?? 0;
+  const livePenB = liveMatch?.shootout?.teamBPenaltyScore ?? 0;
+  const hasLivePenalties = Boolean(
+    liveMatch?.shootout?.isShootout ||
+    liveMatch?.status === 'Penalty Shootout' ||
+    liveStage.toLowerCase().includes('penalty') ||
+    livePenA > 0 ||
+    livePenB > 0
+  );
+  const liveWinnerName =
+    typeof liveMatch?.shootout?.shootoutWinner === 'object' && liveMatch?.shootout?.shootoutWinner?.name
+      ? liveMatch.shootout.shootoutWinner.name
+      : typeof liveMatch?.winner === 'object' && liveMatch?.winner?.name
+        ? liveMatch.winner.name
+        : livePenA > livePenB
+          ? liveTeamA
+          : livePenB > livePenA
+            ? liveTeamB
+            : null;
 
   // Upcoming fixture fallback if demoing
   const upcomingTeamA = upcomingMatch?.teamA?.name || 'Delta FC';
@@ -178,7 +197,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 {liveMatch?.teamA?.logo ? (
                   <img src={liveMatch.teamA.logo} alt={liveTeamA} className="w-full h-full object-cover" />
                 ) : (
-                  <span>🐺</span>
+                  <span>{(liveTeamA.slice(0, 2) || 'A').toUpperCase()}</span>
                 )}
               </div>
               <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
@@ -193,6 +212,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 <span className="text-slate-300 font-light">-</span>
                 <span>{liveScoreB}</span>
               </div>
+              {hasLivePenalties && (
+                <div className="mt-1 px-3 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-800 text-[11px] font-extrabold flex items-center gap-1 shadow-2xs">
+                  <span>🥅</span>
+                  <span>PK: {livePenA} - {livePenB}</span>
+                  {liveWinnerName && (
+                    <span className="text-emerald-700 font-black ml-0.5">({liveWinnerName} Won)</span>
+                  )}
+                </div>
+              )}
               <div className="mt-1 px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
                 {liveStage} • {liveTime}
               </div>
@@ -204,7 +232,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 {liveMatch?.teamB?.logo ? (
                   <img src={liveMatch.teamB.logo} alt={liveTeamB} className="w-full h-full object-cover" />
                 ) : (
-                  <span>🦁</span>
+                  <span>{(liveTeamB.slice(0, 2) || 'B').toUpperCase()}</span>
                 )}
               </div>
               <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
@@ -245,7 +273,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 {upcomingMatch?.teamA?.logo ? (
                   <img src={upcomingMatch.teamA.logo} alt={upcomingTeamA} className="w-full h-full object-cover" />
                 ) : (
-                  <span>🛡️</span>
+                  <span>{(upcomingTeamA.slice(0, 2) || 'A').toUpperCase()}</span>
                 )}
               </div>
               <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
@@ -264,7 +292,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 {upcomingMatch?.teamB?.logo ? (
                   <img src={upcomingMatch.teamB.logo} alt={upcomingTeamB} className="w-full h-full object-cover" />
                 ) : (
-                  <span>🦅</span>
+                  <span>{(upcomingTeamB.slice(0, 2) || 'B').toUpperCase()}</span>
                 )}
               </div>
               <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">

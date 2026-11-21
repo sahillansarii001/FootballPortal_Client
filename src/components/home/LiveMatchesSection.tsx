@@ -18,6 +18,28 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
   const remaining = liveMatch.timer?.remainingTime ?? 180;
   const currentStage = liveMatch.timer?.currentStage || liveMatch.currentStage || 'Live';
 
+  const penA = liveMatch.shootout?.teamAPenaltyScore ?? 0;
+  const penB = liveMatch.shootout?.teamBPenaltyScore ?? 0;
+  const isShootout = Boolean(
+    liveMatch.shootout?.isShootout ||
+    liveMatch.status === 'Penalty Shootout' ||
+    currentStage.toLowerCase().includes('penalty') ||
+    penA > 0 ||
+    penB > 0
+  );
+  const teamAName = liveMatch.teamA?.name || 'Home Team';
+  const teamBName = liveMatch.teamB?.name || 'Away Team';
+  const shootoutWinnerName =
+    typeof liveMatch.shootout?.shootoutWinner === 'object' && liveMatch.shootout?.shootoutWinner?.name
+      ? liveMatch.shootout.shootoutWinner.name
+      : typeof liveMatch.winner === 'object' && liveMatch.winner?.name
+        ? liveMatch.winner.name
+        : penA > penB
+          ? teamAName
+          : penB > penA
+            ? teamBName
+            : null;
+
   return (
     <section className="mb-12" id="live-card">
       <div className="bg-surface-container-lowest rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden border border-surface-container-high">
@@ -32,7 +54,9 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-error"></span>
               </span>
-              LIVE MATCH • {liveMatch.stage || 'ALLIANCE PREMIER LEAGUE — SEASON 9'}
+              {isShootout
+                ? `PENALTY SHOOTOUT • (${penA} - ${penB})`
+                : `LIVE MATCH • ${liveMatch.stage || 'ALLIANCE PREMIER LEAGUE — SEASON 9'}`}
             </span>
             <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1.5 font-medium">
               <MapPin className="w-4 h-4 text-primary-container shrink-0" />
@@ -96,10 +120,23 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
                 {liveMatch.score?.teamB ?? liveMatch.teamBScore ?? 0}
               </span>
             </div>
-            <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded bg-surface-container font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
-              High-Pressing Tactical Block
-            </div>
+            {isShootout ? (
+              <div className="inline-flex flex-col items-center mt-2 px-3 py-1 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 shadow-2xs">
+                <span className="font-label-caps text-xs font-extrabold uppercase tracking-wider">
+                  Shootout: <strong className="text-purple-700 font-black">{penA} — {penB}</strong>
+                </span>
+                {shootoutWinnerName && (
+                  <span className="text-[10px] font-black text-emerald-700 mt-0.5">
+                    🏆 {shootoutWinnerName} Wins!
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded bg-surface-container font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+                High-Pressing Tactical Block
+              </div>
+            )}
           </div>
 
           {/* Away Team */}
@@ -140,7 +177,16 @@ export const LiveMatchesSection: React.FC<LiveMatchesSectionProps> = ({ liveMatc
           <div className="flex flex-wrap items-center gap-4 text-on-surface-variant font-body-sm text-body-sm">
             <span className="inline-flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-primary-container" />
-              Match Status: <strong className="text-on-surface font-bold">{liveMatch.timer?.isPaused ? 'Paused' : 'Active Live'}</strong>
+              Match Status:{' '}
+              <strong className="text-on-surface font-bold">
+                {liveMatch.status === 'Completed'
+                  ? `Completed (${shootoutWinnerName ? `${shootoutWinnerName} Won on Penalties` : 'Full Time'})`
+                  : isShootout
+                    ? `Penalty Shootout (${penA} - ${penB})`
+                    : liveMatch.timer?.isPaused
+                      ? 'Paused'
+                      : 'Active Live'}
+              </strong>
             </span>
             <span className="text-outline-variant">•</span>
             <span className="inline-flex items-center gap-1">

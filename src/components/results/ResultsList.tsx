@@ -14,11 +14,28 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
       {results.map((match) => {
         const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
         const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
-        const penA = match.shootout?.teamAPenaltyScore ?? 0;
-        const penB = match.shootout?.teamBPenaltyScore ?? 0;
-        const winnerId = typeof match.winner === 'object' && match.winner ? (match.winner as any)._id : match.winner;
-        const isTeamAWinner = scoreA > scoreB || (scoreA === scoreB && penA > penB) || Boolean(winnerId && winnerId.toString() === match.teamA._id.toString());
-        const isTeamBWinner = scoreB > scoreA || (scoreA === scoreB && penB > penA) || Boolean(winnerId && winnerId.toString() === match.teamB._id.toString());
+        const shootout = match.shootout || match.penalties?.shootoutState;
+        const penA = shootout?.teamAPenaltyScore ?? 0;
+        const penB = shootout?.teamBPenaltyScore ?? 0;
+        const hasPenalties = Boolean(shootout?.isShootout || penA > 0 || penB > 0 || shootout?.isCompleted);
+        const rawWinner = match.winner || shootout?.shootoutWinner;
+        const winnerId = typeof rawWinner === 'object' && rawWinner ? (rawWinner as any)._id : rawWinner;
+        const winnerName = typeof rawWinner === 'object' && rawWinner ? (rawWinner as any).name : null;
+        const teamAId = match.teamA?._id ? match.teamA._id.toString() : '';
+        const teamBId = match.teamB?._id ? match.teamB._id.toString() : '';
+
+        const isTeamAWinner =
+          scoreA > scoreB ||
+          (hasPenalties && penA > penB) ||
+          Boolean(winnerId && teamAId && winnerId.toString() === teamAId) ||
+          Boolean(winnerName && winnerName === match.teamA?.name);
+
+        const isTeamBWinner =
+          scoreB > scoreA ||
+          (hasPenalties && penB > penA) ||
+          Boolean(winnerId && teamBId && winnerId.toString() === teamBId) ||
+          Boolean(winnerName && winnerName === match.teamB?.name);
+
         const isDraw = scoreA === scoreB && !isTeamAWinner && !isTeamBWinner;
 
         return (
@@ -35,9 +52,15 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
                 <span>{formatDate(match.matchDate)} • {match.venue || 'APL Stadium'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-label-caps text-label-caps bg-surface-container text-on-surface px-3 py-1 rounded-full font-bold border border-surface-container-high">
-                  FULL TIME (90&apos;)
-                </span>
+                {hasPenalties ? (
+                  <span className="font-label-caps text-label-caps bg-purple-100 text-purple-900 px-3 py-1 rounded-full font-bold border border-purple-200">
+                    PENALTIES ({penA} - {penB})
+                  </span>
+                ) : (
+                  <span className="font-label-caps text-label-caps bg-surface-container text-on-surface px-3 py-1 rounded-full font-bold border border-surface-container-high">
+                    FULL TIME (90&apos;)
+                  </span>
+                )}
                 {match.attendance && <span className="font-semibold">Att: {match.attendance}</span>}
               </div>
             </div>
@@ -73,16 +96,16 @@ export const ResultsList: React.FC<ResultsListProps> = ({ results }) => {
                 </div>
                 <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold mt-0.5 text-center px-1">
                   {isTeamAWinner
-                    ? `${match.teamA.name} Win${match.shootout ? ` (${penA}-${penB} Pen)` : ''}`
+                    ? `${match.teamA.name} Win${hasPenalties ? ` (${penA}-${penB} Pen)` : ''}`
                     : isTeamBWinner
-                      ? `${match.teamB.name} Win${match.shootout ? ` (${penA}-${penB} Pen)` : ''}`
+                      ? `${match.teamB.name} Win${hasPenalties ? ` (${penA}-${penB} Pen)` : ''}`
                       : (match.matchResult && !match.matchResult.toLowerCase().includes('draw'))
                         ? match.matchResult
                         : 'Draw'}
                 </span>
-                {match.shootout && ((match.shootout.teamAPenaltyScore ?? 0) > 0 || (match.shootout.teamBPenaltyScore ?? 0) > 0) && (
-                  <span className="text-[10px] text-primary-container font-extrabold mt-0.5 bg-primary-container/10 px-2 py-0.5 rounded-full border border-primary-container/20">
-                    Penalties: {match.shootout.teamAPenaltyScore ?? 0} - {match.shootout.teamBPenaltyScore ?? 0}
+                {hasPenalties && (
+                  <span className="text-[10px] text-purple-800 font-extrabold mt-0.5 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200 shadow-2xs">
+                    Penalties: {penA} - {penB}
                   </span>
                 )}
               </div>

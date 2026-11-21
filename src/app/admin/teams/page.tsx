@@ -16,7 +16,8 @@ import {
   Pencil,
   Image as ImageIcon,
   Loader2,
-  Trash2
+  Trash2,
+  Upload
 } from 'lucide-react';
 import { teamService } from '@/services/team.service';
 import { adminService } from '@/services/admin.service';
@@ -62,6 +63,50 @@ export default function AdminTeamsPage() {
   const [deletingPlayer, setDeletingPlayer] = useState<{ id: string; name: string; jerseyNumber?: number; teamName: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Delete Team Modal state
+  const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
+  const [deleteTeamLoading, setDeleteTeamLoading] = useState(false);
+  const [deleteTeamError, setDeleteTeamError] = useState<string | null>(null);
+
+  // Helper to handle direct file upload and convert to lightweight optimized base64
+  const processImageFile = (file: File, callback: (dataUrl: string) => void) => {
+    if (!file || !file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, SVG, WebP)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 300;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.88);
+          callback(compressedDataUrl);
+        } else {
+          callback((event.target?.result as string) || '');
+        }
+      };
+      img.src = (event.target?.result as string) || '';
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     async function loadTeams() {
@@ -357,6 +402,44 @@ export default function AdminTeamsPage() {
     }
   };
 
+  const handleConfirmDeleteTeam = async () => {
+    if (!deletingTeam) return;
+    setDeleteTeamLoading(true);
+    setDeleteTeamError(null);
+
+    try {
+      const res = await adminService.deleteTeam(deletingTeam._id);
+      if (!res.success) {
+        setDeleteTeamError(res.error || res.message || 'Failed to delete team');
+        setDeleteTeamLoading(false);
+        return;
+      }
+
+      setSuccessMsg(`Team "${deletingTeam.name}" deleted successfully!`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+
+      // Remove team from state
+      setTeams((prev) => prev.filter((t) => t._id !== deletingTeam._id));
+      if (selectedTeam?._id === deletingTeam._id) {
+        setSelectedTeam(null);
+        setTeamPlayers([]);
+      }
+      if (editingTeam?._id === deletingTeam._id) {
+        setEditingTeam(null);
+      }
+      setDeletingTeam(null);
+
+      // Re-fetch authoritative teams
+      teamService.getAllTeams().then((fresh) => {
+        if (fresh) setTeams(fresh);
+      });
+    } catch (err: any) {
+      setDeleteTeamError(err.message || 'Error deleting team');
+    } finally {
+      setDeleteTeamLoading(false);
+    }
+  };
+
   return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 flex flex-col gap-6 select-none animate-in fade-in duration-200">
         {/* Header */}
@@ -447,10 +530,22 @@ export default function AdminTeamsPage() {
                         <button
                           type="button"
                           onClick={(e) => handleOpenEditModal(team, e)}
-                          className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary-container transition-colors shadow-2xs"
+                          className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary-container transition-colors shadow-2xs cursor-pointer"
                           title="Edit Team Name & Logo"
                         >
                           <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingTeam(team);
+                            setDeleteTeamError(null);
+                          }}
+                          className="p-1.5 rounded-lg bg-surface-container hover:bg-rose-50 text-on-surface-variant hover:text-rose-600 transition-colors shadow-2xs cursor-pointer"
+                          title="Delete Team"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -839,29 +934,61 @@ export default function AdminTeamsPage() {
                             )}
 
                             <form onSubmit={handleSaveEditTeam} className="space-y-3.5">
-                              {/* Logo Preview */}
-                              <div className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl border border-surface-container">
-                                <div className="w-14 h-14 rounded-xl bg-surface-container-lowest border border-surface-container-high flex items-center justify-center font-black text-lg text-primary-container overflow-hidden shrink-0 shadow-inner">
-                                  {editLogo.trim() ? (
-                                    <img
-                                      src={editLogo}
-                                      alt="Logo preview"
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        (e.target as HTMLElement).style.display = 'none';
-                                      }}
-                                    />
-                                  ) : (
-                                    editName.slice(0, 2).toUpperCase() || 'TM'
-                                  )}
-                                </div>
-                                <div>
-                                  <span className="font-label-caps text-[10px] uppercase font-bold text-on-surface-variant block">
-                                    Team Badge Preview
-                                  </span>
-                                  <span className="text-xs font-bold text-on-surface">
-                                    {editName || 'Unnamed Team'}
-                                  </span>
+                              {/* Logo Preview & Direct File Upload */}
+                              <div>
+                                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1.5">
+                                  Team Logo / Badge
+                                </label>
+                                <div className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl border border-surface-container">
+                                  <div className="w-16 h-16 rounded-xl bg-surface-container-lowest border border-surface-container-high flex items-center justify-center font-black text-xl text-primary-container overflow-hidden shrink-0 shadow-inner p-1">
+                                    {editLogo.trim() ? (
+                                      <img
+                                        src={editLogo}
+                                        alt="Logo preview"
+                                        className="w-full h-full object-contain"
+                                        onError={(e) => {
+                                          (e.target as HTMLElement).style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      editName.slice(0, 2).toUpperCase() || 'TM'
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <label
+                                        htmlFor="edit-team-logo-file"
+                                        className="px-3.5 py-2 rounded-xl bg-primary-container hover:bg-primary text-on-primary text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
+                                      >
+                                        <Upload className="w-3.5 h-3.5" />
+                                        <span>{editLogo.trim() ? 'Change Logo File' : 'Upload Logo from File'}</span>
+                                      </label>
+                                      <input
+                                        type="file"
+                                        id="edit-team-logo-file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            processImageFile(file, (dataUrl) => setEditLogo(dataUrl));
+                                          }
+                                        }}
+                                      />
+                                      {editLogo.trim() && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditLogo('')}
+                                          className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors border border-rose-200 shrink-0"
+                                        >
+                                          Remove
+                                        </button>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-on-surface-variant mt-1.5 block">
+                                      Select PNG, JPG, WebP, or SVG directly from your device
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
 
@@ -880,26 +1007,6 @@ export default function AdminTeamsPage() {
                                 />
                               </div>
 
-                              {/* Team Logo URL */}
-                              <div>
-                                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                                  Team Logo URL
-                                </label>
-                                <div className="relative">
-                                  <input
-                                    type="url"
-                                    value={editLogo}
-                                    onChange={(e) => setEditLogo(e.target.value)}
-                                    placeholder="https://example.com/logo.png"
-                                    className="w-full pl-9 pr-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
-                                  />
-                                  <ImageIcon className="w-4 h-4 text-on-surface-variant absolute left-3 top-3" />
-                                </div>
-                                <span className="text-[10px] text-on-surface-variant mt-1 block">
-                                  Paste any public image link or CDN badge URL
-                                </span>
-                              </div>
-
                               {/* Team Captain */}
                               <div>
                                 <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
@@ -914,22 +1021,36 @@ export default function AdminTeamsPage() {
                                 />
                               </div>
 
-                              <div className="flex items-center gap-2 pt-3">
-                                <button
-                                  type="submit"
-                                  disabled={editLoading}
-                                  className="flex-1 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                >
-                                  {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                                  <span>Save Team Changes</span>
-                                </button>
+                              <div className="flex items-center justify-between gap-2 pt-3 border-t border-surface-container-high">
                                 <button
                                   type="button"
-                                  onClick={() => setEditingTeam(null)}
-                                  className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-all"
+                                  onClick={() => {
+                                    setDeletingTeam(editingTeam);
+                                    setDeleteTeamError(null);
+                                  }}
+                                  className="px-3.5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors flex items-center gap-1.5 border border-rose-200 cursor-pointer"
                                 >
-                                  Cancel
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete Team</span>
                                 </button>
+
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingTeam(null)}
+                                    className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-all cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    disabled={editLoading}
+                                    className="px-4 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs"
+                                  >
+                                    {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                    <span>Save Team Changes</span>
+                                  </button>
+                                </div>
                               </div>
                             </form>
                           </div>
@@ -985,17 +1106,62 @@ export default function AdminTeamsPage() {
                 />
               </div>
 
+              {/* Direct Logo File Upload */}
               <div>
-                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                  Team Logo URL (Optional)
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1.5">
+                  Team Logo / Badge (Optional)
                 </label>
-                <input
-                  type="url"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://example.com/logo.png"
-                  className="w-full px-3.5 py-2.5 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
-                />
+                <div className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl border border-surface-container">
+                  <div className="w-16 h-16 rounded-xl bg-surface-container-lowest border border-surface-container-high flex items-center justify-center font-black text-xl text-primary-container overflow-hidden shrink-0 shadow-inner p-1">
+                    {logoUrl.trim() ? (
+                      <img
+                        src={logoUrl}
+                        alt="Logo preview"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      name.slice(0, 2).toUpperCase() || 'TM'
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor="add-team-logo-file"
+                        className="px-3.5 py-2 rounded-xl bg-primary-container hover:bg-primary text-on-primary text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{logoUrl.trim() ? 'Change Logo File' : 'Upload Logo from File'}</span>
+                      </label>
+                      <input
+                        type="file"
+                        id="add-team-logo-file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            processImageFile(file, (dataUrl) => setLogoUrl(dataUrl));
+                          }
+                        }}
+                      />
+                      {logoUrl.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setLogoUrl('')}
+                          className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors border border-rose-200 shrink-0"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-on-surface-variant mt-1.5 block">
+                      Select PNG, JPG, WebP, or SVG directly from your device
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -1080,6 +1246,52 @@ export default function AdminTeamsPage() {
               >
                 {deleteLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Delete Athlete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Team Confirmation Modal */}
+      {deletingTeam && (
+        <div className="fixed inset-0 z-[130] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative bg-white w-full max-w-md rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-7 my-auto animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 border border-rose-100">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-base font-bold text-slate-900">Delete Team & Roster?</h3>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+              Are you sure you want to permanently delete{' '}
+              <strong className="text-slate-900 font-bold">&quot;{deletingTeam.name}&quot;</strong>?
+              This will remove the team, its enrolled roster players, and associated tournament matches. This action cannot be undone.
+            </p>
+
+            {deleteTeamError && (
+              <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                {deleteTeamError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeletingTeam(null);
+                  setDeleteTeamError(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Keep Team
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteTeam}
+                disabled={deleteTeamLoading}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                {deleteTeamLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Delete Team</span>
               </button>
             </div>
           </div>

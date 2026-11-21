@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Award, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Award, CheckCircle2, ChevronRight, Trophy } from 'lucide-react';
 import { Match } from '@/types';
 
 interface RecentResultsProps {
@@ -33,15 +33,39 @@ export const RecentResults: React.FC<RecentResultsProps> = ({ results }) => {
           results.slice(0, 3).map((match) => {
             const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
             const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
-            const isDraw = scoreA === scoreB;
             const teamAName = match.teamA?.name || 'Team A';
             const teamBName = match.teamB?.name || 'Team B';
-            const winnerName =
-              (typeof match.winner === 'object' && match.winner?.name)
-                ? match.winner.name
-                : scoreA > scoreB
-                  ? teamAName
-                  : teamBName;
+
+            const penA = match.shootout?.teamAPenaltyScore ?? 0;
+            const penB = match.shootout?.teamBPenaltyScore ?? 0;
+            const hasPenalties = Boolean(
+              match.shootout?.isShootout ||
+              match.shootout?.isCompleted ||
+              penA > 0 ||
+              penB > 0 ||
+              (match.matchResult && match.matchResult.toLowerCase().includes('penalt'))
+            );
+
+            // Determine authoritative winner name
+            let winnerName: string | null = null;
+            if (typeof match.winner === 'object' && match.winner?.name) {
+              winnerName = match.winner.name;
+            } else if (typeof match.shootout?.shootoutWinner === 'object' && match.shootout?.shootoutWinner?.name) {
+              winnerName = match.shootout.shootoutWinner.name;
+            } else if (match.winner) {
+              const wId = String(match.winner);
+              const tAId = match.teamA?._id ? String(match.teamA._id) : '';
+              winnerName = wId === tAId ? teamAName : teamBName;
+            } else if (scoreA > scoreB) {
+              winnerName = teamAName;
+            } else if (scoreB > scoreA) {
+              winnerName = teamBName;
+            } else if (hasPenalties) {
+              if (penA > penB) winnerName = teamAName;
+              else if (penB > penA) winnerName = teamBName;
+            }
+
+            const isDraw = scoreA === scoreB && !winnerName;
 
             return (
               <Link
@@ -58,17 +82,25 @@ export const RecentResults: React.FC<RecentResultsProps> = ({ results }) => {
 
                   {/* Score & Teams */}
                   <div className="flex flex-col">
-                    <div className="flex items-center gap-3">
-                      <span className="font-headline-sm text-headline-sm text-on-surface font-bold flex items-center gap-1.5">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
                         {teamAName} {scoreA}
                       </span>
                       <span className="text-on-surface-variant font-bold">–</span>
                       <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
                         {scoreB} {teamBName}
                       </span>
+                      {hasPenalties && (
+                        <span className="text-xs font-black text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md shadow-2xs">
+                          ({penA} - {penB} PK)
+                        </span>
+                      )}
                     </div>
                     <span className="font-body-sm text-body-sm text-on-surface-variant font-medium mt-0.5">
-                      {match.venue || 'Championship Match'} • {match.matchResult || 'Final Score'}
+                      {match.venue || 'Championship Match'} •{' '}
+                      {hasPenalties && winnerName
+                        ? `${winnerName} won (${penA} - ${penB}) on penalties`
+                        : match.matchResult || 'Final Score'}
                     </span>
                   </div>
                 </div>
@@ -80,8 +112,12 @@ export const RecentResults: React.FC<RecentResultsProps> = ({ results }) => {
                       DRAW (+1 PT)
                     </span>
                   ) : (
-                    <span className="px-2.5 py-1 rounded-full bg-secondary-container/40 text-on-secondary-container font-label-caps text-label-caps font-bold border border-secondary-container/60">
-                      WINNER: {(winnerName || 'WINNER').toUpperCase()} (+3)
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 font-label-caps text-label-caps font-extrabold border border-emerald-200 shadow-2xs flex items-center gap-1.5">
+                      <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>
+                        WINNER: {(winnerName || 'WINNER').toUpperCase()}{' '}
+                        {hasPenalties ? `(${penA}-${penB} PK)` : '(+3)'}
+                      </span>
                     </span>
                   )}
                   <ChevronRight className="w-4 h-4 text-outline group-hover:translate-x-0.5 transition-transform" />
