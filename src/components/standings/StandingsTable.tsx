@@ -94,21 +94,6 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({ standings }) => 
                             ) : (
                               <span>{teamName}</span>
                             )}
-                            {isTop2 && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-label-caps bg-on-tertiary-container text-primary-container font-extrabold uppercase">
-                                SEMIS
-                              </span>
-                            )}
-                            {isWildcard && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-label-caps bg-surface-container-high text-tertiary font-bold uppercase">
-                                WILDCARD
-                              </span>
-                            )}
-                            {isRelegation && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-label-caps bg-error-container text-error font-bold uppercase">
-                                PLAYDOWN
-                              </span>
-                            )}
                           </div>
                           <span className="font-body-sm text-body-sm text-on-surface-variant font-medium">
                             Captain: {captainName}

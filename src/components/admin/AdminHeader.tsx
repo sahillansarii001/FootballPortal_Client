@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, Menu, Radio, Zap, LogOut } from 'lucide-react';
+import { Menu, Radio, Zap, LogOut } from 'lucide-react';
 import { FootballPortalLogo } from '@/components/common/FootballPortalLogo';
 import { authService } from '@/services/auth.service';
 
@@ -50,7 +50,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => 
         </div>
       </div>
 
-      {/* Right: Notifications, Live Desk Pill & Admin Profile Badge (Screen 3) */}
+      {/* Right: Live Desk Pill & Admin Profile Badge (Screen 3) */}
       <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
         {/* Live Desk Shortcut */}
         <Link
@@ -60,18 +60,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => 
           <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
           <span>Live Desk</span>
         </Link>
-
-        {/* Notification Bell with Red Dot (Screen 3) */}
-        <div className="relative">
-          <button
-            type="button"
-            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors relative"
-            aria-label="Notifications"
-          >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
-          </button>
-        </div>
 
         {/* User Profile Pill (Screen 3: Blue circular A + Admin / Administrator) */}
         <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">

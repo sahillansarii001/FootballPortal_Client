@@ -1793,7 +1793,7 @@ export default function AdminLiveControlPage() {
                   </div>
                 </div>
 
-                {/* Team A Direct Actions: Goal & Card Downward of Logo/Name */}
+                {/* Team A Direct Actions: Goal Downward of Logo/Name */}
                 <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                   <button
                     type="button"
@@ -1803,15 +1803,6 @@ export default function AdminLiveControlPage() {
                   >
                     <span>⚽</span>
                     <span>+ Goal</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenCardModal('A')}
-                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
-                    title={`Issue caution or card to ${teamAName}`}
-                  >
-                    <span>🟨</span>
-                    <span>+ Card</span>
                   </button>
                 </div>
 
@@ -1876,7 +1867,7 @@ export default function AdminLiveControlPage() {
                   </div>
                 </div>
 
-                {/* Team B Direct Actions: Goal & Card Downward of Logo/Name */}
+                {/* Team B Direct Actions: Goal Downward of Logo/Name */}
                 <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
                   <button
                     type="button"
@@ -1886,15 +1877,6 @@ export default function AdminLiveControlPage() {
                   >
                     <span>⚽</span>
                     <span>+ Goal</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenCardModal('B')}
-                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
-                    title={`Issue caution or card to ${teamBName}`}
-                  >
-                    <span>🟨</span>
-                    <span>+ Card</span>
                   </button>
                 </div>
 
@@ -1929,87 +1911,56 @@ export default function AdminLiveControlPage() {
               </div>
             </div>
 
-            {/* Timer Controls Row (Screen 8: Amber Pause pill + Royal Blue Resume pill + Rose End Match) */}
+            {/* Timer Controls Row (When completed: START NEXT MATCH; otherwise Pause / Resume / End Match) */}
             <div className="flex items-center justify-center gap-3 sm:gap-4 pt-2 flex-wrap">
-              <button
-                type="button"
-                data-testid="timer-action-btn-pause"
-                onClick={handlePause}
-                disabled={!timerRunning}
-                className="px-7 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
-              >
-                <Pause className="w-4 h-4 fill-white" />
-                <span>Pause</span>
-              </button>
-              <button
-                type="button"
-                data-testid="timer-action-btn-resume"
-                onClick={handleStartOrResume}
-                disabled={timerRunning && selectedMatch?.status !== 'Upcoming'}
-                className="px-7 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span>Resume</span>
-              </button>
-              <button
-                type="button"
-                data-testid="timer-action-btn-end"
-                onClick={handleFinalizeMatch}
-                disabled={selectedMatch?.status === 'Completed'}
-                className="px-7 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
-              >
-                <Flag className="w-4 h-4 fill-white text-white" />
-                <span>End Match</span>
-              </button>
+              {selectedMatch?.status === 'Completed' || currentStage === 'Match Completed' ? (
+                <button
+                  type="button"
+                  data-testid="start-next-match-btn"
+                  onClick={() => setShowMatchPickerModal(true)}
+                  className="px-8 py-3 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer hover:shadow-emerald-200"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>START NEXT MATCH</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    data-testid="timer-action-btn-pause"
+                    onClick={handlePause}
+                    disabled={!timerRunning}
+                    className="px-7 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Pause className="w-4 h-4 fill-white" />
+                    <span>Pause</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="timer-action-btn-resume"
+                    onClick={handleStartOrResume}
+                    disabled={timerRunning && selectedMatch?.status !== 'Upcoming'}
+                    className="px-7 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Play className="w-4 h-4 fill-white" />
+                    <span>Resume</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="timer-action-btn-end"
+                    onClick={handleFinalizeMatch}
+                    disabled={selectedMatch?.status === 'Completed'}
+                    className="px-7 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Flag className="w-4 h-4 fill-white text-white" />
+                    <span>End Match</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Quick Operations Toolbar: Substitution & Penalties */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
-            {/* 1. Substitution */}
-            <button
-              type="button"
-              onClick={() => setShowSubModal(true)}
-              className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all flex items-center gap-4 text-left group cursor-pointer active:scale-[0.99]"
-            >
-              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
-                🔄
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs sm:text-sm font-extrabold text-slate-800">Squad Substitution</div>
-                <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Record player-in & player-out interchanges</div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0" />
-            </button>
 
-            {/* 2. Penalty Shootout Console */}
-            <button
-              type="button"
-              onClick={() => {
-                if (scoreA === scoreB && !currentStage.includes('Penalty') && !isShootoutConcluded) {
-                  handleStartPenaltyShootout();
-                } else {
-                  document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}
-              className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 hover:border-indigo-300 hover:shadow-xs transition-all flex items-center gap-4 text-left group cursor-pointer active:scale-[0.99]"
-            >
-              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0 group-hover:scale-105 transition-transform">
-                🥅
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs sm:text-sm font-extrabold text-slate-800">Penalty Shootout Console</div>
-                <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-                  {currentStage.includes('Penalty')
-                    ? 'Active: 3 kicks & sudden death decider'
-                    : scoreA === scoreB
-                    ? 'Scores tied! Click to start shootout'
-                    : 'Regulation 3 kicks & sudden death decider'}
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
-            </button>
-          </div>
 
       {/* Stage Transitions & Shootout Controller Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">

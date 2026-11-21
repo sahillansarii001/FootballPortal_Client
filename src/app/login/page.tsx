@@ -27,13 +27,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If already authenticated, redirect straight to admin dashboard
-    const user = authService.getCurrentUser();
-    const token = authService.getToken();
-    if (user && token) {
-      router.replace('/admin');
-    }
-  }, [router]);
+    // When visiting login, require explicit credential submission by clearing any cached token
+    authService.logout();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
