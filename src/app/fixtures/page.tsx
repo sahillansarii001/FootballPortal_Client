@@ -73,146 +73,86 @@ export default function FixturesPage() {
   const completedCount = matches.filter((m) => m.status === 'Completed').length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <PageHeader
-        badge="Official Championship Schedule"
-        badgeIcon={<Calendar className="w-4 h-4 text-primary-container" />}
-        title="Fixtures & Tournament Schedule"
-        description="Track verified Alliance Premier League match schedules, real-time scorelines, penalty shootouts, and aggregate fixtures across Season 9."
-        action={
-          <div className="flex items-center gap-2 bg-surface-container p-1.5 rounded-xl shadow-xs">
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-surface-container-lowest rounded-lg shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
-              <span className="font-label-caps text-label-caps text-on-surface font-extrabold uppercase">
-                {liveCount} Live Matches
-              </span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 select-none animate-in fade-in duration-200">
+      {/* Header matching Reference Screen 4 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-slate-200/80">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+              <Calendar className="w-5 h-5" />
             </div>
-            <div className="px-3 py-1 text-on-surface-variant font-label-ui text-label-ui">
-              <strong className="text-on-surface">{matches.length}</strong> Total Fixtures
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Fixtures
+            </h1>
           </div>
-        }
-      />
-
-      {/* Filter Console Card */}
-      <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-surface-container-high mb-8 flex flex-col gap-4">
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-surface-container-high">
-          <div className="flex items-center gap-1.5 overflow-x-auto p-1 bg-surface-container rounded-xl shadow-inner">
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-3.5 py-1.5 rounded-lg font-headline-sm text-headline-sm transition-all flex items-center gap-1.5 text-xs font-bold ${
-                activeTab === 'all'
-                  ? 'bg-surface-container-lowest text-primary-container shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              <span>All Matches</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-primary-container/10 text-primary-container text-[10px]">
-                {matches.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('upcoming')}
-              className={`px-3.5 py-1.5 rounded-lg font-headline-sm text-headline-sm transition-all flex items-center gap-1.5 text-xs font-bold ${
-                activeTab === 'upcoming'
-                  ? 'bg-surface-container-lowest text-primary-container shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              <span>Upcoming</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-surface-container-high text-on-surface-variant text-[10px]">
-                {upcomingCount}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('live')}
-              className={`px-3.5 py-1.5 rounded-lg font-headline-sm text-headline-sm transition-all flex items-center gap-1.5 text-xs font-bold ${
-                activeTab === 'live'
-                  ? 'bg-surface-container-lowest text-primary-container shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-container opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-container"></span>
-              </span>
-              <span>Live Now</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-primary-container text-white text-[10px]">
-                {liveCount}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('completed')}
-              className={`px-3.5 py-1.5 rounded-lg font-headline-sm text-headline-sm transition-all flex items-center gap-1.5 text-xs font-bold ${
-                activeTab === 'completed'
-                  ? 'bg-surface-container-lowest text-primary-container shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              <span>Completed</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-surface-container-high text-on-surface-variant text-[10px]">
-                {completedCount}
-              </span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 text-on-surface-variant font-label-ui text-label-ui bg-surface px-3 py-1.5 rounded-lg border border-surface-container-high text-xs">
-            <RefreshCw className="w-3.5 h-3.5 text-primary-container" />
-            <span>Official Feed Active</span>
-          </div>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            All upcoming and scheduled matches
+          </p>
         </div>
 
-        {/* Search & Dropdown Filter Row */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-          <div className="md:col-span-6">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          </div>
+        {/* Live Count Pill */}
+        <div className="flex items-center gap-2">
+          {liveCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500 text-white font-bold text-xs shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              {liveCount} Live Now
+            </span>
+          )}
+          <span className="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 font-bold text-xs shadow-xs">
+            {matches.length} Total Matches
+          </span>
+        </div>
+      </div>
 
-          <div className="md:col-span-3">
-            <select
-              value={selectedStage}
-              onChange={(e) => setSelectedStage(e.target.value)}
-              className="w-full bg-surface text-on-surface font-label-ui text-label-ui px-3 py-2.5 rounded-xl border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary-container/20 cursor-pointer shadow-sm text-xs font-semibold"
-            >
-              <option value="">Stage: All Stages</option>
-              <option value="group">Group Stage</option>
-              <option value="quarter">Quarter-Finals</option>
-              <option value="semi">Semi-Finals</option>
-              <option value="final">Championship Final</option>
-            </select>
-          </div>
+      {/* Pill Filter Tabs matching Reference Screen 4 */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto py-1">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
+              activeTab === 'all'
+                ? 'bg-blue-600 text-white shadow-blue-500/20'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setActiveTab('upcoming')}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
+              activeTab === 'upcoming'
+                ? 'bg-blue-600 text-white shadow-blue-500/20'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            Upcoming
+          </button>
+          <button
+            onClick={() => setActiveTab('live')}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 ${
+              activeTab === 'live'
+                ? 'bg-blue-600 text-white shadow-blue-500/20'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span>Live</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('completed')}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
+              activeTab === 'completed'
+                ? 'bg-blue-600 text-white shadow-blue-500/20'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            Completed
+          </button>
+        </div>
 
-          <div className="md:col-span-2">
-            <select
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
-              className="w-full bg-surface text-on-surface font-label-ui text-label-ui px-3 py-2.5 rounded-xl border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary-container/20 cursor-pointer shadow-sm text-xs font-semibold"
-            >
-              <option value="">Team: All Teams</option>
-              {availableTeams.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-1">
-            <button
-              onClick={() => {
-                setActiveTab('all');
-                setSearchQuery('');
-                setSelectedStage('');
-                setSelectedTeam('');
-              }}
-              className="w-full px-3 py-2.5 text-on-surface-variant hover:text-on-surface bg-surface hover:bg-surface-container rounded-xl border border-surface-container-high font-label-ui text-label-ui flex items-center justify-center gap-1 transition-colors shadow-xs"
-              title="Reset Filters"
-            >
-              <FilterX className="w-4 h-4" />
-            </button>
-          </div>
+        {/* Search Input */}
+        <div className="w-full sm:w-72">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
       </div>
 

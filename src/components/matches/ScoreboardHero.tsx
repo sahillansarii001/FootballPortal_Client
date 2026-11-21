@@ -109,18 +109,93 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
   ];
 
   return (
-    <div className="relative rounded-3xl bg-white border border-slate-200/90 shadow-sm mb-8 overflow-hidden text-slate-900 transition-all">
-      {/* Pitch Top Highlight Bar */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-500" />
+    <div className="relative rounded-3xl overflow-hidden shadow-md mb-8 text-slate-900 border border-slate-200/90 transition-all bg-white select-none">
+      {/* Stadium Grass Pitch Background Banner (Matching Screen 2 in Reference) */}
+      <div className="relative w-full overflow-hidden bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950 text-white p-6 sm:p-8 md:p-10">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay"
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1529900245534-47fbf82215dd?q=80&w=1920&auto=format&fit=crop')`,
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
 
-      <div className="p-5 sm:p-7 md:p-9 flex flex-col gap-6">
+        <div className="relative z-10 flex flex-col items-center justify-center">
+          {/* Main Teams & Score Display (Matching Screen 2 in Reference) */}
+          <div className="w-full max-w-3xl grid grid-cols-1 sm:grid-cols-11 items-center gap-6 py-2">
+            {/* Team A */}
+            <div className="sm:col-span-4 flex flex-col items-center sm:items-end text-center sm:text-right">
+              <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-2.5 shadow-md overflow-hidden mb-2.5">
+                {match.teamA?.logo ? (
+                  <img src={match.teamA.logo} alt={match.teamA.name} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-3xl sm:text-4xl select-none">🐺</span>
+                )}
+              </div>
+              <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase truncate max-w-full">
+                {match.teamA?.name || 'Alpha FC'}
+              </h2>
+              <span className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider">
+                {match.teamA?.seed || 'Home Team'}
+              </span>
+            </div>
+
+            {/* Score & Stage / Clock */}
+            <div className="sm:col-span-3 flex flex-col items-center justify-center">
+              <div className="flex items-center gap-3 text-5xl sm:text-6xl font-black text-white tracking-tight leading-none tabular-nums drop-shadow-md">
+                <span>{localScoreA}</span>
+                <span className="text-white/40 font-light">-</span>
+                <span>{localScoreB}</span>
+              </div>
+
+              {/* Stage & Green Digital Clock Pill */}
+              <div className="mt-3 flex flex-col items-center gap-1">
+                <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                  {stage}
+                </span>
+                <div
+                  className="px-5 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/40 text-emerald-300 font-mono font-black text-lg sm:text-xl tracking-widest tabular-nums shadow-inner"
+                  data-testid="spectator-clock"
+                >
+                  {formatTime(currentRemaining)}
+                </div>
+              </div>
+
+              {showPenalties && (
+                <div className="mt-2.5 px-3 py-0.5 rounded-full bg-purple-500/30 border border-purple-400/40 text-[11px] font-bold text-purple-200">
+                  Shootout: {penA} - {penB}
+                </div>
+              )}
+            </div>
+
+            {/* Team B */}
+            <div className="sm:col-span-4 flex flex-col items-center sm:items-start text-center sm:text-left">
+              <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-2.5 shadow-md overflow-hidden mb-2.5">
+                {match.teamB?.logo ? (
+                  <img src={match.teamB.logo} alt={match.teamB.name} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-3xl sm:text-4xl select-none">🦁</span>
+                )}
+              </div>
+              <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase truncate max-w-full">
+                {match.teamB?.name || 'Beta United'}
+              </h2>
+              <span className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider">
+                {match.teamB?.seed || 'Visiting Team'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5 sm:p-6 flex flex-col gap-5">
         {/* Top Match Header Ribbon */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div className="flex flex-wrap items-center gap-2.5">
             {isLive ? (
               <span className="flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200/80 text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-xs">
                 <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse" />
-                LIVE BROADCAST
+                LIVE MATCH
               </span>
             ) : isCompleted ? (
               <span className="flex items-center gap-1.5 bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full">
@@ -141,30 +216,9 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
             </div>
           </div>
 
-          {/* Clock & Connection Badge */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 px-3.5 py-1.5 rounded-full shadow-xs">
-              <Clock className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Clock:</span>
-              <span className="text-sm font-black tabular-nums tracking-tight text-slate-900 font-mono" data-testid="spectator-clock">
-                {formatTime(currentRemaining)}
-              </span>
-              <span className="text-slate-300">/</span>
-              <span className="text-[11px] font-extrabold text-amber-600 uppercase tracking-wider">
-                {stage}
-              </span>
-            </div>
-
-            {isConnected ? (
-              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-black bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                SYNCED
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] text-rose-700 font-black bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                OFFLINE
-              </span>
-            )}
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span>{match.venue || 'Alliance National Field #1'}</span>
           </div>
         </div>
 

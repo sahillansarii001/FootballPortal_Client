@@ -2,7 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Search, Trophy, Zap, Menu } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, Menu, Radio, Zap, LogOut } from 'lucide-react';
+import { FootballPortalLogo } from '@/components/common/FootballPortalLogo';
 import { authService } from '@/services/auth.service';
 
 interface AdminHeaderProps {
@@ -10,55 +12,81 @@ interface AdminHeaderProps {
   onQuickAction?: () => void;
 }
 
-export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar, onQuickAction }) => {
+export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => {
+  const router = useRouter();
   const user = authService.getCurrentUser();
 
+  const handleLogout = () => {
+    authService.logout();
+    router.push('/login');
+  };
+
   return (
-    <header className="fixed top-0 left-0 lg:left-64 right-0 h-16 bg-surface-container-lowest border-b border-surface-container-high z-30 flex items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4 select-none transition-all duration-300">
-      {/* Left: Hamburger menu (mobile) & Global Search & Active Tournament */}
-      <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-xl">
+    <header className="fixed top-0 left-0 lg:left-64 right-0 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-30 flex items-center justify-between px-4 sm:px-6 gap-3 select-none transition-all duration-300 shadow-2xs">
+      {/* Left: Mobile Toggle & Admin Panel Branding */}
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="lg:hidden p-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors shrink-0"
+          className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0"
           aria-label="Toggle navigation menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="relative flex-1 min-w-[120px]">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search matches, teams, rosters..."
-            className="w-full pl-9 pr-3 py-1.5 bg-surface text-xs text-on-surface rounded-xl border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary-container transition-all"
-          />
-        </div>
-
-        <div className="hidden md:flex items-center gap-1.5 bg-surface-container-high/60 px-3 py-1.5 rounded-xl border border-surface-container-high text-xs shrink-0">
-          <Trophy className="w-3.5 h-3.5 text-amber-500" />
-          <span className="font-semibold text-on-surface">Alliance Premier League — Season 9</span>
+        <div className="flex items-center gap-2.5">
+          <div className="lg:hidden">
+            <FootballPortalLogo size="sm" showText={false} />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-slate-800 text-base md:text-lg tracking-tight">
+              Admin Panel
+            </span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px] border border-blue-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+              Console
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Right: Telemetry & Actions */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Telemetry pill */}
-        <div className="hidden sm:flex items-center gap-2 bg-emerald-50 text-primary-container px-3 py-1 rounded-full text-[11px] font-bold border border-emerald-200">
-          <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
-          <span className="hidden md:inline">LIVE TELEMETRY ACTIVE</span>
-          <span className="md:hidden">LIVE</span>
-        </div>
-
-        {/* Quick Action Button */}
+      {/* Right: Notifications, Live Desk Pill & Admin Profile Badge (Screen 3) */}
+      <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+        {/* Live Desk Shortcut */}
         <Link
           href="/admin/live-control"
-          className="flex items-center gap-1.5 bg-primary-container hover:bg-primary text-white px-2.5 sm:px-3.5 py-1.5 rounded-xl font-label-ui text-xs font-bold shadow-xs transition-all active:scale-95"
+          className="hidden sm:inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95"
         >
-          <Zap className="w-3.5 h-3.5 fill-white" />
-          <span className="hidden sm:inline">Live Match Control</span>
-          <span className="sm:hidden">Live Control</span>
+          <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+          <span>Live Desk</span>
         </Link>
+
+        {/* Notification Bell with Red Dot (Screen 3) */}
+        <div className="relative">
+          <button
+            type="button"
+            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors relative"
+            aria-label="Notifications"
+          >
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
+          </button>
+        </div>
+
+        {/* User Profile Pill (Screen 3: Blue circular A + Admin / Administrator) */}
+        <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
+          <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm shadow-xs shrink-0 ring-2 ring-blue-100">
+            {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'A'}
+          </div>
+          <div className="hidden md:flex flex-col text-left">
+            <span className="text-xs font-black text-slate-800 leading-tight">
+              {user?.fullName || 'Admin'}
+            </span>
+            <span className="text-[10px] font-medium text-slate-500 leading-tight">
+              Administrator
+            </span>
+          </div>
+        </div>
       </div>
     </header>
   );

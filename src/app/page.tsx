@@ -54,11 +54,17 @@ export default async function HomePage() {
   }
 
   const activeLiveMatch = Array.isArray(liveMatches) && liveMatches.length > 0 ? liveMatches[0] : null;
+  const activeUpcomingMatch = Array.isArray(upcomingMatches) && upcomingMatches.length > 0 ? upcomingMatches[0] : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Editorial Sports Hero Section with Atmospheric Photography */}
-      <HeroSection stats={stats} tournamentName={tournamentName} />
+      <HeroSection
+        stats={stats}
+        tournamentName={tournamentName}
+        liveMatch={activeLiveMatch}
+        upcomingMatch={activeUpcomingMatch}
+      />
 
       {/* Live Broadcast Marquee Card (if active) */}
       <LiveMatchesSection liveMatch={activeLiveMatch} />

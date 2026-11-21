@@ -27,8 +27,10 @@ import {
   Search,
   Calendar,
   Layers,
-  MapPin
+  MapPin,
+  ArrowLeft
 } from 'lucide-react';
+import Link from 'next/link';
 import { matchService } from '@/services/match.service';
 import { teamService } from '@/services/team.service';
 import { adminService } from '@/services/admin.service';
@@ -42,7 +44,7 @@ export default function AdminLiveControlPage() {
   const [loading, setLoading] = useState(true);
   const [timerRunning, setTimerRunning] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(240); // 4:00 First Half default
-  const [currentStage, setCurrentStage] = useState('First Half');
+  const [currentStage, setCurrentStage] = useState('Second Half');
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
   const [teamAPlayers, setTeamAPlayers] = useState<Player[]>([]);
@@ -67,6 +69,17 @@ export default function AdminLiveControlPage() {
   const [goalPlayerName, setGoalPlayerName] = useState('');
   const [goalMinute, setGoalMinute] = useState('02:30 (1H)');
   const [matchGoals, setMatchGoals] = useState<any[]>([]);
+
+  // Card & Substitution state for Screen 8 Action Tiles
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [cardTeam, setCardTeam] = useState<'A' | 'B'>('A');
+  const [cardPlayerName, setCardPlayerName] = useState('');
+  const [cardColor, setCardColor] = useState<'Yellow' | 'Red'>('Yellow');
+
+  const [showSubModal, setShowSubModal] = useState(false);
+  const [subTeam, setSubTeam] = useState<'A' | 'B'>('A');
+  const [subPlayerIn, setSubPlayerIn] = useState('');
+  const [subPlayerOut, setSubPlayerOut] = useState('');
 
   // Completed Match Protocol Stages tracker
   const [completedStages, setCompletedStages] = useState<string[]>([]);
@@ -852,6 +865,26 @@ export default function AdminLiveControlPage() {
     );
   };
 
+  const handleSaveCard = () => {
+    if (!cardPlayerName) {
+      showError('Please choose or enter a player name for the card.');
+      return;
+    }
+    const teamName = cardTeam === 'A' ? teamAName : teamBName;
+    showNotification(`${cardColor} Card recorded for ${cardPlayerName} (${teamName})`);
+    setShowCardModal(false);
+  };
+
+  const handleSaveSub = () => {
+    if (!subPlayerIn || !subPlayerOut) {
+      showError('Please specify both the player entering and exiting.');
+      return;
+    }
+    const teamName = subTeam === 'A' ? teamAName : teamBName;
+    showNotification(`Substitution recorded for ${teamName}: ${subPlayerIn} IN, ${subPlayerOut} OUT`);
+    setShowSubModal(false);
+  };
+
   // Sudden Death Coin Toss Handler
   const handleSetTossWinner = (winner: 'A' | 'B') => {
     const winnerName = winner === 'A' ? teamAName : teamBName;
@@ -1269,29 +1302,23 @@ export default function AdminLiveControlPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 flex flex-col gap-6 select-none w-full animate-in fade-in duration-200">
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-surface-container-high">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary-container animate-pulse"></span>
-            <span className="font-label-caps text-xs text-primary-container uppercase font-extrabold tracking-wider">
-              Unified Match Operator Desk
-            </span>
-          </div>
-          <h1 className="font-headline-lg text-xl sm:text-2xl md:text-3xl font-black text-on-surface tracking-tight mt-0.5">
-            Super Admin Live Match Controller
-          </h1>
-          <p className="text-xs text-on-surface-variant font-medium mt-1">
-            Official 10-Minute Tournament Clock: 4m 1st Half • 2m Half-Time Break • 4m 2nd Half • 2m Extra Time if tied • 3-Kick Shootout + Coin Toss
-          </p>
+      {/* Top Header matching Screen 8: ← Match Control + LIVE badge */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="p-2 -ml-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2 text-sm font-bold"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-800" />
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Match Control
+            </h1>
+          </Link>
         </div>
 
-        {/* Match Selector & Launch Center */}
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
-            <label className="text-[11px] font-bold text-on-surface-variant uppercase font-label-caps shrink-0">
-              Fixture:
-            </label>
+        {/* Match Selector & LIVE badge (Screen 8) */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-1.5">
             <select
               disabled={matches.length === 0}
               value={selectedMatch?._id || ''}
@@ -1299,7 +1326,7 @@ export default function AdminLiveControlPage() {
                 const found = matches.find((m) => m._id === e.target.value);
                 if (found) selectMatch(found);
               }}
-              className="bg-surface-container-lowest text-xs font-bold text-on-surface px-3 py-2 rounded-xl border border-surface-container-high shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer w-full sm:w-auto sm:max-w-[220px] truncate disabled:opacity-50"
+              className="bg-white text-xs font-bold text-slate-800 px-3 py-2 rounded-xl border border-slate-200 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer max-w-[220px] truncate"
             >
               {matches.length === 0 ? (
                 <option value="">No fixtures scheduled</option>
@@ -1313,49 +1340,26 @@ export default function AdminLiveControlPage() {
             </select>
           </div>
 
-          {/* Quick Start for Upcoming Match */}
-          {selectedMatch?.status === 'Upcoming' && (
-            <button
-              type="button"
-              onClick={() => handleLaunchMatch(selectedMatch)}
-              className="px-3 py-2 rounded-xl bg-primary-container hover:bg-primary text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
-              title="Launch selected fixture live"
-            >
-              <Play className="w-3.5 h-3.5 fill-white" />
-              <span>Start</span>
-            </button>
-          )}
-
-          {/* Quick Restart for Completed Match */}
-          {selectedMatch?.status === 'Completed' && (
-            <button
-              type="button"
-              onClick={() => handleRestartMatch(selectedMatch)}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 border border-slate-600 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
-              title="Restart selected completed match at 0-0"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Restart</span>
-            </button>
-          )}
-
-          {/* Prominent Match Picker Modal Opener */}
           <button
             type="button"
             onClick={() => setShowMatchPickerModal(true)}
-            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-primary-container border border-emerald-300 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all active:scale-95 cursor-pointer"
           >
-            <Zap className="w-3.5 h-3.5 fill-primary-container text-primary-container" />
-            <span className="hidden sm:inline">Choose Match to Start</span>
-            <span className="sm:hidden">Choose Match</span>
+            Switch
           </button>
+
+          {/* LIVE Badge (Screen 8) */}
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500 text-white font-extrabold text-xs shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+            <span>LIVE</span>
+          </span>
         </div>
       </div>
 
       {/* Action Notification Alert */}
       {actionMessage && (
         <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3.5 flex items-center gap-2 text-xs font-bold shadow-xs animate-in fade-in duration-200">
-          <CheckCircle2 className="w-4 h-4 text-primary-container shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{actionMessage}</span>
         </div>
       )}
@@ -1367,47 +1371,47 @@ export default function AdminLiveControlPage() {
         </div>
       )}
 
-      {/* Dynamic Match Controller View: If no match exists or is selected, show clean empty state */}
+      {/* Dynamic Match Controller View */}
       {loading ? (
-        <div className="p-16 text-center flex flex-col items-center justify-center gap-3 bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xs">
-          <RefreshCw className="w-8 h-8 text-primary-container animate-spin" />
-          <p className="text-xs text-on-surface-variant font-medium">Loading match telemetry...</p>
+        <div className="p-16 text-center flex flex-col items-center justify-center gap-3 bg-white rounded-3xl border border-slate-200/80 shadow-xs">
+          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+          <p className="text-xs text-slate-500 font-medium">Loading match telemetry...</p>
         </div>
       ) : matches.length === 0 ? (
-        <div className="bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xl p-16 text-center flex flex-col items-center justify-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-on-surface-variant">
-            <Calendar className="w-8 h-8 text-on-surface-variant/50" />
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-16 text-center flex flex-col items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
+            <Calendar className="w-8 h-8 text-slate-400" />
           </div>
           <div>
-            <h3 className="font-headline-md text-xl font-black text-on-surface">No Match Available</h3>
-            <p className="text-xs text-on-surface-variant font-medium mt-1 max-w-md mx-auto">
+            <h3 className="text-xl font-black text-slate-900">No Match Available</h3>
+            <p className="text-xs text-slate-500 font-medium mt-1 max-w-md mx-auto">
               There is currently no match scheduled in the tournament. Once a match is scheduled, the live scoreboard, official clock, and protocol controls will appear here.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setShowQuickSchedule(true)}
-            className="flex items-center gap-2 bg-primary-container hover:bg-primary text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Schedule Match</span>
           </button>
         </div>
       ) : !selectedMatch ? (
-        <div className="bg-surface-container-lowest rounded-3xl border border-surface-container-high shadow-xl p-16 text-center flex flex-col items-center justify-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-primary-container">
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-16 text-center flex flex-col items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-blue-600">
             <Zap className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="font-headline-md text-xl font-black text-on-surface">No Match Selected</h3>
-            <p className="text-xs text-on-surface-variant font-medium mt-1 max-w-md mx-auto">
+            <h3 className="text-xl font-black text-slate-900">No Match Selected</h3>
+            <p className="text-xs text-slate-500 font-medium mt-1 max-w-md mx-auto">
               Please choose a scheduled fixture from the dropdown above or click below to choose a match to control.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setShowMatchPickerModal(true)}
-            className="flex items-center gap-2 bg-primary-container hover:bg-primary text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
           >
             <Play className="w-4 h-4 fill-white" />
             <span>Choose Match to Start</span>
@@ -1415,412 +1419,190 @@ export default function AdminLiveControlPage() {
         </div>
       ) : (
         <>
-          {/* Main Scoreboard & Official Clock Hero */}
-          <div className="bg-surface-container-lowest rounded-2xl sm:rounded-3xl border border-surface-container-high shadow-xl p-4 sm:p-8 flex flex-col gap-4 sm:gap-6 transition-all duration-200">
-        {/* Match Info & Current Stage Badge */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 sm:pb-4 border-b border-surface-container-high">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-label-caps text-xs uppercase bg-primary-container text-white px-3 py-1 rounded-full font-black tracking-wider">
-              {currentStage}
-            </span>
-            <span className="text-xs text-on-surface-variant font-medium">
-              {selectedMatch?.venue || 'Alliance Stadium'} • Ref: Official Director
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-bold font-label-caps transition-all ${
-                timerRunning
-                  ? 'bg-emerald-100 text-primary-container ring-2 ring-primary-container/20 animate-live-glow'
-                  : 'bg-amber-100 text-amber-800'
-              }`}
-            >
-              {timerRunning ? 'CLOCK RUNNING' : 'CLOCK PAUSED'}
-            </span>
-          </div>
-        </div>
-
-        {/* Completion Alert Banner if match is over */}
-        {selectedMatch?.status === 'Completed' && (
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl border border-emerald-500/30 animate-in fade-in">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-xl border border-emerald-500/30 shrink-0">
-                ✓
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-headline-md text-sm font-black tracking-wide text-emerald-400 uppercase">
-                    MATCH FINISHED & OVER (FULL TIME)
-                  </span>
-                  <span className="font-label-caps text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full font-bold">
-                    OFFICIALLY COMPLETED
-                  </span>
-                </div>
-                <div className="text-xs text-slate-300 mt-0.5">
-                  Final Result: <strong className="text-white font-extrabold">{teamAName} {scoreA} - {scoreB} {teamBName}</strong> • {(() => {
-                    const penLeader = penaltyScoreA > penaltyScoreB ? teamAName : penaltyScoreB > penaltyScoreA ? teamBName : null;
-                    const winnerByName = scoreA > scoreB ? teamAName : scoreB > scoreA ? teamBName : penLeader;
-                    if (winnerByName && scoreA === scoreB && (penaltyScoreA > 0 || penaltyScoreB > 0)) {
-                      return `${winnerByName} Won on Penalties (${penaltyScoreA}-${penaltyScoreB})`;
-                    }
-                    if (winnerByName && scoreA !== scoreB) {
-                      return `${winnerByName} Win`;
-                    }
-                    if (selectedMatch.matchResult && !selectedMatch.matchResult.toLowerCase().includes('draw')) {
-                      return selectedMatch.matchResult;
-                    }
-                    return 'Full Time Draw';
-                  })()}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Action Buttons on Completion */}
-            <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowMatchPickerModal(true)}
-                className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-400/40"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span>⚡ Choose Match to Start</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRestartMatch(selectedMatch)}
-                className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-surface-container-high/80 hover:bg-surface-container-highest text-white border border-white/20 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4 text-emerald-400" />
-                <span>Restart (0:0)</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Central Score Display */}
-        <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4 sm:gap-6">
-          {/* Team A */}
-          <div className="md:col-span-4 flex flex-col items-start gap-2">
-            <div className="w-full flex items-center justify-between md:justify-start gap-3 sm:gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary-container/15 text-primary-container flex items-center justify-center font-black text-xl sm:text-2xl shadow-inner border border-primary-container/30 shrink-0 overflow-hidden relative">
-                  <span className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-xl text-primary-container">
-                    {teamAName.slice(0, 2).toUpperCase()}
-                  </span>
-                  {selectedMatch?.teamA?.logo && (
-                    <img
-                      src={selectedMatch.teamA.logo}
-                      alt=""
-                      className="w-full h-full object-cover relative z-10"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
+          {/* Main Scoreboard Card (Screen 8: Team A, Score 2 - 1, Second Half, 02:36 green pill, Team B) */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 sm:p-8 flex flex-col items-center gap-6">
+            <div className="w-full flex items-center justify-between gap-4">
+              {/* Team A */}
+              <div className="flex flex-col items-center sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1 text-center sm:text-left min-w-0">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
+                  {selectedMatch?.teamA?.logo ? (
+                    <img src={selectedMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{teamAName.slice(0, 2).toUpperCase()}</span>
                   )}
                 </div>
-                <div>
-                  <h2 className="font-headline-md text-xl sm:text-2xl font-black text-on-surface leading-tight">
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-2xl font-black text-slate-900 leading-tight truncate">
                     {teamAName}
                   </h2>
-                  <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
-                    Home Squad
-                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">Home Team</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => handleOpenGoalModal('A')}
-                disabled={selectedMatch?.status === 'Completed'}
-                className="py-2 sm:py-1 px-3 sm:px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30 shrink-0 min-h-[38px]"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Goal</span>
-              </button>
-            </div>
 
-            {/* Team A Goalscorers Pill Badges */}
-            {teamAGoals.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                {teamAGoals.map((g, idx) => (
-                  <span
-                    key={g._id || idx}
-                    className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-lg text-xs text-emerald-950 font-medium shadow-2xs transition-all"
-                  >
-                    <span>⚽</span>
-                    <span className="font-bold text-slate-900">{g.player?.name || 'Goal'}</span>
-                    {g.player?.jerseyNumber && (
-                      <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100 px-1 rounded font-bold">
-                        #{g.player.jerseyNumber}
-                      </span>
-                    )}
-                    <span className="text-emerald-700 font-mono text-[11px] font-semibold">{g.matchTime || 'Goal'}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteGoal(g._id, targetTeamAId)}
-                      title={`Remove goal by ${g.player?.name || 'player'}`}
-                      className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Middle: Dark Scoreboard matching official reference */}
-          <div className="md:col-span-4 flex flex-col items-center justify-center text-center p-3 sm:p-4 bg-surface-container-low rounded-2xl border border-surface-container shadow-inner">
-            <span className="font-label-caps text-[10px] text-primary-container font-extrabold uppercase mb-1 tracking-wider bg-primary-container/10 px-3 py-0.5 rounded-full border border-primary-container/20">
-              Official Match Score
-            </span>
-
-            {/* Dark Scoreboard Box matching user screenshot */}
-            <div className="bg-[#1e2025] px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-white/10 shadow-lg flex flex-col items-center gap-1 my-1.5 sm:2 w-full max-w-[240px] transition-transform hover:scale-[1.02]">
-              <div className="flex items-center justify-center gap-5 sm:gap-6">
-                <span className="font-display-score text-3xl sm:text-5xl font-black text-white tabular-nums tracking-tight">
-                  {scoreA}
-                </span>
-                <span className="font-display-score text-2xl sm:text-3xl font-light text-slate-400">
-                  -
-                </span>
-                <span className="font-display-score text-3xl sm:text-5xl font-black text-white tabular-nums tracking-tight">
-                  {scoreB}
-                </span>
+              {/* Center: Score + Stage + Green Digital Clock Pill */}
+              <div className="flex flex-col items-center justify-center px-2 sm:px-6 shrink-0">
+                <div className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight tabular-nums">
+                  {scoreA} - {scoreB}
+                </div>
+                <div className="text-xs sm:text-sm font-bold text-slate-500 mt-1">
+                  {currentStage}
+                </div>
+                <div className="mt-2.5 px-6 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-mono font-bold text-2xl tracking-wider shadow-2xs">
+                  <span data-testid="match-clock">{formatTime(remainingSeconds)}</span>
+                </div>
               </div>
 
-              {(scoreA === scoreB || penaltyScoreA > 0 || penaltyScoreB > 0) && (
-                <div className="text-xs sm:text-sm font-semibold text-[#8a94a6] font-label-ui">
-                  Penalties: <span className="text-white font-extrabold">{penaltyScoreA} - {penaltyScoreB}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="font-stat-numeral text-2xl sm:text-3xl font-black text-primary-container tabular-nums mt-1.5 tracking-tight flex items-center justify-center gap-2">
-              {timerRunning && <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>}
-              <span data-testid="match-clock">{formatTime(remainingSeconds)}</span>
-            </div>
-            <span className="font-label-caps text-[10px] text-on-surface-variant uppercase mt-0.5">
-              Stage: <strong>{currentStage}</strong>
-            </span>
-          </div>
-
-          {/* Team B */}
-          <div className="md:col-span-4 flex flex-col items-end gap-2 text-right">
-            <div className="w-full flex items-center justify-between md:justify-end gap-3 sm:gap-4 text-right">
-              <button
-                type="button"
-                onClick={() => handleOpenGoalModal('B')}
-                disabled={selectedMatch?.status === 'Completed'}
-                className="py-2 sm:py-1 px-3 sm:px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-primary-container text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 disabled:opacity-30 shrink-0 md:order-1 min-h-[38px]"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Goal</span>
-              </button>
-              <div className="flex items-center gap-3 md:order-2">
-                <div className="text-right">
-                  <h2 className="font-headline-md text-xl sm:text-2xl font-black text-on-surface leading-tight">
-                    {teamBName}
-                  </h2>
-                  <span className="font-label-caps text-xs text-on-surface-variant font-semibold block">
-                    Visiting Team
-                  </span>
-                </div>
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center font-black text-xl sm:text-2xl shadow-inner border border-secondary/30 shrink-0 overflow-hidden relative">
-                  <span className="absolute inset-0 flex items-center justify-center font-black text-lg sm:text-xl text-secondary">
-                    {teamBName.slice(0, 2).toUpperCase()}
-                  </span>
-                  {selectedMatch?.teamB?.logo && (
-                    <img
-                      src={selectedMatch.teamB.logo}
-                      alt=""
-                      className="w-full h-full object-cover relative z-10"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
+              {/* Team B */}
+              <div className="flex flex-col items-center sm:flex-row-reverse sm:items-center gap-3 sm:gap-4 flex-1 text-center sm:text-right min-w-0">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
+                  {selectedMatch?.teamB?.logo ? (
+                    <img src={selectedMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{teamBName.slice(0, 2).toUpperCase()}</span>
                   )}
                 </div>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-2xl font-black text-slate-900 leading-tight truncate">
+                    {teamBName}
+                  </h2>
+                  <span className="text-xs text-slate-500 font-semibold">Away Team</span>
+                </div>
               </div>
             </div>
 
-            {/* Team B Goalscorers Pill Badges */}
-            {teamBGoals.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-1 justify-end">
-                {teamBGoals.map((g, idx) => (
-                  <span
-                    key={g._id || idx}
-                    className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-300 px-2 py-0.5 rounded-lg text-xs text-blue-950 font-medium shadow-2xs transition-all"
-                  >
-                    <span>⚽</span>
-                    <span className="font-bold text-slate-900">{g.player?.name || 'Goal'}</span>
-                    {g.player?.jerseyNumber && (
-                      <span className="text-[10px] font-mono text-blue-800 bg-blue-100 px-1 rounded font-bold">
-                        #{g.player.jerseyNumber}
-                      </span>
-                    )}
-                    <span className="text-blue-700 font-mono text-[11px] font-semibold">{g.matchTime || 'Goal'}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteGoal(g._id, targetTeamBId)}
-                      title={`Remove goal by ${g.player?.name || 'player'}`}
-                      className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* Timer Controls Row (Screen 8: Amber Pause pill + Royal Blue Resume pill) */}
+            <div className="flex items-center justify-center gap-4 pt-2">
+              <button
+                type="button"
+                data-testid="timer-action-btn-pause"
+                onClick={handlePause}
+                disabled={!timerRunning}
+                className="px-8 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Pause className="w-4 h-4 fill-white" />
+                <span>Pause</span>
+              </button>
+              <button
+                type="button"
+                data-testid="timer-action-btn-resume"
+                onClick={handleStartOrResume}
+                disabled={timerRunning && selectedMatch?.status !== 'Upcoming'}
+                className="px-8 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>Resume</span>
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Primary Action Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-2">
-          {/* Pause / Resume Clock / Restart Match Button */}
-          {selectedMatch?.status === 'Completed' ? (
+          {/* 2x3 Grid of Action Tiles (Screen 8: Add Goal, Add Card, Substitution, Start Extra Time, Penalties, End Match) */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
+            {/* 1. Add Goal */}
             <button
               type="button"
-              onClick={() => handleRestartMatch(selectedMatch)}
-              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-600 transition-all shadow-xs active:scale-95 cursor-pointer min-h-[46px]"
-              title="Reset scores and restart this match at 0-0"
+              onClick={() => handleOpenGoalModal('A')}
+              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
             >
-              <RotateCcw className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Restart (0:0)</span>
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                ⚽
+              </div>
+              <span className="text-xs font-bold text-slate-800">Add Goal</span>
             </button>
-          ) : timerRunning ? (
+
+            {/* 2. Add Card */}
             <button
               type="button"
-              data-testid="timer-action-btn"
-              onClick={handlePause}
-              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 min-h-[46px]"
+              onClick={() => setShowCardModal(true)}
+              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-amber-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
             >
-              <Pause className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Pause Clock</span>
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                🟨
+              </div>
+              <span className="text-xs font-bold text-slate-800">Add Card</span>
             </button>
-          ) : (
+
+            {/* 3. Substitution */}
             <button
               type="button"
-              data-testid="timer-action-btn"
-              onClick={handleStartOrResume}
-              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 cursor-pointer min-h-[46px]"
+              onClick={() => setShowSubModal(true)}
+              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-emerald-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
             >
-              <Play className="w-4 h-4 fill-white shrink-0" />
-              <span>{selectedMatch?.status === 'Upcoming' ? 'Start Match' : 'Resume Clock'}</span>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                🔄
+              </div>
+              <span className="text-xs font-bold text-slate-800">Substitution</span>
             </button>
-          )}
 
-          {/* Direct Goal Record for Team A */}
-          <button
-            type="button"
-            onClick={() => handleOpenGoalModal('A')}
-            disabled={selectedMatch?.status === 'Completed'}
-            className="py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-primary-container font-bold text-[11px] sm:text-xs tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 disabled:opacity-40 min-h-[46px] truncate"
-          >
-            <Plus className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">+ Goal ({teamAName.split(' ')[0]})</span>
-          </button>
-
-          {/* Direct Goal Record for Team B */}
-          <button
-            type="button"
-            onClick={() => handleOpenGoalModal('B')}
-            disabled={selectedMatch?.status === 'Completed'}
-            className="py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl bg-surface-container hover:bg-emerald-50 hover:border-emerald-300 border border-surface-container-high text-primary-container font-bold text-[11px] sm:text-xs tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 disabled:opacity-40 min-h-[46px] truncate"
-          >
-            <Plus className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">+ Goal ({teamBName.split(' ')[0]})</span>
-          </button>
-
-          {/* Finalize Match Button */}
-          {selectedMatch?.status === 'Completed' ? (
+            {/* 4. Start Extra Time */}
             <button
               type="button"
-              onClick={() => setShowMatchPickerModal(true)}
-              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-primary-container hover:bg-primary text-white font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer ring-2 ring-emerald-400/40 min-h-[46px]"
-              title="Select which fixture to start next"
+              onClick={handleExtraTimeDraw}
+              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
             >
-              <Play className="w-4 h-4 fill-white shrink-0" />
-              <span>⚡ Start Match</span>
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                ⏱
+              </div>
+              <span className="text-xs font-bold text-slate-800">Start Extra Time</span>
             </button>
-          ) : (
+
+            {/* 5. Penalties */}
+            <button
+              type="button"
+              onClick={() => {
+                document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="bg-white p-5 rounded-2xl border border-slate-200/80 hover:border-indigo-300 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                🥅
+              </div>
+              <span className="text-xs font-bold text-slate-800">Penalties</span>
+            </button>
+
+            {/* 6. End Match */}
             <button
               type="button"
               onClick={handleFinalizeMatch}
-              className="py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 min-h-[46px]"
+              className="bg-white p-5 rounded-2xl border border-rose-200 hover:bg-rose-50/50 hover:shadow-xs transition-all flex flex-col items-center justify-center gap-2.5 text-center group cursor-pointer active:scale-[0.98]"
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Finalize Match</span>
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                🏁
+              </div>
+              <span className="text-xs font-bold text-rose-600">End Match</span>
             </button>
-          )}
-        </div>
-
-        {/* Official Match Goalscorers Summary & Management Strip */}
-        <div className="pt-3 border-t border-surface-container-high/80 mt-1">
-          <div className="flex items-center justify-between gap-2 pb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-base">⚽</span>
-              <h4 className="font-headline-sm text-xs sm:text-sm font-black text-on-surface uppercase tracking-wider">
-                Official Match Goalscorers ({matchGoals.length})
-              </h4>
-            </div>
-            {matchGoals.length > 0 && (
-              <span className="text-[10px] font-bold text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                Live Feed Active
-              </span>
-            )}
           </div>
 
-          {matchGoals.length === 0 ? (
-            <div className="py-2.5 px-3 rounded-xl bg-surface-container-low/50 border border-surface-container text-xs text-on-surface-variant flex items-center justify-between">
-              <span>No goals logged yet ({scoreA} - {scoreB}). Click <strong>+ Goal</strong> above to assign a goal to any team roster athlete.</span>
-              <span className="font-mono text-[10px] text-slate-400 font-bold">0 GOALS</span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
-              {matchGoals.map((g, idx) => {
-                const isTeamA = (typeof g.team === 'string' ? g.team : g.team?._id) === targetTeamAId || (g.team as any)?.name === teamAName;
-                const teamName = isTeamA ? teamAName : teamBName;
-                return (
-                  <div
-                    key={g._id || idx}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-low border border-surface-container shadow-2xs hover:border-surface-container-high transition-all"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-display-score text-xs font-black shrink-0 ${
-                          isTeamA ? 'bg-primary-container text-white shadow-xs' : 'bg-secondary text-white shadow-xs'
-                        }`}
-                      >
-                        {g.player?.jerseyNumber ? `#${g.player.jerseyNumber}` : '⚽'}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-xs text-on-surface truncate">
-                          {g.player?.name || 'Athlete Goal'}
-                        </div>
-                        <div className="text-[10px] text-on-surface-variant font-medium flex items-center gap-1.5">
-                          <span className={`font-bold ${isTeamA ? 'text-primary-container' : 'text-secondary'}`}>
-                            {teamName}
-                          </span>
-                          <span>•</span>
-                          <span className="font-mono text-emerald-700 font-bold">{g.matchTime || 'In Match'}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteGoal(g._id, isTeamA ? targetTeamAId : targetTeamBId)}
-                      title={`Undo / delete goal by ${g.player?.name || 'player'}`}
-                      className="p-1.5 rounded-lg bg-surface-container hover:bg-rose-100 text-on-surface-variant hover:text-rose-700 transition-colors shrink-0 ml-2"
+          {/* Goalscorers strip for Team A & Team B with quick delete/undo */}
+          {(teamAGoals.length > 0 || teamBGoals.length > 0) && (
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col gap-2">
+              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                Recorded Goals ({matchGoals.length})
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {matchGoals.map((g, idx) => {
+                  const isTeamA = (typeof g.team === 'string' ? g.team : g.team?._id) === targetTeamAId || (g.team as any)?.name === teamAName;
+                  return (
+                    <span
+                      key={g._id || idx}
+                      className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-800"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
+                      <span>⚽</span>
+                      <span className="font-bold">{g.player?.name || 'Goal'}</span>
+                      <span className="text-slate-400 font-mono text-[11px]">({isTeamA ? teamAName : teamBName} • {g.matchTime})</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGoal(g._id, isTeamA ? targetTeamAId : targetTeamBId)}
+                        className="text-slate-400 hover:text-rose-600 transition-colors ml-1"
+                        title="Remove goal"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           )}
-        </div>
-      </div>
 
       {/* Stage Transitions & Shootout Controller Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
@@ -2646,14 +2428,247 @@ export default function AdminLiveControlPage() {
                 type="button"
                 onClick={handleSaveGoal}
                 disabled={!goalPlayerName}
-                className="flex-1 py-2.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary font-bold text-xs uppercase tracking-wider transition-all shadow-xs disabled:opacity-40 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs disabled:opacity-40 flex items-center justify-center gap-1.5"
               >
                 <span>⚽ Confirm & Add Goal ({goalTeam === 'A' ? teamAName.split(' ')[0] : teamBName.split(' ')[0]})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowGoalModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-all"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Card Modal (Screen 8 Action Tile) */}
+      {showCardModal && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative max-w-lg w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-5 sm:p-7 space-y-4 my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">🟨</span>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    Issue Card / Caution
+                  </h3>
+                  <p className="text-xs text-slate-500">Record disciplinary action for match feed</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCardModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Team Picker */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCardTeam('A');
+                  const p = teamAPlayers[0]?.name || '';
+                  setCardPlayerName(p);
+                }}
+                className={`p-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                  cardTeam === 'A'
+                    ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
+              >
+                {teamAName} (Home)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCardTeam('B');
+                  const p = teamBPlayers[0]?.name || '';
+                  setCardPlayerName(p);
+                }}
+                className={`p-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                  cardTeam === 'B'
+                    ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
+              >
+                {teamBName} (Away)
+              </button>
+            </div>
+
+            {/* Card Type */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setCardColor('Yellow')}
+                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  cardColor === 'Yellow'
+                    ? 'bg-amber-50 border-amber-500 text-amber-800'
+                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                }`}
+              >
+                <span>🟨</span>
+                <span>Yellow Card</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCardColor('Red')}
+                className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                  cardColor === 'Red'
+                    ? 'bg-rose-50 border-rose-500 text-rose-800'
+                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                }`}
+              >
+                <span>🟥</span>
+                <span>Red Card</span>
+              </button>
+            </div>
+
+            {/* Player Selection */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Select Athlete
+              </label>
+              <select
+                value={cardPlayerName}
+                onChange={(e) => setCardPlayerName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Choose athlete --</option>
+                {(cardTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
+                  <option key={p._id} value={p.name}>
+                    #{p.jerseyNumber} - {p.name} ({p.position})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-2 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={handleSaveCard}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs"
+              >
+                Confirm & Issue Card
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCardModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Substitution Modal (Screen 8 Action Tile) */}
+      {showSubModal && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative max-w-lg w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-5 sm:p-7 space-y-4 my-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">🔄</span>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">
+                    Record Substitution
+                  </h3>
+                  <p className="text-xs text-slate-500">Track player interchange for match feed</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSubModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Team Picker */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSubTeam('A')}
+                className={`p-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                  subTeam === 'A'
+                    ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
+              >
+                {teamAName} (Home)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubTeam('B')}
+                className={`p-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                  subTeam === 'B'
+                    ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
+              >
+                {teamBName} (Away)
+              </button>
+            </div>
+
+            {/* Player In */}
+            <div>
+              <label className="block text-xs font-bold text-emerald-700 mb-1">
+                Player Coming IN (⬆)
+              </label>
+              <select
+                value={subPlayerIn}
+                onChange={(e) => setSubPlayerIn(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">-- Choose player entering --</option>
+                {(subTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
+                  <option key={p._id} value={p.name}>
+                    #{p.jerseyNumber} - {p.name} ({p.position})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Player Out */}
+            <div>
+              <label className="block text-xs font-bold text-rose-700 mb-1">
+                Player Going OUT (⬇)
+              </label>
+              <select
+                value={subPlayerOut}
+                onChange={(e) => setSubPlayerOut(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                <option value="">-- Choose player leaving --</option>
+                {(subTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
+                  <option key={p._id} value={p.name}>
+                    #{p.jerseyNumber} - {p.name} ({p.position})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-2 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={handleSaveSub}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs"
+              >
+                Confirm Substitution
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSubModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-all"
               >
                 Cancel
               </button>

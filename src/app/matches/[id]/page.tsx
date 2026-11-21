@@ -17,7 +17,7 @@ export default function MatchDetailPage() {
   const params = useParams();
   const matchId = (params?.id as string) || '';
   const { match, timeline, isConnected, lastEvent, loading } = useLiveMatch(matchId);
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('overview');
+  const [activeTab, setActiveTab] = useState<'feed' | 'lineups' | 'stats' | 'events'>('feed');
 
   if (loading) {
     return (
@@ -39,52 +39,33 @@ export default function MatchDetailPage() {
     );
   }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Top Breadcrumb & Stage Info */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 font-label-caps text-label-caps text-on-surface-variant uppercase font-semibold">
-            <Link href="/" className="hover:text-primary-container transition-colors">Home</Link>
-            <span>/</span>
-            <Link href="/live" className="hover:text-primary-container transition-colors">Live Matches</Link>
-            <span>/</span>
-            <span className="text-on-surface font-extrabold">{match.teamA?.name || 'Team A'} vs {match.teamB?.name || 'Team B'}</span>
-          </div>
+  const isLive = match.status === 'Live' || match.status === 'Half-Time' || match.status === 'Penalty Shootout';
 
-          <div className="flex flex-wrap items-center gap-2 mt-1">
-            <Link
-              href="/live"
-              className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-on-surface mr-2"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
-            </Link>
-            <h1 className="font-headline-md text-headline-md text-on-surface font-black tracking-tight">
-              {match.stage || 'Alliance Premier League — Season 9'}
-            </h1>
-            <span className="bg-primary-container text-white font-label-caps text-label-caps px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold">
-              Official Tournament Match
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 select-none animate-in fade-in duration-200">
+      {/* Top Header Bar matching Screen 2 in Reference */}
+      <div className="flex items-center justify-between gap-4 pb-4 mb-6 border-b border-slate-200/80">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/fixtures"
+            className="inline-flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-blue-600 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Live Match</span>
+          </Link>
+
+          {isLive && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500 text-white font-extrabold text-[10px] uppercase tracking-wider shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              LIVE
             </span>
-            {lastEvent && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary-container/40 text-on-secondary-container text-xs font-bold">
-                <Radio className="w-3 h-3 text-secondary animate-pulse" />
-                {lastEvent}
-              </span>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Stadium & Attendance Pill */}
-        <div className="flex items-center gap-4 text-xs font-semibold text-on-surface-variant bg-surface-container-lowest px-4 py-2.5 rounded-xl border border-surface-container-high shadow-xs">
-          <div className="flex items-center gap-1.5">
-            <MapPin className="w-4 h-4 text-primary-container shrink-0" />
-            <span>{match.venue || 'State Memorial Stadium • Grass Turf'}</span>
-          </div>
-          <div className="h-3 w-px bg-surface-container-high" />
-          <div className="flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-primary-container shrink-0" />
-            <span>Att: <strong className="text-on-surface">{match.attendance || '4,820'}</strong></span>
-          </div>
+        {/* Viewer Attendance Counter */}
+        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-xs">
+          <span>👁</span>
+          <span>{match.attendance || '1,248'} watching</span>
         </div>
       </div>
 
@@ -98,45 +79,97 @@ export default function MatchDetailPage() {
         teamBName={match.teamB?.name || 'Team B'}
       />
 
-      {/* Navigation Tabs for Match Center */}
-      <div className="flex items-center gap-2 border-b border-surface-container-high mb-8 overflow-x-auto">
+      {/* Navigation Pill Tabs matching Reference Screen 2 */}
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto py-1">
         <button
-          onClick={() => setActiveTab('overview')}
-          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${activeTab === 'overview'
-            ? 'text-primary-container border-primary-container'
-            : 'text-on-surface-variant border-transparent hover:text-on-surface'
-            }`}
+          onClick={() => setActiveTab('feed')}
+          className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
+            activeTab === 'feed'
+              ? 'bg-blue-600 text-white shadow-blue-500/20'
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
         >
-          Match Center Overview
+          Match Feed
         </button>
         <button
-          onClick={() => setActiveTab('timeline')}
-          className={`py-3 px-4 font-headline-sm text-sm border-b-2 font-bold transition-all ${activeTab === 'timeline'
-            ? 'text-primary-container border-primary-container'
-            : 'text-on-surface-variant border-transparent hover:text-on-surface'
-            }`}
+          onClick={() => setActiveTab('lineups')}
+          className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
+            activeTab === 'lineups'
+              ? 'bg-blue-600 text-white shadow-blue-500/20'
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
         >
-          Event Log & Timeline ({timeline.length})
+          Lineups
+        </button>
+        <button
+          onClick={() => setActiveTab('stats')}
+          className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
+            activeTab === 'stats'
+              ? 'bg-blue-600 text-white shadow-blue-500/20'
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          Stats
+        </button>
+        <button
+          onClick={() => setActiveTab('events')}
+          className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
+            activeTab === 'events'
+              ? 'bg-blue-600 text-white shadow-blue-500/20'
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          Events
         </button>
       </div>
 
-      {/* Content depending on selected tab */}
-      {activeTab === 'overview' && (
+      {/* Tab Content */}
+      {activeTab === 'feed' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Main Column (7 cols): Live Timeline & Events */}
-          <div className="lg:col-span-7 flex flex-col gap-6">
+          <div className="lg:col-span-8 flex flex-col gap-6">
             <MatchTimeline timeline={timeline} />
           </div>
-
-          {/* Side Column (5 cols): Rules & Bylaws */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
+          <div className="lg:col-span-4 flex flex-col gap-6">
             <BylawsNotice />
           </div>
         </div>
       )}
 
-      {activeTab === 'timeline' && (
-        <div className="max-w-4xl mx-auto">
+      {activeTab === 'lineups' && (
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
+          <h3 className="font-bold text-sm text-slate-900 mb-4">Official Starting Lineups</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <span className="font-extrabold text-xs text-blue-600 uppercase tracking-wider block">{match.teamA?.name}</span>
+              <p className="text-xs text-slate-500">Official Roster Confirmed</p>
+            </div>
+            <div className="space-y-2">
+              <span className="font-extrabold text-xs text-blue-600 uppercase tracking-wider block">{match.teamB?.name}</span>
+              <p className="text-xs text-slate-500">Official Roster Confirmed</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'stats' && (
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
+          <h3 className="font-bold text-sm text-slate-900 mb-4">Live Matchday Statistics</h3>
+          <div className="space-y-4 max-w-lg">
+            <div className="flex justify-between text-xs font-bold text-slate-700">
+              <span>{match.teamA?.name}</span>
+              <span className="text-slate-400">Possession</span>
+              <span>{match.teamB?.name}</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-2.5 flex overflow-hidden">
+              <div className="bg-emerald-600 h-2.5 w-[54%]" />
+              <div className="bg-blue-600 h-2.5 w-[46%]" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'events' && (
+        <div className="max-w-4xl">
           <MatchTimeline timeline={timeline} />
         </div>
       )}

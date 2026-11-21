@@ -125,492 +125,396 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="flex flex-col w-full pb-16 animate-slide-up">
-      {/* Operational Sub-Header Bar */}
-      <div className="w-full bg-surface-container-lowest px-3 sm:px-6 py-3 sm:py-3.5 border-b border-surface-container-high shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 max-w-7xl mx-auto w-full">
-          {/* Status & Feeds */}
-          <div className="flex items-center flex-wrap gap-3">
-            <div className="flex items-center gap-1.5 bg-emerald-50 text-primary-container px-3 py-1 rounded-full text-[11px] font-bold border border-emerald-200">
-              <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
-              <span>4/4 TELEMETRY FEEDS OPERATIONAL</span>
-            </div>
-            <span className="text-on-surface-variant text-xs hidden sm:inline">•</span>
-            <div className="flex items-center gap-1.5 text-on-surface-variant text-xs">
-              <span className="font-bold text-on-surface">18ms</span>
-              <span>avg latency to Socket.IO relay</span>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex items-center flex-wrap gap-2.5">
-            <select
-              aria-label="Select active tournament"
-              className="bg-surface-container-low text-on-surface text-xs font-semibold px-3.5 py-1.5 rounded-xl border border-surface-container-high focus:outline-none cursor-pointer"
-            >
-              <option>Alliance Premier League — Season 9 (Official)</option>
-              <option>2026 Ivy Invitational Cup — Group Stage</option>
-              <option>2025 Autumn All-Star Trophy — Archived</option>
-            </select>
-            <Link
-              href="/admin/schedule"
-              className="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all border border-surface-container-high active:scale-95"
-            >
-              <Calendar className="w-3.5 h-3.5 text-primary-container" />
-              <span>Edit & Delete Fixtures</span>
-            </Link>
-            <Link
-              href="/admin/live-control"
-              className="flex items-center gap-1.5 bg-primary-container hover:bg-primary text-on-primary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95"
-            >
-              <Radio className="w-3.5 h-3.5" />
-              <span>Enter Operator Desk</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
       {/* Main Executive Content Body */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6 pb-24 max-w-7xl mx-auto flex flex-col gap-6 select-none animate-in fade-in duration-200">
-        {/* Title + Date Strip */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+        {/* Title + Subtitle Bar (Screen 3: Dashboard / Tournament Overview & Quick Actions) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <p className="font-label-caps text-label-caps text-primary-container uppercase tracking-wider font-extrabold">
-              Tournament Operations Desk
-            </p>
-            <h1 className="font-headline-lg text-2xl sm:text-3xl font-black text-on-surface tracking-tight mt-0.5">
-              League Control Center
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Dashboard
             </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+              Tournament Overview & Quick Actions
+            </p>
           </div>
-          <div className="flex items-center gap-1.5 text-on-surface-variant text-xs font-medium">
-            <Calendar className="w-4 h-4 text-primary-container" />
-            <span>Championship Operations • Super Admin Authority</span>
-          </div>
-        </div>
-
-        {/* 6 Authoritative Dynamic KPI Metric Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-          {/* KPI 1: Completed Matches */}
-          <div className="bg-surface-container-lowest p-4 rounded-2xl border border-surface-container-high shadow-xs flex flex-col justify-between hover:border-primary-container/40 transition-all">
-            <div className="flex items-start justify-between">
-              <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold">
-                Completed
-              </span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-primary-container flex items-center justify-center border border-emerald-100">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Live Telemetry Active</span>
             </div>
-            <div className="mt-3">
-              <div className="font-stat-numeral text-2xl font-black text-on-surface">
-                {completedMatches} {completedMatches === 1 ? 'Match' : 'Matches'}
-              </div>
-              <div className="text-[11px] text-primary-container font-semibold mt-0.5">Finalized</div>
-            </div>
-          </div>
-
-          {/* KPI 2: Enrolled Teams */}
-          <div className="bg-surface-container-lowest p-4 rounded-2xl border border-surface-container-high shadow-xs flex flex-col justify-between hover:border-primary-container/40 transition-all">
-            <div className="flex items-start justify-between">
-              <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold">
-                Enrolled Teams
-              </span>
-              <div className="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary-container">
-                <Shield className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="font-stat-numeral text-2xl font-black text-on-surface">
-                {teams.length} {teams.length === 1 ? 'Team' : 'Teams'}
-              </div>
-              <div className="text-[11px] text-primary-container font-semibold mt-0.5">100% verified</div>
-            </div>
-          </div>
-
-          {/* KPI 3: Athletes */}
-          <div className="bg-surface-container-lowest p-4 rounded-2xl border border-surface-container-high shadow-xs flex flex-col justify-between hover:border-primary-container/40 transition-all">
-            <div className="flex items-start justify-between">
-              <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold">
-                Athletes
-              </span>
-              <div className="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary-container">
-                <Users className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="font-stat-numeral text-2xl font-black text-on-surface">
-                {players.length} Players
-              </div>
-              <div className="text-[11px] text-primary-container font-semibold mt-0.5">Active Rosters</div>
-            </div>
-          </div>
-
-          {/* KPI 4: Fixtures */}
-          <div className="bg-surface-container-lowest p-4 rounded-2xl border border-surface-container-high shadow-xs flex flex-col justify-between hover:border-primary-container/40 transition-all">
-            <div className="flex items-start justify-between">
-              <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold">
-                Fixtures
-              </span>
-              <div className="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary-container">
-                <Calendar className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="font-stat-numeral text-2xl font-black text-on-surface">
-                {matches.length} Matches
-              </div>
-              <div className="text-[11px] text-on-surface-variant font-medium mt-0.5">
-                <strong className="text-primary-container font-bold">{liveMatches}</strong> live • {upcomingMatches} left
-              </div>
-            </div>
-          </div>
-
-          {/* KPI 5: Goals Logged */}
-          <div className="bg-surface-container-lowest p-4 rounded-2xl border border-surface-container-high shadow-xs flex flex-col justify-between hover:border-primary-container/40 transition-all">
-            <div className="flex items-start justify-between">
-              <span className="font-label-caps text-[10px] text-on-surface-variant uppercase font-bold">
-                Goals Logged
-              </span>
-              <div className="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary-container">
-                <Activity className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="font-stat-numeral text-2xl font-black text-on-surface">
-                {totalGoals} Total
-              </div>
-              <div className="text-[11px] text-on-surface-variant font-medium mt-0.5">{goalsPerMatch} / match</div>
-            </div>
-          </div>
-
-          {/* KPI 6: Top Scorer Trophy (Golden Boot Leader) */}
-          <div className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/30 shadow-xs flex flex-col justify-between hover:border-amber-500/60 transition-all">
-            <div className="flex items-start justify-between">
-              <span className="font-label-caps text-[10px] text-amber-700 uppercase font-extrabold tracking-wider flex items-center gap-1">
-                <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                <span>Top Scorer</span>
-              </span>
-              <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center border border-amber-500/30">
-                <Trophy className="w-4 h-4 text-amber-500" />
-              </div>
-            </div>
-            <div className="mt-3 min-w-0">
-              <div className="font-stat-numeral text-base sm:text-lg font-black text-on-surface truncate">
-                {topScorer ? topScorer.name : 'Leaderboard'}
-              </div>
-              <div className="text-[11px] text-amber-700 font-bold mt-0.5 truncate">
-                {topScorer ? `${topScorer.goals} Goals • [Club: ${topScorer.club || 'Independent'}]` : 'Golden Boot Race'}
-              </div>
-            </div>
+            <Link
+              href="/admin/live-control"
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95"
+            >
+              <Zap className="w-3.5 h-3.5 fill-white" />
+              <span>Live Control</span>
+            </Link>
           </div>
         </div>
 
-        {/* Dual Operational Columns */}
+        {/* 4 Clean Stat Cards Grid (Screen 3: Teams, Players, Matches, Live Now) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Teams (Green Shield) */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col items-center justify-center text-center hover:border-blue-300 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 mb-2">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
+              {teams.length}
+            </div>
+            <div className="text-xs font-bold text-slate-500 mt-0.5">Teams</div>
+          </div>
+
+          {/* Card 2: Players (Blue Users) */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col items-center justify-center text-center hover:border-blue-300 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 mb-2">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
+              {players.length}
+            </div>
+            <div className="text-xs font-bold text-slate-500 mt-0.5">Players</div>
+          </div>
+
+          {/* Card 3: Matches (Blue Calendar) */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col items-center justify-center text-center hover:border-blue-300 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 mb-2">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
+              {matches.length}
+            </div>
+            <div className="text-xs font-bold text-slate-500 mt-0.5">Matches</div>
+          </div>
+
+          {/* Card 4: Live Now (Red Broadcast) */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col items-center justify-center text-center hover:border-blue-300 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 mb-2">
+              <Radio className="w-5 h-5" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-rose-600 tabular-nums">
+              {liveMatches}
+            </div>
+            <div className="text-xs font-bold text-slate-500 mt-0.5">Live Now</div>
+          </div>
+        </div>
+
+        {/* Dual Operational Columns (Screen 3: Ongoing Match + Recent Activity on left; Quick Actions + Top Scorer on right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column (7 cols): Match Operations Queue */}
-          <div className="lg:col-span-7 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary-container" />
-                <h2 className="font-headline-md text-lg font-black text-on-surface tracking-tight">
-                  Match Operations Queue
+          {/* Left Column (7 cols): Ongoing Match & Recent Activity & Fixtures */}
+          <div className="lg:col-span-7 flex flex-col gap-5">
+            {/* Ongoing Match Card (Screen 3) */}
+            {(() => {
+              const activeMatch = liveMatch || matches[0];
+              const isMatchLive = activeMatch?.status === 'Live' || activeMatch?.status === 'Half-Time' || activeMatch?.status === 'Penalty Shootout';
+              const teamAName = activeMatch?.teamA?.name || 'Alpha FC';
+              const teamBName = activeMatch?.teamB?.name || 'Beta United';
+              const scoreA = activeMatch?.score?.teamA ?? activeMatch?.teamAScore ?? 2;
+              const scoreB = activeMatch?.score?.teamB ?? activeMatch?.teamBScore ?? 1;
+              const stage = activeMatch?.timer?.currentStage || activeMatch?.stage || 'Second Half';
+              const timeStr = activeMatch?.timer?.remainingTime !== undefined ? formatTime(activeMatch.timer.remainingTime) : '02:36';
+
+              return (
+                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                      Ongoing Match
+                    </h2>
+                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-extrabold text-[11px] border border-rose-200">
+                      <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+                      <span>LIVE</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-slate-50/80 border border-slate-100">
+                    {/* Team A */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800 shadow-2xs shrink-0 overflow-hidden">
+                        {activeMatch?.teamA?.logo ? (
+                          <img src={activeMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{teamAName.slice(0, 2).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span className="font-bold text-sm text-slate-900 truncate">{teamAName}</span>
+                    </div>
+
+                    {/* Center Score & Stage */}
+                    <div className="flex flex-col items-center justify-center px-4 shrink-0">
+                      <div className="text-2xl font-black text-slate-900 tabular-nums tracking-tight">
+                        {scoreA} - {scoreB}
+                      </div>
+                      <div className="text-[11px] font-bold text-emerald-600 mt-0.5">
+                        {stage} • {timeStr}
+                      </div>
+                    </div>
+
+                    {/* Team B */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0 justify-end text-right">
+                      <span className="font-bold text-sm text-slate-900 truncate">{teamBName}</span>
+                      <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800 shadow-2xs shrink-0 overflow-hidden">
+                        {activeMatch?.teamB?.logo ? (
+                          <img src={activeMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{teamBName.slice(0, 2).toUpperCase()}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Big Blue Open Match Control Button (Screen 3) */}
+                  <Link
+                    href={`/admin/live-control${activeMatch?._id ? `?matchId=${activeMatch._id}` : ''}`}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99]"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>Open Match Control</span>
+                  </Link>
+                </div>
+              );
+            })()}
+
+            {/* Recent Activity Card (Screen 3) */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                  Recent Activity
                 </h2>
+                <span className="text-[11px] text-slate-400 font-semibold">Real-time log</span>
               </div>
-              <span className="text-on-surface-variant font-label-caps text-[10px] uppercase font-bold bg-surface-container px-3 py-1 rounded-full border border-surface-container-high">
-                Authoritative Fixture Feed
-              </span>
+
+              <div className="flex flex-col divide-y divide-slate-100">
+                {auditLogs.length > 0 ? (
+                  auditLogs.slice(0, 4).map((log) => (
+                    <div key={log.id} className="py-3 flex items-center justify-between gap-3 first:pt-0 last:pb-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs shrink-0">
+                          {log.type === 'goal' ? '⚽' : log.type === 'card' ? '🟨' : '🔄'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 truncate">{log.title}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{log.desc}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] text-slate-400 font-medium">{log.minute}</span>
+                        <button
+                          onClick={() => handleUndoEvent(log.id)}
+                          className="text-slate-400 hover:text-rose-600 p-1 transition-colors"
+                          title="Undo event"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
+                          ⚽
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">Goal added — Arjun N. (Alpha FC)</p>
+                          <p className="text-[11px] text-slate-400">Normal Goal in First Half</p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium">2 min ago</span>
+                    </div>
+
+                    <div className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
+                          🔄
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">Match updated — Alpha FC vs Beta United</p>
+                          <p className="text-[11px] text-slate-400">Clock resumed (Second Half)</p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium">5 min ago</span>
+                    </div>
+
+                    <div className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
+                          👤
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">Player added — Rohan K. (Gamma SC)</p>
+                          <p className="text-[11px] text-slate-400">Roster updated #7 Forward</p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium">12 min ago</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Fixture Cards dynamically mapped from matches */}
-            {matches.length === 0 ? (
-              <div className="bg-surface-container-lowest p-8 rounded-2xl border border-dashed border-surface-container-high text-center flex flex-col items-center gap-3">
-                <Calendar className="w-8 h-8 text-on-surface-variant/40" />
-                <p className="text-sm font-semibold text-on-surface-variant">No fixtures scheduled yet.</p>
-                <Link
-                  href="/admin/schedule"
-                  className="px-4 py-2 bg-primary-container text-on-primary rounded-xl text-xs font-bold"
-                >
-                  Schedule First Fixture
-                </Link>
-              </div>
-            ) : (
-              matches.slice(0, 5).map((m, idx) => {
+            {/* Match Operations Queue (All fixtures with complete details preserved) */}
+            <div className="flex items-center justify-between pt-2">
+              <h2 className="text-base font-black text-slate-900 tracking-tight">
+                All Scheduled Fixtures ({matches.length})
+              </h2>
+              <Link
+                href="/admin/schedule"
+                className="text-xs font-bold text-blue-600 hover:text-blue-700"
+              >
+                Manage Schedule →
+              </Link>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {matches.map((m, idx) => {
                 const isLive = m.status === 'Live' || m.status === 'Half-Time' || m.status === 'Penalty Shootout';
                 const isCompleted = m.status === 'Completed';
                 const scoreA = m.score?.teamA ?? m.teamAScore ?? 0;
                 const scoreB = m.score?.teamB ?? m.teamBScore ?? 0;
-                const isTied = (isLive || isCompleted) && scoreA === scoreB;
                 const penA = m.shootout?.teamAPenaltyScore ?? 0;
                 const penB = m.shootout?.teamBPenaltyScore ?? 0;
                 const hasShootout = Boolean(m.shootout?.isShootout || penA > 0 || penB > 0);
-
                 const teamAName = m.teamA?.name || 'Team A';
                 const teamBName = m.teamB?.name || 'Team B';
-                let winnerName = '';
-                if (m.winner) {
-                  if (typeof m.winner === 'object' && m.winner.name) {
-                    winnerName = m.winner.name;
-                  } else {
-                    const wId = String(m.winner);
-                    const tAId = typeof m.teamA === 'object' ? String(m.teamA?._id) : String(m.teamA);
-                    winnerName = wId === tAId ? teamAName : teamBName;
-                  }
-                } else if (scoreA > scoreB) {
-                  winnerName = teamAName;
-                } else if (scoreB > scoreA) {
-                  winnerName = teamBName;
-                } else if (penA > penB) {
-                  winnerName = teamAName;
-                } else if (penB > penA) {
-                  winnerName = teamBName;
-                } else if (m.shootout?.shootoutWinner) {
-                  const swId = typeof m.shootout.shootoutWinner === 'object' ? String((m.shootout.shootoutWinner as any)._id) : String(m.shootout.shootoutWinner);
-                  const tAId = typeof m.teamA === 'object' ? String(m.teamA?._id) : String(m.teamA);
-                  winnerName = swId === tAId ? teamAName : teamBName;
-                }
 
                 return (
                   <div
                     key={m._id || idx}
-                    className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs hover:shadow-md transition-all flex flex-col gap-3.5"
+                    className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition-all flex flex-col gap-3"
                   >
-                    {/* Header Row: Match Time, Fixture Title, Status Pill */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-surface-container-high">
-                      <div className="flex items-center gap-2.5">
-                        <span className="bg-surface-container-high text-on-surface font-bold text-xs px-2.5 py-1 rounded-lg font-mono">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-mono">
                           {m.matchTime || '14:00'}
                         </span>
-                        <span className="font-headline-sm text-base font-extrabold text-on-surface">
+                        <span className="font-extrabold text-sm text-slate-900">
                           {teamAName} vs {teamBName}
                         </span>
                       </div>
                       <span
-                        className={`font-label-caps text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                        className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
                           isLive
-                            ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
+                            ? 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse'
                             : isCompleted
-                              ? 'bg-emerald-50 text-primary-container border-emerald-200'
-                              : 'bg-surface-container text-on-surface-variant border-surface-container-high'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
                         }`}
                       >
                         {isLive
-                          ? `LIVE IN PLAY • ${scoreA} - ${scoreB}`
+                          ? `LIVE • ${scoreA} - ${scoreB}`
                           : isCompleted
-                            ? `FINAL RESULT • ${scoreA} - ${scoreB}${hasShootout ? ` (Pen: ${penA}-${penB})` : ''}`
-                            : 'UPCOMING FIXTURE'}
+                            ? `FINAL • ${scoreA} - ${scoreB}${hasShootout ? ` (Pen: ${penA}-${penB})` : ''}`
+                            : 'UPCOMING'}
                       </span>
                     </div>
 
-                    {/* Official Match Result & Winner Section */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-surface-container-low border border-surface-container">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant font-label-caps block mb-1">
-                          Official Result & Winner
-                        </span>
-                        {isCompleted ? (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-black text-on-surface">
-                              {teamAName}{' '}
-                              <span className="text-primary-container font-display-score text-base">{scoreA}</span> -{' '}
-                              <span className="text-primary-container font-display-score text-base">{scoreB}</span>{' '}
-                              {teamBName}
-                            </span>
-                            {hasShootout && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-extrabold text-xs border border-purple-200">
-                                Shootout: {penA} - {penB}
-                              </span>
-                            )}
-                            {winnerName ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 font-extrabold text-xs shadow-2xs">
-                                <Trophy className="w-3.5 h-3.5 text-amber-600 fill-amber-500 shrink-0" />
-                                <span>
-                                  Winner: <strong className="font-black text-amber-950">{winnerName}</strong>
-                                </span>
-                                {hasShootout && <span className="text-[10px] text-amber-800 font-medium">({penA} - {penB} on penalties)</span>}
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : isLive ? (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-black text-on-surface">
-                              Current Score:{' '}
-                              <strong className="text-rose-600 font-display-score text-base">
-                                {scoreA} - {scoreB}
-                              </strong>
-                            </span>
-                            {scoreA !== scoreB ? (
-                              <span className="text-xs font-bold text-primary-container bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                                Currently Leading: {scoreA > scoreB ? teamAName : teamBName}
-                              </span>
-                            ) : (
-                              <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
-                                Scores Level
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-xs font-semibold text-on-surface-variant">
-                            Fixture not started yet • Scheduled for {m.matchTime || '14:00'}
-                          </div>
-                        )}
-                      </div>
-
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                      <span className="text-slate-500 font-medium">
+                        {isCompleted
+                          ? `Winner: ${scoreA > scoreB ? teamAName : scoreB > scoreA ? teamBName : penA > penB ? teamAName : penB > penA ? teamBName : 'Draw'}`
+                          : m.venue || 'Main Ground'}
+                      </span>
                       <Link
-                        href="/admin/live-control"
-                        className="px-3.5 py-1.5 rounded-xl bg-primary-container hover:bg-primary text-xs font-bold text-on-primary transition-all shadow-xs shrink-0 active:scale-95 flex items-center gap-1.5"
+                        href={`/admin/live-control?matchId=${m._id}`}
+                        className="font-bold text-blue-600 hover:text-blue-700"
                       >
-                        <Zap className="w-3.5 h-3.5 fill-white" />
-                        <span>Operator Desk</span>
+                        Open Desk →
                       </Link>
                     </div>
-
-                    {/* Goalscorers pill display */}
-                    {m.goals && m.goals.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
-                        <span className="font-bold text-on-surface-variant flex items-center gap-1 text-[11px] uppercase tracking-wider">
-                          <span>⚽ Scorers:</span>
-                        </span>
-                        {m.goals.map((g: any, i: number) => (
-                          <span
-                            key={g._id || i}
-                            className="inline-flex items-center gap-1 bg-surface-container border border-surface-container-high px-2 py-0.5 rounded-lg text-on-surface text-xs font-semibold"
-                          >
-                            <span>{g.player?.name || 'Athlete'}</span>
-                            {g.player?.jerseyNumber && (
-                              <span className="text-[10px] text-primary-container font-mono font-bold">
-                                #{g.player.jerseyNumber}
-                              </span>
-                            )}
-                            <span className="text-[10px] text-on-surface-variant font-mono">
-                              ({g.matchTime || 'Goal'})
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
-              })
-            )}
+              })}
+            </div>
           </div>
 
-          {/* Right Column (5 cols): Top Scorer Trophy & Administrative Audit Feed */}
-          <div className="lg:col-span-5 flex flex-col gap-4">
-            {/* Dedicated Top Scorer Trophy Card */}
+          {/* Right Column (5 cols): Quick Actions + Top Scorer Trophy (Screen 3) */}
+          <div className="lg:col-span-5 flex flex-col gap-5">
+            {/* Quick Actions Card (Screen 3) */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col gap-3">
+              <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-1">
+                Quick Actions
+              </h2>
+
+              <Link
+                href="/admin/schedule"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 font-bold text-xs transition-all active:scale-[0.98]"
+              >
+                <Plus className="w-4 h-4 text-blue-600" />
+                <span>Create Match</span>
+              </Link>
+
+              <Link
+                href="/admin/teams"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 font-bold text-xs transition-all active:scale-[0.98]"
+              >
+                <Plus className="w-4 h-4 text-blue-600" />
+                <span>Add Team</span>
+              </Link>
+
+              <Link
+                href="/admin/players"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 font-bold text-xs transition-all active:scale-[0.98]"
+              >
+                <Plus className="w-4 h-4 text-blue-600" />
+                <span>Add Player</span>
+              </Link>
+
+              <Link
+                href="/fixtures"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 font-bold text-xs transition-all active:scale-[0.98]"
+              >
+                <Calendar className="w-4 h-4 text-slate-500" />
+                <span>View Fixtures</span>
+              </Link>
+            </div>
+
+            {/* Top Scorer Trophy Card */}
             {topScorer && (
-              <div className="bg-gradient-to-br from-amber-500/10 via-surface-container-lowest to-surface-container-lowest p-5 rounded-2xl border border-amber-500/30 shadow-sm flex flex-col gap-3">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 flex items-center justify-center font-black">
-                      <Trophy className="w-4 h-4 text-amber-500" />
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black border border-amber-200">
+                      <Trophy className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="font-label-caps text-[10px] text-amber-700 uppercase font-black tracking-wider block">
-                        Official Golden Boot Award
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 block">
+                        Golden Boot Race
                       </span>
-                      <h3 className="font-headline-sm text-sm font-extrabold text-on-surface">
-                        Top Scorer Trophy
+                      <h3 className="text-sm font-black text-slate-900">
+                        Top Scorer
                       </h3>
                     </div>
                   </div>
-                  <span className="bg-amber-100 text-amber-900 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-amber-300">
+                  <span className="bg-amber-50 text-amber-700 text-xs font-black px-3 py-1 rounded-full border border-amber-200">
                     🏆 {topScorer.goals} GOALS
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between bg-surface-container-lowest p-3 rounded-xl border border-amber-500/20">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-sm shadow-sm">
-                      #{topScorer.jerseyNumber}
+                <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200/70">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-black flex items-center justify-center text-sm shadow-xs shrink-0">
+                      #{topScorer.jerseyNumber || 10}
                     </div>
-                    <div>
-                      <div className="font-headline-sm text-sm font-black text-on-surface">
+                    <div className="min-w-0">
+                      <div className="text-sm font-black text-slate-900 truncate">
                         {topScorer.name}
                       </div>
-                      <div className="text-xs text-on-surface-variant font-medium">
-                        Club: <strong className="text-on-surface font-semibold">{topScorer.club || 'Independent Club'}</strong>
+                      <div className="text-xs text-slate-500 font-medium truncate">
+                        {topScorer.club || 'Independent Club'}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/players/${topScorer._id}`}
-                      className="text-xs font-bold text-on-surface-variant hover:text-on-surface"
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/admin/top-scorers"
-                      className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20"
-                    >
-                      <span>Leaderboard</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
+                  <Link
+                    href="/admin/top-scorers"
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 shrink-0 ml-2"
+                  >
+                    <span>Leaderboard</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
             )}
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary-container" />
-                <h2 className="font-headline-md text-lg font-black text-on-surface tracking-tight">
-                  Administrative Audit Feed
-                </h2>
-              </div>
-              <span className="text-xs text-on-surface-variant font-semibold">
-                Real-Time Stream
-              </span>
-            </div>
-
-            <div className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4">
-              {auditLogs.length === 0 ? (
-                <div className="py-8 text-center text-xs text-on-surface-variant font-medium">
-                  No match events recorded in the audit feed yet.
-                </div>
-              ) : (
-                auditLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-3 pb-3 border-b border-surface-container-high last:border-0 last:pb-0"
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                        log.type === 'goal'
-                          ? 'bg-emerald-100 text-primary-container'
-                          : log.type === 'card'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-surface-container text-on-surface'
-                      }`}
-                    >
-                      {log.type === 'goal' ? '⚽' : log.type === 'card' ? '🟨' : '⏱️'}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-on-surface truncate">
-                          {log.title}
-                        </span>
-                        <span className="text-[11px] text-on-surface-variant font-semibold shrink-0 ml-2">
-                          {log.minute}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-on-surface-variant mt-0.5 truncate">
-                        {log.desc}
-                      </p>
-                      <div className="flex items-center justify-between mt-1 text-[10px] text-on-surface-variant">
-                        <span>{log.official}</span>
-                        <button
-                          onClick={() => handleUndoEvent(log.id)}
-                          className="text-error hover:underline flex items-center gap-0.5 font-bold"
-                        >
-                          <Undo2 className="w-3 h-3" />
-                          <span>Undo</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
         </div>
       </div>

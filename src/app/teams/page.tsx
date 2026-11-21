@@ -99,55 +99,43 @@ export default function TeamsPage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-300">
-      {/* Header */}
-      <PageHeader
-        badge={`${tournamentName} • Official Roster Registry`}
-        badgeIcon={<Shield className="w-4 h-4 text-primary-container" />}
-        title="Alliance Premier League Teams & Rosters"
-        description="Official club registration database, player eligibility charts, tactical formations, and tournament standings across Alliance Premier League Season 9."
-        action={
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 select-none animate-in fade-in duration-200">
+      {/* Header matching Reference Screen 5 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-slate-200/80">
+        <div>
           <div className="flex items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 bg-surface-container-low px-3.5 py-2 rounded-xl text-xs font-bold text-on-surface border border-surface-container shadow-xs">
-              <span className={cn('w-2 h-2 rounded-full', isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500')}></span>
-              <span className="font-mono text-[11px]">{isConnected ? 'LIVE SYNC ACTIVE' : 'CONNECTING...'}</span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+              <Users className="w-5 h-5" />
             </div>
-            <div className="inline-flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-xl text-xs font-bold text-on-surface border border-surface-container">
-              <span className="w-2 h-2 rounded-full bg-primary-container"></span>
-              <span>{teams.length} Active Rosters</span>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Teams
+            </h1>
           </div>
-        }
-      />
-
-      {/* Search & Counter Bar */}
-      <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-surface-container-high mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="font-label-caps text-xs font-bold text-on-surface uppercase tracking-wider">
-            All Registered Teams ({teams.length})
-          </span>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            All participating teams
+          </p>
         </div>
 
         {/* Search */}
-        <div className="w-full md:w-80">
+        <div className="w-full sm:w-72">
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search team or captain..."
+            placeholder="Search teams..."
           />
         </div>
       </div>
 
-      {/* Teams Grid */}
+      {/* Teams Grid (Matching Screen 5 3-column Layout) */}
       {loading ? (
         <LoadingState message="Loading team rosters..." />
       ) : filteredTeams.length === 0 ? (
         <EmptyState
           title="No Teams Found"
-          description="No university teams match your current search or conference filter."
+          description="No participating teams match your current search query."
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6">
           {filteredTeams.map((team, index) => (
             <TeamCard key={team._id} team={team} index={index} />
           ))}
