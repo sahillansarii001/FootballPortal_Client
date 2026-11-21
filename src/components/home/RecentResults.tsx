@@ -83,12 +83,18 @@ export const RecentResults: React.FC<RecentResultsProps> = ({ results }) => {
                   {/* Score & Teams */}
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                        {teamAName} {scoreA}
+                      <span className={`font-headline-sm text-headline-sm font-bold flex items-center gap-1 ${
+                        winnerName === teamAName ? 'text-primary-container font-black' : 'text-on-surface'
+                      }`}>
+                        {winnerName === teamAName && <span>🏆</span>}
+                        <span>{teamAName} {scoreA}</span>
                       </span>
                       <span className="text-on-surface-variant font-bold">–</span>
-                      <span className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                        {scoreB} {teamBName}
+                      <span className={`font-headline-sm text-headline-sm font-bold flex items-center gap-1 ${
+                        winnerName === teamBName ? 'text-primary-container font-black' : 'text-on-surface'
+                      }`}>
+                        <span>{scoreB} {teamBName}</span>
+                        {winnerName === teamBName && <span>🏆</span>}
                       </span>
                       {hasPenalties && (
                         <span className="text-xs font-black text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md shadow-2xs">

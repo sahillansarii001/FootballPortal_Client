@@ -193,15 +193,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="flex items-center justify-between py-4 px-2">
             {/* Team A */}
             <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-black text-slate-800 text-sm overflow-hidden shrink-0 shadow-xs">
+              <div className={`w-12 h-12 rounded-xl bg-slate-100 border flex items-center justify-center font-black text-sm overflow-hidden shrink-0 shadow-xs ${
+                liveWinnerName === liveTeamA ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
+              }`}>
                 {liveMatch?.teamA?.logo ? (
                   <img src={liveMatch.teamA.logo} alt={liveTeamA} className="w-full h-full object-cover" />
                 ) : (
                   <span>{(liveTeamA.slice(0, 2) || 'A').toUpperCase()}</span>
                 )}
               </div>
-              <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
-                {liveTeamA}
+              <span className={`text-xs sm:text-sm truncate max-w-[120px] text-center flex items-center justify-center gap-1 ${
+                liveWinnerName === liveTeamA ? 'font-black text-emerald-700' : 'font-bold text-slate-900'
+              }`}>
+                {liveWinnerName === liveTeamA && <span>🏆</span>}
+                <span>{liveTeamA}</span>
               </span>
             </div>
 
@@ -228,15 +233,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
             {/* Team B */}
             <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-black text-slate-800 text-sm overflow-hidden shrink-0 shadow-xs">
+              <div className={`w-12 h-12 rounded-xl bg-slate-100 border flex items-center justify-center font-black text-sm overflow-hidden shrink-0 shadow-xs ${
+                liveWinnerName === liveTeamB ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
+              }`}>
                 {liveMatch?.teamB?.logo ? (
                   <img src={liveMatch.teamB.logo} alt={liveTeamB} className="w-full h-full object-cover" />
                 ) : (
                   <span>{(liveTeamB.slice(0, 2) || 'B').toUpperCase()}</span>
                 )}
               </div>
-              <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
-                {liveTeamB}
+              <span className={`text-xs sm:text-sm truncate max-w-[120px] text-center flex items-center justify-center gap-1 ${
+                liveWinnerName === liveTeamB ? 'font-black text-emerald-700' : 'font-bold text-slate-900'
+              }`}>
+                <span>{liveTeamB}</span>
+                {liveWinnerName === liveTeamB && <span>🏆</span>}
               </span>
             </div>
           </div>

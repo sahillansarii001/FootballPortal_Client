@@ -187,6 +187,17 @@ export interface Match {
     isCompleted?: boolean;
     shootoutWinner?: any;
   };
+  toss?: {
+    isTossConducted?: boolean;
+    tossWinner?: any;
+    choice?: string | null;
+    kickingTeam?: any;
+    defendingTeam?: any;
+    decisivePenaltyTaker?: any;
+    decisiveGoalkeeper?: any;
+    decisiveOutcome?: string | null;
+    winner?: any;
+  };
   penalties?: PenaltyShootoutState;
   events?: MatchEvent[];
   stats?: {

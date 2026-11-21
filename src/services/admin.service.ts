@@ -253,6 +253,20 @@ export const adminService = {
     }
   },
 
+  async getMatchPenalties(
+    matchId: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/penalties`, {
+        headers: getAuthHeaders(),
+      });
+      const json = await res.json();
+      return json;
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
   async updateShootout(
     matchId: string,
     shootout: {

@@ -257,17 +257,71 @@ export default function AdminLiveControlPage() {
     setTimerRunning(Boolean(match.timer?.isRunning && !match.timer?.isPaused));
     setCurrentStage(match.timer?.currentStage || match.stage || 'First Half');
     setMatchGoals(match.goals || []);
-    setPenaltyKicks([]);
     setPenaltyScoreA(match.shootout?.teamAPenaltyScore ?? 0);
     setPenaltyScoreB(match.shootout?.teamBPenaltyScore ?? 0);
+
+    const teamAIdStr = typeof match.teamA === 'object' && match.teamA ? (match.teamA as any)._id : match.teamA;
+    const teamBIdStr = typeof match.teamB === 'object' && match.teamB ? (match.teamB as any)._id : match.teamB;
+
     setTossState({
       isFlipping: false,
-      tossWinner: null,
-      tossChoice: null,
+      tossWinner: match.toss?.tossWinner
+        ? String(match.toss.tossWinner) === String(teamAIdStr)
+          ? 'A'
+          : 'B'
+        : null,
+      tossChoice: match.toss?.choice
+        ? match.toss.choice === 'ATTACK'
+          ? 'shoot'
+          : 'save'
+        : null,
       isResolved: match.status === 'Completed' && Boolean(match.winner),
       winnerTeamName: typeof match.winner === 'object' && match.winner ? match.winner.name : null,
       selectedDecisiveShooterId: '',
     });
+
+    // Populate penalty kicks from match or fetch authoritative penalty history
+    if (match._id) {
+      adminService.getMatchPenalties(match._id).then((res) => {
+        if (res?.success && res.data?.penalties && Array.isArray(res.data.penalties)) {
+          const kicks = res.data.penalties.map((p: any) => ({
+            team: (String(p.team?._id || p.team) === String(teamAIdStr) ? 'A' : 'B') as 'A' | 'B',
+            round: p.round || 1,
+            playerId: p.player?._id || p.player,
+            playerName: p.player?.name || 'Shooter',
+            playerClub: p.player?.club || '',
+            playerJersey: p.player?.jerseyNumber || 10,
+            outcome: p.outcome === 'Goal' ? 'Goal' : p.outcome === 'Saved' ? 'Saved' : 'Missed',
+          }));
+          setPenaltyKicks(kicks);
+        } else if (match.shootout && (match.shootout.teamAPenaltiesTaken || match.shootout.teamBPenaltiesTaken)) {
+          const fallbackKicks: any[] = [];
+          for (let i = 0; i < (match.shootout.teamAPenaltiesTaken || 0); i++) {
+            fallbackKicks.push({
+              team: 'A',
+              round: i + 1,
+              playerName: 'Penalty Shooter',
+              outcome: i < (match.shootout.teamAPenaltyScore || 0) ? 'Goal' : 'Saved',
+            });
+          }
+          for (let i = 0; i < (match.shootout.teamBPenaltiesTaken || 0); i++) {
+            fallbackKicks.push({
+              team: 'B',
+              round: i + 1,
+              playerName: 'Penalty Shooter',
+              outcome: i < (match.shootout.teamBPenaltyScore || 0) ? 'Goal' : 'Saved',
+            });
+          }
+          setPenaltyKicks(fallbackKicks);
+        } else {
+          setPenaltyKicks([]);
+        }
+      }).catch(() => {
+        setPenaltyKicks([]);
+      });
+    } else {
+      setPenaltyKicks([]);
+    }
 
     // Fetch authoritative match goals
     if (match._id) {
@@ -818,6 +872,21 @@ export default function AdminLiveControlPage() {
   // 3-Kick Regulation Penalty Recorder
   const handleRecordPenaltyKick = async (team: 'A' | 'B', outcome: 'Goal' | 'Saved' | 'Missed') => {
     if (!selectedMatch) return;
+    if (selectedMatch.status === 'Completed' || selectedMatch.shootout?.isCompleted) {
+      showError('This match has already been completed and concluded.');
+      return;
+    }
+
+    const teamKicks = penaltyKicks.filter((k) => k.team === team);
+    const existingTaken = team === 'A'
+      ? Math.max(teamKicks.length, selectedMatch.shootout?.teamAPenaltiesTaken || 0)
+      : Math.max(teamKicks.length, selectedMatch.shootout?.teamBPenaltiesTaken || 0);
+
+    if (existingTaken >= 3) {
+      showError(`${team === 'A' ? teamAName : teamBName} has already completed their 3 regulation penalty kicks.`);
+      return;
+    }
+
     const players = team === 'A' ? teamAPlayers : teamBPlayers;
     const selectedKickerId = team === 'A' ? selectedKickerA : selectedKickerB;
     const kicker = players.find((p) => p._id === selectedKickerId) || players[0];
@@ -827,13 +896,7 @@ export default function AdminLiveControlPage() {
       return;
     }
 
-    const teamKicks = penaltyKicks.filter((k) => k.team === team);
-    if (teamKicks.length >= 3) {
-      showError(`${team === 'A' ? teamAName : teamBName} has already completed their 3 regulation penalty kicks.`);
-      return;
-    }
-
-    const currentRound = teamKicks.length + 1;
+    const currentRound = existingTaken + 1;
 
     const newKick = {
       team,
@@ -845,7 +908,8 @@ export default function AdminLiveControlPage() {
       outcome,
     };
 
-    setPenaltyKicks((prev) => [...prev, newKick]);
+    const nextKicks = [...penaltyKicks, newKick];
+    setPenaltyKicks(nextKicks);
 
     let newPenA = penaltyScoreA;
     let newPenB = penaltyScoreB;
@@ -866,7 +930,7 @@ export default function AdminLiveControlPage() {
     const teamBId = typeof rawTeamB === 'object' && rawTeamB ? (rawTeamB as any)._id : rawTeamB;
     const teamId = team === 'A' ? teamAId : teamBId;
 
-    await adminService.recordPenalty(selectedMatch._id, {
+    const res = await adminService.recordPenalty(selectedMatch._id, {
       team: teamId,
       teamId: teamId,
       player: kicker._id,
@@ -874,13 +938,31 @@ export default function AdminLiveControlPage() {
       outcome,
     });
 
-    await adminService.updateShootout(selectedMatch._id, {
-      isShootout: true,
-      teamAPenaltyScore: newPenA,
-      teamBPenaltyScore: newPenB,
-      round: currentRound,
-      isCompleted: false,
-    });
+    if (res?.success && res.data?.shootoutState) {
+      const ss = res.data.shootoutState;
+      if (typeof ss.teamAPenaltyScore === 'number') {
+        newPenA = ss.teamAPenaltyScore;
+        setPenaltyScoreA(ss.teamAPenaltyScore);
+      }
+      if (typeof ss.teamBPenaltyScore === 'number') {
+        newPenB = ss.teamBPenaltyScore;
+        setPenaltyScoreB(ss.teamBPenaltyScore);
+      }
+      setSelectedMatch((prev) =>
+        prev
+          ? {
+              ...prev,
+              shootout: {
+                ...prev.shootout,
+                ...ss,
+                isShootout: true,
+              },
+            }
+          : null
+      );
+    } else if (res?.error) {
+      showError(res.error);
+    }
 
     // Advance kicker selection to next player in squad
     const currentIndex = players.findIndex((p) => p._id === kicker._id);
@@ -890,9 +972,29 @@ export default function AdminLiveControlPage() {
       else setSelectedKickerB(nextPlayer._id);
     }
 
-    showNotification(
-      `Penalty #${currentRound}/3 (${team === 'A' ? teamAName : teamBName}): ${kicker.name} [${kicker.club || 'Club'}] -> ${outcome.toUpperCase()}! Shootout score: ${newPenA} - ${newPenB}`
+    const updatedKicksA = Math.max(
+      nextKicks.filter((k) => k.team === 'A').length,
+      res?.data?.shootoutState?.teamAPenaltiesTaken || 0
     );
+    const updatedKicksB = Math.max(
+      nextKicks.filter((k) => k.team === 'B').length,
+      res?.data?.shootoutState?.teamBPenaltiesTaken || 0
+    );
+
+    if (res?.data?.evaluation?.isDecided || (updatedKicksA >= 3 && updatedKicksB >= 3 && newPenA !== newPenB)) {
+      const winningTeamName = newPenA > newPenB ? teamAName : teamBName;
+      showNotification(
+        `🏆 SHOOTOUT DECIDED! ${winningTeamName} wins ${newPenA} - ${newPenB}! Click "Finalize Match Victory" to complete.`
+      );
+    } else if (updatedKicksA >= 3 && updatedKicksB >= 3 && newPenA === newPenB) {
+      showNotification(
+        `Shootout tied ${newPenA} - ${newPenB} after 3 kicks each! Proceed to Sudden Death Coin Toss below.`
+      );
+    } else {
+      showNotification(
+        `Penalty #${currentRound}/3 (${team === 'A' ? teamAName : teamBName}): ${kicker.name} [${kicker.club || 'Club'}] -> ${outcome.toUpperCase()}! Shootout: ${newPenA} - ${newPenB}`
+      );
+    }
   };
 
   const handleSaveCard = () => {
@@ -1324,11 +1426,25 @@ export default function AdminLiveControlPage() {
   };
 
   // Penalties calculation
-  const kicksA = penaltyKicks.filter((k) => k.team === 'A').length;
-  const kicksB = penaltyKicks.filter((k) => k.team === 'B').length;
-  const regulationKicksComplete = kicksA >= 3 && kicksB >= 3;
-  const isShootoutTiedAfterThree = regulationKicksComplete && penaltyScoreA === penaltyScoreB;
-  const hasShootoutWinner = regulationKicksComplete && penaltyScoreA !== penaltyScoreB;
+  const recordedKicksA = penaltyKicks.filter((k) => k.team === 'A').length;
+  const recordedKicksB = penaltyKicks.filter((k) => k.team === 'B').length;
+  const kicksA = Math.max(recordedKicksA, selectedMatch?.shootout?.teamAPenaltiesTaken || 0);
+  const kicksB = Math.max(recordedKicksB, selectedMatch?.shootout?.teamBPenaltiesTaken || 0);
+  const isMatchCompleted = selectedMatch?.status === 'Completed';
+  const isShootoutConcluded = isMatchCompleted || Boolean(selectedMatch?.shootout?.isCompleted);
+  const regulationKicksComplete = (kicksA >= 3 && kicksB >= 3) || isShootoutConcluded;
+  const isShootoutTiedAfterThree = !isShootoutConcluded && kicksA >= 3 && kicksB >= 3 && penaltyScoreA === penaltyScoreB;
+  const hasShootoutWinner = isShootoutConcluded
+    ? (penaltyScoreA !== penaltyScoreB || Boolean(selectedMatch?.winner) || Boolean(selectedMatch?.shootout?.shootoutWinner))
+    : (regulationKicksComplete && penaltyScoreA !== penaltyScoreB);
+  const shootoutLeaderOrWinner =
+    penaltyScoreA > penaltyScoreB
+      ? teamAName
+      : penaltyScoreB > penaltyScoreA
+      ? teamBName
+      : typeof selectedMatch?.winner === 'object'
+      ? selectedMatch.winner?.name
+      : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 flex flex-col gap-6 select-none w-full animate-in fade-in duration-200">
@@ -1948,8 +2064,16 @@ export default function AdminLiveControlPage() {
             {/* Shootout Score Header */}
             <div className="bg-[#1e2025] px-4 py-2.5 rounded-xl border border-white/10 flex items-center justify-between text-xs text-white">
               <span className="font-bold text-slate-300">Shootout Score:</span>
-              <span className="font-display-score text-base font-black text-white tabular-nums">
-                {teamAName} {penaltyScoreA} — {penaltyScoreB} {teamBName}
+              <span className="font-display-score text-base font-black text-white tabular-nums flex items-center gap-1.5">
+                <span className={penaltyScoreA > penaltyScoreB ? 'text-emerald-400 font-extrabold flex items-center gap-1' : ''}>
+                  {penaltyScoreA > penaltyScoreB && <span>🏆</span>}
+                  {teamAName} {penaltyScoreA}
+                </span>
+                <span className="text-slate-400">—</span>
+                <span className={penaltyScoreB > penaltyScoreA ? 'text-emerald-400 font-extrabold flex items-center gap-1' : ''}>
+                  {penaltyScoreB} {teamBName}
+                  {penaltyScoreB > penaltyScoreA && <span>🏆</span>}
+                </span>
               </span>
             </div>
 
@@ -1957,17 +2081,19 @@ export default function AdminLiveControlPage() {
             {hasShootoutWinner && (
               <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-xs font-black">
-                  <Trophy className="w-4 h-4 text-emerald-600" />
+                  <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>
-                    SHOOTOUT DECIDED! {penaltyScoreA > penaltyScoreB ? teamAName : teamBName} wins {penaltyScoreA} - {penaltyScoreB}!
+                    SHOOTOUT DECIDED! 🏆 {shootoutLeaderOrWinner || (penaltyScoreA > penaltyScoreB ? teamAName : teamBName)} wins {Math.max(penaltyScoreA, penaltyScoreB)} - {Math.min(penaltyScoreA, penaltyScoreB)}!
                   </span>
                 </div>
-                <button
-                  onClick={handleFinalizeMatch}
-                  className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider"
-                >
-                  Finalize Match Victory
-                </button>
+                {selectedMatch?.status !== 'Completed' && (
+                  <button
+                    onClick={handleFinalizeMatch}
+                    className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider"
+                  >
+                    Finalize Match Victory
+                  </button>
+                )}
               </div>
             )}
 
@@ -2169,8 +2295,8 @@ export default function AdminLiveControlPage() {
               </div>
             )}
 
-            {/* 3-Kick Recorder Columns (Visible during regulation 3 kicks) */}
-            {!regulationKicksComplete && (
+            {/* 3-Kick Recorder Columns (Visible during regulation 3 kicks only) */}
+            {!regulationKicksComplete && !hasShootoutWinner && !isShootoutConcluded && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Team A Kicks (Max 3) */}
                 <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2.5">

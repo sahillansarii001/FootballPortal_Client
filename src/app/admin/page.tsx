@@ -207,36 +207,77 @@ export default function AdminOverviewPage() {
             {(() => {
               const activeMatch = liveMatch || matches[0];
               const isMatchLive = activeMatch?.status === 'Live' || activeMatch?.status === 'Half-Time' || activeMatch?.status === 'Penalty Shootout';
+              const isMatchCompleted = activeMatch?.status === 'Completed';
               const teamAName = activeMatch?.teamA?.name || 'Alpha FC';
               const teamBName = activeMatch?.teamB?.name || 'Beta United';
               const scoreA = activeMatch?.score?.teamA ?? activeMatch?.teamAScore ?? 2;
               const scoreB = activeMatch?.score?.teamB ?? activeMatch?.teamBScore ?? 1;
-              const stage = activeMatch?.timer?.currentStage || activeMatch?.stage || 'Second Half';
-              const timeStr = activeMatch?.timer?.remainingTime !== undefined ? formatTime(activeMatch.timer.remainingTime) : '02:36';
+              const penA = activeMatch?.shootout?.teamAPenaltyScore ?? 0;
+              const penB = activeMatch?.shootout?.teamBPenaltyScore ?? 0;
+              const hasShootout = Boolean(activeMatch?.shootout?.isShootout || activeMatch?.shootout?.isCompleted || penA > 0 || penB > 0);
+              const stage = activeMatch?.timer?.currentStage || activeMatch?.stage || (isMatchCompleted ? 'Match Completed' : 'Second Half');
+              const timeStr = activeMatch?.timer?.remainingTime !== undefined ? formatTime(activeMatch.timer.remainingTime) : '00:00';
+
+              const winnerId = typeof activeMatch?.winner === 'object' ? activeMatch?.winner?._id : activeMatch?.winner;
+              const shootoutWinnerId = typeof activeMatch?.shootout?.shootoutWinner === 'object' ? activeMatch?.shootout?.shootoutWinner?._id : activeMatch?.shootout?.shootoutWinner;
+              const teamAId = typeof activeMatch?.teamA === 'object' ? activeMatch?.teamA?._id : activeMatch?.teamA;
+              const teamBId = typeof activeMatch?.teamB === 'object' ? activeMatch?.teamB?._id : activeMatch?.teamB;
+
+              const isTeamAWinner = isMatchCompleted && (
+                (winnerId && teamAId && String(winnerId) === String(teamAId)) ||
+                (shootoutWinnerId && teamAId && String(shootoutWinnerId) === String(teamAId)) ||
+                (scoreA > scoreB) ||
+                (hasShootout && penA > penB)
+              );
+              const isTeamBWinner = isMatchCompleted && (
+                (winnerId && teamBId && String(winnerId) === String(teamBId)) ||
+                (shootoutWinnerId && teamBId && String(shootoutWinnerId) === String(teamBId)) ||
+                (scoreB > scoreA) ||
+                (hasShootout && penB > penA)
+              );
+              const winnerTeamName = isTeamAWinner ? teamAName : isTeamBWinner ? teamBName : null;
 
               return (
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col gap-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-                      Ongoing Match
+                      {isMatchCompleted ? 'Match Result' : 'Ongoing Match'}
                     </h2>
-                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-extrabold text-[11px] border border-rose-200">
-                      <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
-                      <span>LIVE</span>
-                    </span>
+                    {isMatchCompleted ? (
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-[11px] border border-emerald-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>FINAL</span>
+                      </span>
+                    ) : isMatchLive ? (
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-extrabold text-[11px] border border-rose-200">
+                        <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+                        <span>LIVE</span>
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-extrabold text-[11px] border border-slate-200">
+                        UPCOMING
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-slate-50/80 border border-slate-100">
                     {/* Team A */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800 shadow-2xs shrink-0 overflow-hidden">
+                      <div className={`w-12 h-12 rounded-xl bg-white border flex items-center justify-center font-black shadow-2xs shrink-0 overflow-hidden ${
+                        isTeamAWinner ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
+                      }`}>
                         {activeMatch?.teamA?.logo ? (
                           <img src={activeMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
                         ) : (
                           <span>{teamAName.slice(0, 2).toUpperCase()}</span>
                         )}
                       </div>
-                      <span className="font-bold text-sm text-slate-900 truncate">{teamAName}</span>
+                      <span className={`text-sm truncate flex items-center gap-1.5 ${
+                        isTeamAWinner ? 'font-black text-emerald-700' : 'font-bold text-slate-900'
+                      }`}>
+                        {isTeamAWinner && <span className="text-base">🏆</span>}
+                        <span>{teamAName}</span>
+                      </span>
                     </div>
 
                     {/* Center Score & Stage */}
@@ -244,15 +285,33 @@ export default function AdminOverviewPage() {
                       <div className="text-2xl font-black text-slate-900 tabular-nums tracking-tight">
                         {scoreA} - {scoreB}
                       </div>
-                      <div className="text-[11px] font-bold text-emerald-600 mt-0.5">
-                        {stage} • {timeStr}
+                      {hasShootout && (
+                        <div className="text-[11px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full mt-0.5 border border-purple-200 shadow-2xs">
+                          Pen: {penA} - {penB}
+                        </div>
+                      )}
+                      <div className={`text-[11px] font-extrabold mt-0.5 ${
+                        isMatchCompleted ? 'text-emerald-700' : 'text-emerald-600'
+                      }`}>
+                        {isMatchCompleted && winnerTeamName
+                          ? `🏆 ${winnerTeamName} Won${hasShootout ? ' on Penalties' : ''}`
+                          : isMatchCompleted
+                          ? 'Match Completed'
+                          : `${stage} • ${timeStr}`}
                       </div>
                     </div>
 
                     {/* Team B */}
                     <div className="flex items-center gap-3 flex-1 min-w-0 justify-end text-right">
-                      <span className="font-bold text-sm text-slate-900 truncate">{teamBName}</span>
-                      <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800 shadow-2xs shrink-0 overflow-hidden">
+                      <span className={`text-sm truncate flex items-center gap-1.5 justify-end ${
+                        isTeamBWinner ? 'font-black text-emerald-700' : 'font-bold text-slate-900'
+                      }`}>
+                        <span>{teamBName}</span>
+                        {isTeamBWinner && <span className="text-base">🏆</span>}
+                      </span>
+                      <div className={`w-12 h-12 rounded-xl bg-white border flex items-center justify-center font-black shadow-2xs shrink-0 overflow-hidden ${
+                        isTeamBWinner ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
+                      }`}>
                         {activeMatch?.teamB?.logo ? (
                           <img src={activeMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
                         ) : (
@@ -374,9 +433,28 @@ export default function AdminOverviewPage() {
                 const scoreB = m.score?.teamB ?? m.teamBScore ?? 0;
                 const penA = m.shootout?.teamAPenaltyScore ?? 0;
                 const penB = m.shootout?.teamBPenaltyScore ?? 0;
-                const hasShootout = Boolean(m.shootout?.isShootout || penA > 0 || penB > 0);
+                const hasShootout = Boolean(m.shootout?.isShootout || m.shootout?.isCompleted || penA > 0 || penB > 0);
                 const teamAName = m.teamA?.name || 'Team A';
                 const teamBName = m.teamB?.name || 'Team B';
+
+                const winnerId = typeof m.winner === 'object' ? m.winner?._id : m.winner;
+                const shootoutWinnerId = typeof m.shootout?.shootoutWinner === 'object' ? m.shootout?.shootoutWinner?._id : m.shootout?.shootoutWinner;
+                const teamAId = typeof m.teamA === 'object' ? m.teamA?._id : m.teamA;
+                const teamBId = typeof m.teamB === 'object' ? m.teamB?._id : m.teamB;
+
+                const isTeamAWinner = isCompleted && (
+                  (winnerId && teamAId && String(winnerId) === String(teamAId)) ||
+                  (shootoutWinnerId && teamAId && String(shootoutWinnerId) === String(teamAId)) ||
+                  (scoreA > scoreB) ||
+                  (hasShootout && penA > penB)
+                );
+                const isTeamBWinner = isCompleted && (
+                  (winnerId && teamBId && String(winnerId) === String(teamBId)) ||
+                  (shootoutWinnerId && teamBId && String(shootoutWinnerId) === String(teamBId)) ||
+                  (scoreB > scoreA) ||
+                  (hasShootout && penB > penA)
+                );
+                const winnerName = isTeamAWinner ? teamAName : isTeamBWinner ? teamBName : (scoreA === scoreB && !hasShootout ? 'Draw' : null);
 
                 return (
                   <div
@@ -388,9 +466,17 @@ export default function AdminOverviewPage() {
                         <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-mono">
                           {m.matchTime || '14:00'}
                         </span>
-                        <span className="font-extrabold text-sm text-slate-900">
-                          {teamAName} vs {teamBName}
-                        </span>
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <span className={isTeamAWinner ? 'text-emerald-700 font-black flex items-center gap-1' : 'font-extrabold text-slate-900'}>
+                            {isTeamAWinner && <span>🏆</span>}
+                            <span>{teamAName}</span>
+                          </span>
+                          <span className="text-slate-400 font-normal">vs</span>
+                          <span className={isTeamBWinner ? 'text-emerald-700 font-black flex items-center gap-1' : 'font-extrabold text-slate-900'}>
+                            <span>{teamBName}</span>
+                            {isTeamBWinner && <span>🏆</span>}
+                          </span>
+                        </div>
                       </div>
                       <span
                         className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
@@ -410,9 +496,11 @@ export default function AdminOverviewPage() {
                     </div>
 
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                      <span className="text-slate-500 font-medium">
-                        {isCompleted
-                          ? `Winner: ${scoreA > scoreB ? teamAName : scoreB > scoreA ? teamBName : penA > penB ? teamAName : penB > penA ? teamBName : 'Draw'}`
+                      <span className={isCompleted && winnerName ? 'text-emerald-700 font-extrabold flex items-center gap-1' : 'text-slate-500 font-medium'}>
+                        {isCompleted && winnerName
+                          ? `🏆 Winner: ${winnerName} ${hasShootout ? `(Pen: ${penA}-${penB})` : ''}`
+                          : isCompleted
+                          ? 'Match Drawn (Full Time)'
                           : m.venue || 'Main Ground'}
                       </span>
                       <Link
