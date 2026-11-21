@@ -15,7 +15,8 @@ import {
   Building2,
   Pencil,
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { teamService } from '@/services/team.service';
 import { adminService } from '@/services/admin.service';
@@ -56,6 +57,11 @@ export default function AdminTeamsPage() {
   const [newPlayerPosition, setNewPlayerPosition] = useState('Forward');
   const [playerActionMsg, setPlayerActionMsg] = useState<string | null>(null);
   const [playerActionError, setPlayerActionError] = useState<string | null>(null);
+
+  // Delete Athlete Modal state
+  const [deletingPlayer, setDeletingPlayer] = useState<{ id: string; name: string; jerseyNumber?: number; teamName: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadTeams() {
@@ -299,6 +305,58 @@ export default function AdminTeamsPage() {
     }
   };
 
+  const handleDeletePlayer = (playerId: string, playerName: string, teamName: string, jerseyNumber?: number) => {
+    setDeletingPlayer({ id: playerId, name: playerName, jerseyNumber, teamName });
+    setDeleteError(null);
+  };
+
+  const handleConfirmDeletePlayer = async () => {
+    if (!deletingPlayer) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      const res = await adminService.deletePlayer(deletingPlayer.id);
+      if (!res.success) {
+        setDeleteError(res.error || 'Failed to delete athlete');
+        setDeleteLoading(false);
+        return;
+      }
+
+      setSuccessMsg(`Athlete "${deletingPlayer.name}" deleted successfully!`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+
+      // Remove from teamPlayers in open squad modal
+      setTeamPlayers((prev) => prev.filter((p) => p._id !== deletingPlayer.id));
+
+      // Remove from team card's players list immediately
+      setTeams((prevTeams) =>
+        prevTeams.map((t) => {
+          if (!Array.isArray(t.players)) return t;
+          const updatedPlayers = (t.players as any[]).filter((p: any) => {
+            const id = typeof p === 'object' && p ? p._id : String(p);
+            return id !== deletingPlayer.id;
+          });
+          return {
+            ...t,
+            players: updatedPlayers,
+          } as Team;
+        })
+      );
+
+      // Re-fetch authoritative teams list
+      teamService.getAllTeams().then((fresh) => {
+        if (fresh && fresh.length > 0) setTeams(fresh);
+      });
+
+      setDeletingPlayer(null);
+    } catch (err: any) {
+      setDeleteError(err.message || 'Error deleting athlete');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 flex flex-col gap-6 select-none animate-in fade-in duration-200">
         {/* Header */}
@@ -448,11 +506,12 @@ export default function AdminTeamsPage() {
                     {Array.isArray(team.players) && team.players.length > 0 ? (
                       <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                         {team.players.map((p: any) => {
-                          const pObj = typeof p === 'object' && p ? p : { name: String(p), jerseyNumber: '?', position: 'Forward' };
+                          const pObj = typeof p === 'object' && p ? p : { _id: String(p), name: String(p), jerseyNumber: '?', position: 'Forward' };
+                          const playerId = pObj._id || pObj.id || (typeof p === 'string' ? p : '');
                           return (
                             <div
-                              key={pObj._id || pObj.name}
-                              className="flex items-center justify-between bg-surface-container-low px-2 py-1 rounded-lg border border-surface-container text-[11px]"
+                              key={playerId || pObj.name}
+                              className="flex items-center justify-between bg-surface-container-low px-2 py-1 rounded-lg border border-surface-container text-[11px] group/player hover:border-slate-300 transition-colors"
                             >
                               <div className="flex items-center gap-1.5 truncate">
                                 <span className="w-4 h-4 rounded bg-primary-container/15 text-primary-container font-black text-[9px] flex items-center justify-center shrink-0">
@@ -460,9 +519,24 @@ export default function AdminTeamsPage() {
                                 </span>
                                 <span className="font-bold text-on-surface truncate">{pObj.name}</span>
                               </div>
-                              <span className="text-[9px] font-semibold text-on-surface-variant bg-surface-container px-1 py-0.5 rounded shrink-0">
-                                {pObj.position || 'Forward'}
-                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span className="text-[9px] font-semibold text-on-surface-variant bg-surface-container px-1 py-0.5 rounded">
+                                  {pObj.position || 'Forward'}
+                                </span>
+                                {playerId && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeletePlayer(playerId, pObj.name, team.name, pObj.jerseyNumber);
+                                    }}
+                                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                    title={`Delete ${pObj.name}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -704,9 +778,19 @@ export default function AdminTeamsPage() {
                                 </div>
                               </div>
 
-                              <span className="font-label-caps text-[9px] uppercase px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-bold shrink-0">
-                                Eligible
-                              </span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="font-label-caps text-[9px] uppercase px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-bold">
+                                  Eligible
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePlayer(player._id, player.name, selectedTeam.name, player.jerseyNumber)}
+                                  className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                                  title={`Delete ${player.name}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -954,6 +1038,50 @@ export default function AdminTeamsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Athlete Confirmation Modal */}
+      {deletingPlayer && (
+        <div className="fixed inset-0 z-[120] overflow-y-auto bg-slate-900/70 backdrop-blur-sm p-4 flex min-h-screen items-center justify-center animate-in fade-in duration-200">
+          <div className="relative bg-white w-full max-w-md rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-7 my-auto animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 border border-rose-100">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-base font-bold text-slate-900">Delete Athlete Profile?</h3>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+              Are you sure you want to release and permanently remove{' '}
+              <strong className="text-slate-900 font-bold">&quot;{deletingPlayer.name}&quot;</strong>
+              {deletingPlayer.jerseyNumber ? ` (#${deletingPlayer.jerseyNumber})` : ''} from{' '}
+              <strong className="text-slate-900 font-bold">{deletingPlayer.teamName}</strong>?
+              This action will permanently delete the player from the database.
+            </p>
+
+            {deleteError && (
+              <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 mt-6">
+              <button
+                type="button"
+                onClick={() => setDeletingPlayer(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeletePlayer}
+                disabled={deleteLoading}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {deleteLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Delete Athlete</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
