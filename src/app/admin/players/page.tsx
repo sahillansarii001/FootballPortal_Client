@@ -195,7 +195,7 @@ export default function AdminPlayersPage() {
   const handleOpenEdit = (player: Player) => {
     setEditingPlayer(player);
     setEditName(player.name);
-    const tId = typeof player.team === 'object' && player.team ? player.team._id : String(player.team || '');
+     const tId = typeof player.team === 'object' && player.team ? player.team._id : String(player.team || '');
     setEditTeamId(tId);
     setEditJersey(player.jerseyNumber ?? '');
     setEditPosition(player.position || 'Forward');
@@ -516,8 +516,8 @@ export default function AdminPlayersPage() {
                               setDeletingPlayer(player);
                               setDeleteError(null);
                             }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
-                            title={`Delete ${player.name}`}
+                            className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 border border-transparent hover:border-error/20 transition-all"
+                            title="Delete Athlete"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

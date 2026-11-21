@@ -110,89 +110,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
 
   return (
     <div className="relative rounded-3xl overflow-hidden shadow-md mb-8 text-slate-900 border border-slate-200/90 transition-all bg-white select-none">
-      {/* Stadium Grass Pitch Background Banner (Matching Screen 2 in Reference) */}
-      <div className="relative w-full overflow-hidden bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950 text-white p-6 sm:p-8 md:p-10">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay"
-          style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1529900245534-47fbf82215dd?q=80&w=1920&auto=format&fit=crop')`,
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
-
-        <div className="relative z-10 flex flex-col items-center justify-center">
-          {/* Main Teams & Score Display (Matching Screen 2 in Reference) */}
-          <div className="w-full max-w-3xl grid grid-cols-1 sm:grid-cols-11 items-center gap-6 py-2">
-            {/* Team A */}
-            <div className="sm:col-span-4 flex flex-col items-center sm:items-end text-center sm:text-right">
-              <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-2.5 shadow-md overflow-hidden mb-2.5">
-                {match.teamA?.logo ? (
-                  <img src={match.teamA.logo} alt={match.teamA.name} className="w-full h-full object-contain" />
-                ) : (
-                  <span className="text-2xl sm:text-3xl font-black text-white select-none">
-                    {(match.teamA?.name?.slice(0, 2) || 'A').toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase truncate max-w-full">
-                {match.teamA?.name || 'Alpha FC'}
-              </h2>
-              <span className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider">
-                {match.teamA?.seed || 'Home Team'}
-              </span>
-            </div>
-
-            {/* Score & Stage / Clock */}
-            <div className="sm:col-span-3 flex flex-col items-center justify-center">
-              <div className="flex items-center gap-3 text-5xl sm:text-6xl font-black text-white tracking-tight leading-none tabular-nums drop-shadow-md">
-                <span>{localScoreA}</span>
-                <span className="text-white/40 font-light">-</span>
-                <span>{localScoreB}</span>
-              </div>
-
-              {/* Stage & Green Digital Clock Pill */}
-              <div className="mt-3 flex flex-col items-center gap-1">
-                <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
-                  {stage}
-                </span>
-                <div
-                  className="px-5 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/40 text-emerald-300 font-mono font-black text-lg sm:text-xl tracking-widest tabular-nums shadow-inner"
-                  data-testid="spectator-clock"
-                >
-                  {formatTime(currentRemaining)}
-                </div>
-              </div>
-
-              {showPenalties && (
-                <div className="mt-2.5 px-3 py-0.5 rounded-full bg-purple-500/30 border border-purple-400/40 text-[11px] font-bold text-purple-200">
-                  Shootout: {penA} - {penB}
-                </div>
-              )}
-            </div>
-
-            {/* Team B */}
-            <div className="sm:col-span-4 flex flex-col items-center sm:items-start text-center sm:text-left">
-              <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-2.5 shadow-md overflow-hidden mb-2.5">
-                {match.teamB?.logo ? (
-                  <img src={match.teamB.logo} alt={match.teamB.name} className="w-full h-full object-contain" />
-                ) : (
-                  <span className="text-2xl sm:text-3xl font-black text-white select-none">
-                    {(match.teamB?.name?.slice(0, 2) || 'B').toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase truncate max-w-full">
-                {match.teamB?.name || 'Beta United'}
-              </h2>
-              <span className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider">
-                {match.teamB?.seed || 'Visiting Team'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-5 sm:p-6 flex flex-col gap-5">
+      <div className="p-5 sm:p-6 sm:p-8 flex flex-col gap-6">
         {/* Top Match Header Ribbon */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -238,8 +156,15 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                 </span>
               </div>
 
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 uppercase tracking-tight truncate max-w-full">
-                {match.teamA?.name || 'Team A'}
+              <h2 className={`text-2xl sm:text-3xl lg:text-4xl uppercase tracking-tight truncate max-w-full flex items-center gap-2 ${
+                isCompleted && (winnerDisplayName === match.teamA?.name || (!winnerDisplayName && localScoreA > localScoreB))
+                  ? 'font-black text-emerald-700'
+                  : 'font-black text-slate-900'
+              }`}>
+                {isCompleted && (winnerDisplayName === match.teamA?.name || (!winnerDisplayName && localScoreA > localScoreB)) && (
+                  <span className="text-2xl">🏆</span>
+                )}
+                <span>{match.teamA?.name || 'Team A'}</span>
               </h2>
 
               <span className="text-xs font-bold text-slate-500 tracking-wide mt-0.5">
@@ -270,7 +195,11 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
             </div>
 
             {/* Team A Crest Emblem */}
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 border-2 border-emerald-200 flex items-center justify-center shadow-xs shrink-0 overflow-hidden relative">
+            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/80 border-2 flex items-center justify-center shadow-xs shrink-0 overflow-hidden relative ${
+              isCompleted && (winnerDisplayName === match.teamA?.name || (!winnerDisplayName && localScoreA > localScoreB))
+                ? 'border-emerald-500 ring-4 ring-emerald-500/20'
+                : 'border-emerald-200'
+            }`}>
               <span className="absolute inset-0 flex items-center justify-center font-black text-2xl sm:text-3xl text-emerald-700 select-none">
                 {match.teamA?.name ? match.teamA.name.slice(0, 2).toUpperCase() : 'TA'}
               </span>
@@ -303,7 +232,7 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                   {localScoreA}
                 </span>
                 <span className="text-2xl sm:text-3xl text-slate-500 font-light select-none">
-                  :
+                  -
                 </span>
                 <span className="text-5xl sm:text-6xl font-black text-white tabular-nums tracking-tighter drop-shadow-xs">
                   {localScoreB}
@@ -314,7 +243,10 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
               {isLive && (
                 <div className="flex items-center gap-1.5 mt-1 bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] font-black text-emerald-300 font-mono tracking-wider tabular-nums">
+                  <span
+                    data-testid="spectator-clock"
+                    className="text-[11px] font-black text-emerald-300 font-mono tracking-wider tabular-nums"
+                  >
                     {formatTime(currentRemaining)}
                   </span>
                 </div>
@@ -339,7 +271,11 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
           {/* Team B (Visiting Club) */}
           <div className="lg:col-span-5 flex items-center justify-between lg:justify-start gap-5 sm:gap-6 text-left">
             {/* Team B Crest Emblem */}
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/80 border-2 border-blue-200 flex items-center justify-center shadow-xs shrink-0 overflow-hidden relative order-2 lg:order-1">
+            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/80 border-2 flex items-center justify-center shadow-xs shrink-0 overflow-hidden relative order-2 lg:order-1 ${
+              isCompleted && (winnerDisplayName === match.teamB?.name || (!winnerDisplayName && localScoreB > localScoreA))
+                ? 'border-emerald-500 ring-4 ring-emerald-500/20'
+                : 'border-blue-200'
+            }`}>
               <span className="absolute inset-0 flex items-center justify-center font-black text-2xl sm:text-3xl text-blue-700 select-none">
                 {match.teamB?.name ? match.teamB.name.slice(0, 2).toUpperCase() : 'TB'}
               </span>
@@ -363,8 +299,15 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                 </span>
               </div>
 
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 uppercase tracking-tight truncate max-w-full">
-                {match.teamB?.name || 'Team B'}
+              <h2 className={`text-2xl sm:text-3xl lg:text-4xl uppercase tracking-tight truncate max-w-full flex items-center gap-2 ${
+                isCompleted && (winnerDisplayName === match.teamB?.name || (!winnerDisplayName && localScoreB > localScoreA))
+                  ? 'font-black text-emerald-700'
+                  : 'font-black text-slate-900'
+              }`}>
+                <span>{match.teamB?.name || 'Team B'}</span>
+                {isCompleted && (winnerDisplayName === match.teamB?.name || (!winnerDisplayName && localScoreB > localScoreA)) && (
+                  <span className="text-2xl">🏆</span>
+                )}
               </h2>
 
               <span className="text-xs font-bold text-slate-500 tracking-wide mt-0.5">

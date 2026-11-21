@@ -69,9 +69,7 @@ export default function AdminOverviewPage() {
         const live = allMatches.find(
           (m) => m.status === 'Live' || m.status === 'Half-Time' || m.status === 'Penalty Shootout'
         );
-        if (live) {
-          setLiveMatch(live);
-        }
+        setLiveMatch(live || null);
 
         // Compute top scorer
         const sorted = [...allPlayers].sort((a, b) => (b.goals || 0) - (a.goals || 0));
@@ -205,23 +203,54 @@ export default function AdminOverviewPage() {
           <div className="lg:col-span-7 flex flex-col gap-5">
             {/* Ongoing Match Card (Screen 3) */}
             {(() => {
-              const activeMatch = liveMatch || matches[0];
-              const isMatchLive = activeMatch?.status === 'Live' || activeMatch?.status === 'Half-Time' || activeMatch?.status === 'Penalty Shootout';
-              const isMatchCompleted = activeMatch?.status === 'Completed';
-              const teamAName = activeMatch?.teamA?.name || 'Alpha FC';
-              const teamBName = activeMatch?.teamB?.name || 'Beta United';
-              const scoreA = activeMatch?.score?.teamA ?? activeMatch?.teamAScore ?? 2;
-              const scoreB = activeMatch?.score?.teamB ?? activeMatch?.teamBScore ?? 1;
-              const penA = activeMatch?.shootout?.teamAPenaltyScore ?? 0;
-              const penB = activeMatch?.shootout?.teamBPenaltyScore ?? 0;
-              const hasShootout = Boolean(activeMatch?.shootout?.isShootout || activeMatch?.shootout?.isCompleted || penA > 0 || penB > 0);
-              const stage = activeMatch?.timer?.currentStage || activeMatch?.stage || (isMatchCompleted ? 'Match Completed' : 'Second Half');
-              const timeStr = activeMatch?.timer?.remainingTime !== undefined ? formatTime(activeMatch.timer.remainingTime) : '00:00';
+              const live = matches.find(
+                (m) => m.status === 'Live' || m.status === 'Half-Time' || m.status === 'Penalty Shootout'
+              );
+              const upcoming = matches.find((m) => m.status === 'Upcoming');
+              const completed = [...matches].reverse().find((m) => m.status === 'Completed');
+              const activeMatch = liveMatch || live || upcoming || completed || null;
 
-              const winnerId = typeof activeMatch?.winner === 'object' ? activeMatch?.winner?._id : activeMatch?.winner;
-              const shootoutWinnerId = typeof activeMatch?.shootout?.shootoutWinner === 'object' ? activeMatch?.shootout?.shootoutWinner?._id : activeMatch?.shootout?.shootoutWinner;
-              const teamAId = typeof activeMatch?.teamA === 'object' ? activeMatch?.teamA?._id : activeMatch?.teamA;
-              const teamBId = typeof activeMatch?.teamB === 'object' ? activeMatch?.teamB?._id : activeMatch?.teamB;
+              if (!activeMatch) {
+                return (
+                  <div className="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col items-center justify-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <Calendar className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-800">No Matches Scheduled</h3>
+                      <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                        There are currently no active or scheduled fixtures in the tournament.
+                      </p>
+                    </div>
+                    <Link
+                      href="/admin/schedule"
+                      className="mt-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Schedule New Match</span>
+                    </Link>
+                  </div>
+                );
+              }
+
+              const isMatchLive = activeMatch.status === 'Live' || activeMatch.status === 'Half-Time' || activeMatch.status === 'Penalty Shootout';
+              const isMatchCompleted = activeMatch.status === 'Completed';
+              const isMatchUpcoming = activeMatch.status === 'Upcoming';
+
+              const teamAName = activeMatch.teamA?.name || 'Team A';
+              const teamBName = activeMatch.teamB?.name || 'Team B';
+              const scoreA = activeMatch.score?.teamA ?? activeMatch.teamAScore ?? 0;
+              const scoreB = activeMatch.score?.teamB ?? activeMatch.teamBScore ?? 0;
+              const penA = activeMatch.shootout?.teamAPenaltyScore ?? 0;
+              const penB = activeMatch.shootout?.teamBPenaltyScore ?? 0;
+              const hasShootout = Boolean(activeMatch.shootout?.isShootout || activeMatch.shootout?.isCompleted || penA > 0 || penB > 0);
+              const stage = activeMatch.timer?.currentStage || activeMatch.stage || (isMatchCompleted ? 'Match Completed' : isMatchUpcoming ? 'Upcoming Fixture' : 'First Half');
+              const timeStr = activeMatch.timer?.remainingTime !== undefined ? formatTime(activeMatch.timer.remainingTime) : '00:00';
+
+              const winnerId = typeof activeMatch.winner === 'object' ? activeMatch.winner?._id : activeMatch.winner;
+              const shootoutWinnerId = typeof activeMatch.shootout?.shootoutWinner === 'object' ? activeMatch.shootout?.shootoutWinner?._id : activeMatch.shootout?.shootoutWinner;
+              const teamAId = typeof activeMatch.teamA === 'object' ? activeMatch.teamA?._id : activeMatch.teamA;
+              const teamBId = typeof activeMatch.teamB === 'object' ? activeMatch.teamB?._id : activeMatch.teamB;
 
               const isTeamAWinner = isMatchCompleted && (
                 (winnerId && teamAId && String(winnerId) === String(teamAId)) ||
@@ -237,11 +266,17 @@ export default function AdminOverviewPage() {
               );
               const winnerTeamName = isTeamAWinner ? teamAName : isTeamBWinner ? teamBName : null;
 
+              const cardTitle = isMatchLive
+                ? 'Ongoing Match'
+                : isMatchCompleted
+                ? 'Latest Match Result'
+                : 'Next Scheduled Match';
+
               return (
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col gap-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-                      {isMatchCompleted ? 'Match Result' : 'Ongoing Match'}
+                      {cardTitle}
                     </h2>
                     {isMatchCompleted ? (
                       <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-[11px] border border-emerald-200">
@@ -266,7 +301,7 @@ export default function AdminOverviewPage() {
                       <div className={`w-12 h-12 rounded-xl bg-white border flex items-center justify-center font-black shadow-2xs shrink-0 overflow-hidden ${
                         isTeamAWinner ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
                       }`}>
-                        {activeMatch?.teamA?.logo ? (
+                        {activeMatch.teamA?.logo ? (
                           <img src={activeMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
                         ) : (
                           <span>{teamAName.slice(0, 2).toUpperCase()}</span>
@@ -282,23 +317,34 @@ export default function AdminOverviewPage() {
 
                     {/* Center Score & Stage */}
                     <div className="flex flex-col items-center justify-center px-4 shrink-0">
-                      <div className="text-2xl font-black text-slate-900 tabular-nums tracking-tight">
-                        {scoreA} - {scoreB}
-                      </div>
-                      {hasShootout && (
-                        <div className="text-[11px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full mt-0.5 border border-purple-200 shadow-2xs">
-                          Pen: {penA} - {penB}
-                        </div>
+                      {isMatchUpcoming ? (
+                        <>
+                          <div className="text-base font-black text-slate-400 tracking-wider">VS</div>
+                          <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+                            {activeMatch.matchTime || '14:00'} • {activeMatch.stage || 'Fixture'}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-2xl font-black text-slate-900 tabular-nums tracking-tight">
+                            {scoreA} - {scoreB}
+                          </div>
+                          {hasShootout && (
+                            <div className="text-[11px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full mt-0.5 border border-purple-200 shadow-2xs">
+                              Pen: {penA} - {penB}
+                            </div>
+                          )}
+                          <div className={`text-[11px] font-extrabold mt-0.5 ${
+                            isMatchCompleted ? 'text-emerald-700' : 'text-emerald-600'
+                          }`}>
+                            {isMatchCompleted && winnerTeamName
+                              ? `🏆 ${winnerTeamName} Won${hasShootout ? ' on Penalties' : ''}`
+                              : isMatchCompleted
+                              ? 'Match Completed'
+                              : `${stage} • ${timeStr}`}
+                          </div>
+                        </>
                       )}
-                      <div className={`text-[11px] font-extrabold mt-0.5 ${
-                        isMatchCompleted ? 'text-emerald-700' : 'text-emerald-600'
-                      }`}>
-                        {isMatchCompleted && winnerTeamName
-                          ? `🏆 ${winnerTeamName} Won${hasShootout ? ' on Penalties' : ''}`
-                          : isMatchCompleted
-                          ? 'Match Completed'
-                          : `${stage} • ${timeStr}`}
-                      </div>
                     </div>
 
                     {/* Team B */}
@@ -312,7 +358,7 @@ export default function AdminOverviewPage() {
                       <div className={`w-12 h-12 rounded-xl bg-white border flex items-center justify-center font-black shadow-2xs shrink-0 overflow-hidden ${
                         isTeamBWinner ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
                       }`}>
-                        {activeMatch?.teamB?.logo ? (
+                        {activeMatch.teamB?.logo ? (
                           <img src={activeMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
                         ) : (
                           <span>{teamBName.slice(0, 2).toUpperCase()}</span>
@@ -323,11 +369,11 @@ export default function AdminOverviewPage() {
 
                   {/* Big Blue Open Match Control Button (Screen 3) */}
                   <Link
-                    href={`/admin/live-control${activeMatch?._id ? `?matchId=${activeMatch._id}` : ''}`}
+                    href={`/admin/live-control?matchId=${activeMatch._id}`}
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99]"
                   >
                     <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>Open Match Control</span>
+                    <span>{isMatchUpcoming ? 'Start Match in Live Control' : 'Open Match Control'}</span>
                   </Link>
                 </div>
               );
@@ -368,46 +414,13 @@ export default function AdminOverviewPage() {
                     </div>
                   ))
                 ) : (
-                  <>
-                    <div className="py-2.5 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
-                          ⚽
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">Goal added — Arjun N. (Alpha FC)</p>
-                          <p className="text-[11px] text-slate-400">Normal Goal in First Half</p>
-                        </div>
-                      </div>
-                      <span className="text-[11px] text-slate-400 font-medium">2 min ago</span>
+                  <div className="py-8 text-center flex flex-col items-center justify-center gap-1 text-slate-400">
+                    <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-sm mb-1">
+                      📋
                     </div>
-
-                    <div className="py-2.5 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
-                          🔄
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">Match updated — Alpha FC vs Beta United</p>
-                          <p className="text-[11px] text-slate-400">Clock resumed (Second Half)</p>
-                        </div>
-                      </div>
-                      <span className="text-[11px] text-slate-400 font-medium">5 min ago</span>
-                    </div>
-
-                    <div className="py-2.5 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
-                          👤
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">Player added — Rohan K. (Gamma SC)</p>
-                          <p className="text-[11px] text-slate-400">Roster updated #7 Forward</p>
-                        </div>
-                      </div>
-                      <span className="text-[11px] text-slate-400 font-medium">12 min ago</span>
-                    </div>
-                  </>
+                    <p className="text-xs font-bold text-slate-600">No recent match activity</p>
+                    <p className="text-[11px] text-slate-400">Match goals, cards, and events will appear here in real time.</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -426,93 +439,108 @@ export default function AdminOverviewPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              {matches.map((m, idx) => {
-                const isLive = m.status === 'Live' || m.status === 'Half-Time' || m.status === 'Penalty Shootout';
-                const isCompleted = m.status === 'Completed';
-                const scoreA = m.score?.teamA ?? m.teamAScore ?? 0;
-                const scoreB = m.score?.teamB ?? m.teamBScore ?? 0;
-                const penA = m.shootout?.teamAPenaltyScore ?? 0;
-                const penB = m.shootout?.teamBPenaltyScore ?? 0;
-                const hasShootout = Boolean(m.shootout?.isShootout || m.shootout?.isCompleted || penA > 0 || penB > 0);
-                const teamAName = m.teamA?.name || 'Team A';
-                const teamBName = m.teamB?.name || 'Team B';
+              {matches.length > 0 ? (
+                matches.map((m, idx) => {
+                  const isLive = m.status === 'Live' || m.status === 'Half-Time' || m.status === 'Penalty Shootout';
+                  const isCompleted = m.status === 'Completed';
+                  const scoreA = m.score?.teamA ?? m.teamAScore ?? 0;
+                  const scoreB = m.score?.teamB ?? m.teamBScore ?? 0;
+                  const penA = m.shootout?.teamAPenaltyScore ?? 0;
+                  const penB = m.shootout?.teamBPenaltyScore ?? 0;
+                  const hasShootout = Boolean(m.shootout?.isShootout || m.shootout?.isCompleted || penA > 0 || penB > 0);
+                  const teamAName = m.teamA?.name || 'Team A';
+                  const teamBName = m.teamB?.name || 'Team B';
 
-                const winnerId = typeof m.winner === 'object' ? m.winner?._id : m.winner;
-                const shootoutWinnerId = typeof m.shootout?.shootoutWinner === 'object' ? m.shootout?.shootoutWinner?._id : m.shootout?.shootoutWinner;
-                const teamAId = typeof m.teamA === 'object' ? m.teamA?._id : m.teamA;
-                const teamBId = typeof m.teamB === 'object' ? m.teamB?._id : m.teamB;
+                  const winnerId = typeof m.winner === 'object' ? m.winner?._id : m.winner;
+                  const shootoutWinnerId = typeof m.shootout?.shootoutWinner === 'object' ? m.shootout?.shootoutWinner?._id : m.shootout?.shootoutWinner;
+                  const teamAId = typeof m.teamA === 'object' ? m.teamA?._id : m.teamA;
+                  const teamBId = typeof m.teamB === 'object' ? m.teamB?._id : m.teamB;
 
-                const isTeamAWinner = isCompleted && (
-                  (winnerId && teamAId && String(winnerId) === String(teamAId)) ||
-                  (shootoutWinnerId && teamAId && String(shootoutWinnerId) === String(teamAId)) ||
-                  (scoreA > scoreB) ||
-                  (hasShootout && penA > penB)
-                );
-                const isTeamBWinner = isCompleted && (
-                  (winnerId && teamBId && String(winnerId) === String(teamBId)) ||
-                  (shootoutWinnerId && teamBId && String(shootoutWinnerId) === String(teamBId)) ||
-                  (scoreB > scoreA) ||
-                  (hasShootout && penB > penA)
-                );
-                const winnerName = isTeamAWinner ? teamAName : isTeamBWinner ? teamBName : (scoreA === scoreB && !hasShootout ? 'Draw' : null);
+                  const isTeamAWinner = isCompleted && (
+                    (winnerId && teamAId && String(winnerId) === String(teamAId)) ||
+                    (shootoutWinnerId && teamAId && String(shootoutWinnerId) === String(teamAId)) ||
+                    (scoreA > scoreB) ||
+                    (hasShootout && penA > penB)
+                  );
+                  const isTeamBWinner = isCompleted && (
+                    (winnerId && teamBId && String(winnerId) === String(teamBId)) ||
+                    (shootoutWinnerId && teamBId && String(shootoutWinnerId) === String(teamBId)) ||
+                    (scoreB > scoreA) ||
+                    (hasShootout && penB > penA)
+                  );
+                  const winnerName = isTeamAWinner ? teamAName : isTeamBWinner ? teamBName : (scoreA === scoreB && !hasShootout ? 'Draw' : null);
 
-                return (
-                  <div
-                    key={m._id || idx}
-                    className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition-all flex flex-col gap-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-mono">
-                          {m.matchTime || '14:00'}
-                        </span>
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <span className={isTeamAWinner ? 'text-emerald-700 font-black flex items-center gap-1' : 'font-extrabold text-slate-900'}>
-                            {isTeamAWinner && <span>🏆</span>}
-                            <span>{teamAName}</span>
+                  return (
+                    <div
+                      key={m._id || idx}
+                      className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs hover:border-slate-300 transition-all flex flex-col gap-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-mono">
+                            {m.matchTime || '14:00'}
                           </span>
-                          <span className="text-slate-400 font-normal">vs</span>
-                          <span className={isTeamBWinner ? 'text-emerald-700 font-black flex items-center gap-1' : 'font-extrabold text-slate-900'}>
-                            <span>{teamBName}</span>
-                            {isTeamBWinner && <span>🏆</span>}
-                          </span>
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <span className={isTeamAWinner ? 'text-emerald-700 font-black flex items-center gap-1' : 'font-extrabold text-slate-900'}>
+                              {isTeamAWinner && <span>🏆</span>}
+                              <span>{teamAName}</span>
+                            </span>
+                            <span className="text-slate-400 font-normal">vs</span>
+                            <span className={isTeamBWinner ? 'text-emerald-700 font-black flex items-center gap-1' : 'font-extrabold text-slate-900'}>
+                              <span>{teamBName}</span>
+                              {isTeamBWinner && <span>🏆</span>}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <span
-                        className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                          isLive
-                            ? 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse'
+                        <span
+                          className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                            isLive
+                              ? 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse'
+                              : isCompleted
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}
+                        >
+                          {isLive
+                            ? `LIVE • ${scoreA} - ${scoreB}`
                             : isCompleted
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}
-                      >
-                        {isLive
-                          ? `LIVE • ${scoreA} - ${scoreB}`
-                          : isCompleted
-                            ? `FINAL • ${scoreA} - ${scoreB}${hasShootout ? ` (Pen: ${penA}-${penB})` : ''}`
-                            : 'UPCOMING'}
-                      </span>
-                    </div>
+                              ? `FINAL • ${scoreA} - ${scoreB}${hasShootout ? ` (Pen: ${penA}-${penB})` : ''}`
+                              : 'UPCOMING'}
+                        </span>
+                      </div>
 
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-                      <span className={isCompleted && winnerName ? 'text-emerald-700 font-extrabold flex items-center gap-1' : 'text-slate-500 font-medium'}>
-                        {isCompleted && winnerName
-                          ? `🏆 Winner: ${winnerName} ${hasShootout ? `(Pen: ${penA}-${penB})` : ''}`
-                          : isCompleted
-                          ? 'Match Drawn (Full Time)'
-                          : m.venue || 'Main Ground'}
-                      </span>
-                      <Link
-                        href={`/admin/live-control?matchId=${m._id}`}
-                        className="font-bold text-blue-600 hover:text-blue-700"
-                      >
-                        Open Desk →
-                      </Link>
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                        <span className={isCompleted && winnerName ? 'text-emerald-700 font-extrabold flex items-center gap-1' : 'text-slate-500 font-medium'}>
+                          {isCompleted && winnerName
+                            ? `🏆 Winner: ${winnerName} ${hasShootout ? `(Pen: ${penA}-${penB})` : ''}`
+                            : isCompleted
+                            ? 'Match Drawn (Full Time)'
+                            : m.venue || 'Main Ground'}
+                        </span>
+                        <Link
+                          href={`/admin/live-control?matchId=${m._id}`}
+                          className="font-bold text-blue-600 hover:text-blue-700"
+                        >
+                          Open Desk →
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col items-center justify-center text-center">
+                  <Calendar className="w-8 h-8 text-slate-300 mb-2" />
+                  <p className="text-xs font-bold text-slate-600">No matches found in the schedule</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Use the scheduler to dispatch fixtures between registered teams.</p>
+                  <Link
+                    href="/admin/schedule"
+                    className="mt-3 text-xs font-bold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Schedule New Match</span>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 

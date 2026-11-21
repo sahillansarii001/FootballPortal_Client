@@ -425,8 +425,28 @@ export default function AdminLiveControlPage() {
     setTimeout(() => setActionMessage(null), 5000);
   };
 
-  const showError = (err: string) => {
-    setActionError(err);
+  const showError = (err: any) => {
+    let msg = 'An unexpected error occurred';
+    if (typeof err === 'string') {
+      msg = err;
+    } else if (err && typeof err === 'object') {
+      if (typeof err.message === 'string') {
+        msg = err.message;
+      } else if (Array.isArray(err.errors) && err.errors[0]?.message) {
+        msg = err.errors[0].message;
+      } else if (err.error && typeof err.error === 'string') {
+        msg = err.error;
+      } else if (err.error && typeof err.error === 'object' && err.error.message) {
+        msg = err.error.message;
+      } else {
+        try {
+          msg = err.message || JSON.stringify(err);
+        } catch (e) {
+          msg = 'Operation failed';
+        }
+      }
+    }
+    setActionError(msg);
     setActionMessage(null);
     setTimeout(() => setActionError(null), 5000);
   };
@@ -700,6 +720,51 @@ export default function AdminLiveControlPage() {
     showNotification(`Match transitioned to Extra Time (Draw Decider)! 2:00 clock is LIVE.`);
   };
 
+  // 5. Draw Decider Penalty Shootout (3 Kicks + Sudden Death)
+  const handleStartPenaltyShootout = async () => {
+    if (!selectedMatch) return;
+    const matchId = selectedMatch._id || (selectedMatch as any)?.matchId;
+    if (!matchId || matchId === 'undefined') return;
+
+    setTimerRunning(false);
+    setCurrentStage('Penalty Shootout');
+    setRemainingSeconds(0);
+    setCompletedStages((prev) =>
+      Array.from(new Set([...prev, 'First Half', 'Half-Time Break', 'Second Half', 'Extra Time (Draw Decider)', 'Extra Time']))
+    );
+
+    setSelectedMatch((prev) =>
+      prev
+        ? ({
+            ...prev,
+            _id: prev._id || matchId,
+            status: 'Penalty Shootout',
+            timer: {
+              ...(prev.timer || {}),
+              currentStage: 'Penalty Shootout',
+              remainingTime: 0,
+              stageDuration: prev.timer?.stageDuration ?? 0,
+              isRunning: false,
+            },
+            shootout: { ...(prev.shootout || {}), isShootout: true, isCompleted: false },
+          } as Match)
+        : null
+    );
+
+    try {
+      await adminService.setStage(matchId, 'Penalty Shootout', 0);
+      const updated = await matchService.getMatchById(matchId);
+      if (updated && updated._id) {
+        setSelectedMatch(updated);
+      }
+    } catch (err) {}
+
+    showNotification('Penalty Shootout activated! Record 3 regulation kicks per team below.');
+    setTimeout(() => {
+      document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
+    }, 150);
+  };
+
   // Auto-Advance Next Stage in Sequence via Backend Authority
   const handleAdvanceNextStage = async () => {
     if (!selectedMatch) return;
@@ -872,9 +937,21 @@ export default function AdminLiveControlPage() {
   // 3-Kick Regulation Penalty Recorder
   const handleRecordPenaltyKick = async (team: 'A' | 'B', outcome: 'Goal' | 'Saved' | 'Missed') => {
     if (!selectedMatch) return;
-    if (selectedMatch.status === 'Completed' || selectedMatch.shootout?.isCompleted) {
-      showError('This match has already been completed and concluded.');
+    const matchId = selectedMatch._id || (selectedMatch as any)?.matchId;
+    if (!matchId || matchId === 'undefined') {
+      showError('No active match loaded.');
       return;
+    }
+
+    if (isShootoutConcluded) {
+      showError('This penalty shootout has already been concluded with a decided winner.');
+      return;
+    }
+
+    if (selectedMatch.status !== 'Penalty Shootout') {
+      try {
+        await adminService.setStage(matchId, 'Penalty Shootout', 0);
+      } catch (err) {}
     }
 
     const teamKicks = penaltyKicks.filter((k) => k.team === team);
@@ -930,7 +1007,7 @@ export default function AdminLiveControlPage() {
     const teamBId = typeof rawTeamB === 'object' && rawTeamB ? (rawTeamB as any)._id : rawTeamB;
     const teamId = team === 'A' ? teamAId : teamBId;
 
-    const res = await adminService.recordPenalty(selectedMatch._id, {
+    const res = await adminService.recordPenalty(matchId, {
       team: teamId,
       teamId: teamId,
       player: kicker._id,
@@ -981,10 +1058,89 @@ export default function AdminLiveControlPage() {
       res?.data?.shootoutState?.teamBPenaltiesTaken || 0
     );
 
-    if (res?.data?.evaluation?.isDecided || (updatedKicksA >= 3 && updatedKicksB >= 3 && newPenA !== newPenB)) {
+    const isDecided = Boolean(
+      res?.data?.evaluation?.isDecided ||
+      (updatedKicksA >= 3 && updatedKicksB >= 3 && newPenA !== newPenB)
+    );
+
+    if (isDecided) {
+      const winningTeamId = newPenA > newPenB ? teamAId : teamBId;
       const winningTeamName = newPenA > newPenB ? teamAName : teamBName;
+      const finalMatchResult = `${winningTeamName} won on penalties (${newPenA} - ${newPenB})`;
+
+      const completedShootout = {
+        isShootout: true,
+        isCompleted: true,
+        teamAPenaltyScore: newPenA,
+        teamBPenaltyScore: newPenB,
+        teamAPenaltiesTaken: updatedKicksA,
+        teamBPenaltiesTaken: updatedKicksB,
+        shootoutWinner: winningTeamId,
+      };
+
+      setSelectedMatch((prev) =>
+        prev
+          ? ({
+              ...prev,
+              status: 'Completed',
+              isFinalized: true,
+              winner: winningTeamId,
+              matchResult: finalMatchResult,
+              shootout: {
+                ...(prev.shootout || {}),
+                ...completedShootout,
+              },
+              timer: {
+                ...(prev.timer || {}),
+                isRunning: false,
+                isPaused: false,
+                remainingTime: 0,
+                currentStage: 'Completed',
+                stageDuration: prev.timer?.stageDuration ?? 0,
+              },
+            } as Match)
+          : null
+      );
+
+      setMatches((prev) =>
+        prev.map((m) =>
+          m._id === selectedMatch._id
+            ? ({
+                ...m,
+                status: 'Completed',
+                isFinalized: true,
+                winner: winningTeamId,
+                matchResult: finalMatchResult,
+                shootout: {
+                  ...(m.shootout || {}),
+                  ...completedShootout,
+                },
+              } as Match)
+            : m
+        )
+      );
+
+      try {
+        await adminService.finalizeMatch(matchId, {
+          penaltyScoreA: newPenA,
+          penaltyScoreB: newPenB,
+          shootout: completedShootout,
+          winner: winningTeamId,
+          shootoutWinner: winningTeamId,
+          matchResult: finalMatchResult,
+        });
+
+        await adminService.updateMatch(matchId, {
+          status: 'Completed',
+          isFinalized: true,
+          winner: winningTeamId,
+          matchResult: finalMatchResult,
+          shootout: completedShootout,
+        } as any);
+      } catch (err) {}
+
       showNotification(
-        `🏆 SHOOTOUT DECIDED! ${winningTeamName} wins ${newPenA} - ${newPenB}! Click "Finalize Match Victory" to complete.`
+        `🏆 SHOOTOUT DECIDED! ${winningTeamName} WINS THE MATCH ${newPenA} - ${newPenB} ON PENALTIES! Match is officially completed.`
       );
     } else if (updatedKicksA >= 3 && updatedKicksB >= 3 && newPenA === newPenB) {
       showNotification(
@@ -1137,28 +1293,58 @@ export default function AdminLiveControlPage() {
       },
     ]);
 
-    if (shooterPlayer?._id) {
-      await adminService.recordDecisiveKick(selectedMatch._id, {
+    const rawTeamA = selectedMatch.teamA;
+    const rawTeamB = selectedMatch.teamB;
+    const teamAId = typeof rawTeamA === 'object' && rawTeamA ? (rawTeamA as any)._id : rawTeamA;
+    const teamBId = typeof rawTeamB === 'object' && rawTeamB ? (rawTeamB as any)._id : rawTeamB;
+    const championshipWinnerId = championshipWinnerName === teamAName ? teamAId : teamBId;
+    const matchId = selectedMatch._id || (selectedMatch as any)?.matchId;
+
+    const decisiveShootoutData = {
+      isShootout: true,
+      teamAPenaltyScore: finalPenaltyA,
+      teamBPenaltyScore: finalPenaltyB,
+      isCompleted: true,
+      shootoutWinner: championshipWinnerId,
+    };
+
+    if (shooterPlayer?._id && matchId) {
+      await adminService.recordDecisiveKick(matchId, {
         player: shooterPlayer._id,
         outcome,
       });
     }
 
-    await adminService.finalizeMatch(selectedMatch._id);
+    const finalMatchResult = `${championshipWinnerName} won (${outcome === 'Goal' ? 'Sudden Death Goal' : 'Decisive Penalty Save'})`;
 
-    const finalMatchResult = `${championshipWinnerName} Victory (${outcome === 'Goal' ? 'Sudden Death Goal' : 'Decisive Penalty Save'})`;
+    if (matchId) {
+      await adminService.finalizeMatch(matchId, {
+        penaltyScoreA: finalPenaltyA,
+        penaltyScoreB: finalPenaltyB,
+        shootout: decisiveShootoutData,
+        winner: championshipWinnerId,
+        shootoutWinner: championshipWinnerId,
+        matchResult: finalMatchResult,
+      });
+
+      await adminService.updateMatch(matchId, {
+        status: 'Completed',
+        isFinalized: true,
+        winner: championshipWinnerId,
+        matchResult: finalMatchResult,
+        shootout: decisiveShootoutData,
+      } as any);
+    }
+
     setSelectedMatch((prev) =>
       prev
         ? {
             ...prev,
             status: 'Completed',
+            isFinalized: true,
+            winner: championshipWinnerId,
             matchResult: finalMatchResult,
-            shootout: {
-              isShootout: true,
-              teamAPenaltyScore: finalPenaltyA,
-              teamBPenaltyScore: finalPenaltyB,
-              isCompleted: true,
-            },
+            shootout: decisiveShootoutData,
           }
         : null
     );
@@ -1169,7 +1355,10 @@ export default function AdminLiveControlPage() {
           ? {
               ...m,
               status: 'Completed',
+              isFinalized: true,
+              winner: championshipWinnerId,
               matchResult: finalMatchResult,
+              shootout: decisiveShootoutData,
             }
           : m
       )
@@ -1183,6 +1372,8 @@ export default function AdminLiveControlPage() {
   // Finalize / Complete Match directly without blocking popups
   const handleFinalizeMatch = async () => {
     if (!selectedMatch) return;
+    const matchId = selectedMatch._id || (selectedMatch as any)?.matchId;
+    if (!matchId || matchId === 'undefined') return;
 
     setTimerRunning(false);
     setCurrentStage('Completed');
@@ -1235,7 +1426,7 @@ export default function AdminLiveControlPage() {
       shootoutWinner: winnerId,
     };
 
-    await adminService.finalizeMatch(selectedMatch._id, {
+    await adminService.finalizeMatch(matchId, {
       penaltyScoreA,
       penaltyScoreB,
       shootout: shootoutData,
@@ -1244,7 +1435,7 @@ export default function AdminLiveControlPage() {
       matchResult: resultStr,
     });
 
-    await adminService.updateMatch(selectedMatch._id, {
+    await adminService.updateMatch(matchId, {
       status: 'Completed',
       isFinalized: true,
       winner: winnerId,
@@ -1430,13 +1621,17 @@ export default function AdminLiveControlPage() {
   const recordedKicksB = penaltyKicks.filter((k) => k.team === 'B').length;
   const kicksA = Math.max(recordedKicksA, selectedMatch?.shootout?.teamAPenaltiesTaken || 0);
   const kicksB = Math.max(recordedKicksB, selectedMatch?.shootout?.teamBPenaltiesTaken || 0);
+
+  const isDecidedByWinner = Boolean(
+    selectedMatch?.shootout?.shootoutWinner ||
+    tossState.isResolved ||
+    (selectedMatch?.status === 'Completed' && selectedMatch?.winner && (penaltyScoreA > 0 || penaltyScoreB > 0))
+  );
+  const regulationKicksComplete = kicksA >= 3 && kicksB >= 3;
+  const isShootoutTiedAfterThree = regulationKicksComplete && penaltyScoreA === penaltyScoreB && !isDecidedByWinner;
+  const hasShootoutWinner = isDecidedByWinner || (regulationKicksComplete && penaltyScoreA !== penaltyScoreB);
+  const isShootoutConcluded = hasShootoutWinner || tossState.isResolved;
   const isMatchCompleted = selectedMatch?.status === 'Completed';
-  const isShootoutConcluded = isMatchCompleted || Boolean(selectedMatch?.shootout?.isCompleted);
-  const regulationKicksComplete = (kicksA >= 3 && kicksB >= 3) || isShootoutConcluded;
-  const isShootoutTiedAfterThree = !isShootoutConcluded && kicksA >= 3 && kicksB >= 3 && penaltyScoreA === penaltyScoreB;
-  const hasShootoutWinner = isShootoutConcluded
-    ? (penaltyScoreA !== penaltyScoreB || Boolean(selectedMatch?.winner) || Boolean(selectedMatch?.shootout?.shootoutWinner))
-    : (regulationKicksComplete && penaltyScoreA !== penaltyScoreB);
   const shootoutLeaderOrWinner =
     penaltyScoreA > penaltyScoreB
       ? teamAName
@@ -1518,14 +1713,14 @@ export default function AdminLiveControlPage() {
       {actionMessage && (
         <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3.5 flex items-center gap-2 text-xs font-bold shadow-xs animate-in fade-in duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{actionMessage}</span>
+          <span>{typeof actionMessage === 'string' ? actionMessage : (actionMessage as any)?.message || JSON.stringify(actionMessage)}</span>
         </div>
       )}
 
       {actionError && (
         <div className="bg-rose-50 border border-rose-300 text-rose-900 rounded-xl p-3.5 flex items-center gap-2 text-xs font-bold shadow-xs animate-in fade-in duration-200">
           <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-          <span>{actionError}</span>
+          <span>{typeof actionError === 'string' ? actionError : (actionError as any)?.message || JSON.stringify(actionError)}</span>
         </div>
       )}
 
@@ -1791,7 +1986,11 @@ export default function AdminLiveControlPage() {
             <button
               type="button"
               onClick={() => {
-                document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
+                if (scoreA === scoreB && !currentStage.includes('Penalty') && !isShootoutConcluded) {
+                  handleStartPenaltyShootout();
+                } else {
+                  document.getElementById('penalty-shootout-console')?.scrollIntoView({ behavior: 'smooth' });
+                }
               }}
               className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 hover:border-indigo-300 hover:shadow-xs transition-all flex items-center gap-4 text-left group cursor-pointer active:scale-[0.99]"
             >
@@ -1800,7 +1999,13 @@ export default function AdminLiveControlPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs sm:text-sm font-extrabold text-slate-800">Penalty Shootout Console</div>
-                <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Regulation 3 kicks & sudden death decider</div>
+                <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                  {currentStage.includes('Penalty')
+                    ? 'Active: 3 kicks & sudden death decider'
+                    : scoreA === scoreB
+                    ? 'Scores tied! Click to start shootout'
+                    : 'Regulation 3 kicks & sudden death decider'}
+                </div>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
             </button>
@@ -2012,6 +2217,68 @@ export default function AdminLiveControlPage() {
                   : 'Active only if scores are tied at full time'}
               </span>
             </button>
+
+            {/* 5. Draw Decider Penalty Shootout (3 Kicks + Sudden Death) */}
+            <button
+              type="button"
+              disabled={isShootoutConcluded || (scoreA !== scoreB && !currentStage.includes('Penalty') && !selectedMatch?.shootout?.isShootout)}
+              onClick={isShootoutConcluded ? undefined : handleStartPenaltyShootout}
+              className={`py-3 px-3 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 border transition-all text-center col-span-1 sm:col-span-2 ${
+                isShootoutConcluded
+                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60 shadow-none'
+                  : currentStage.includes('Penalty')
+                  ? 'bg-indigo-500/20 text-indigo-900 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
+                  : scoreA === scoreB
+                  ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-indigo-300 shadow-xs active:scale-95'
+                  : 'bg-surface-container-low text-on-surface-variant/40 border-surface-container cursor-not-allowed opacity-50 shadow-none'
+              }`}
+              title={
+                isShootoutConcluded
+                  ? 'Penalty shootout concluded'
+                  : scoreA === scoreB
+                  ? 'Scores tied! Click to start Penalty Shootout'
+                  : 'Only enabled if scores are tied'
+              }
+            >
+              <span className="font-extrabold flex items-center gap-1.5 flex-wrap justify-center">
+                {isShootoutConcluded ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="line-through text-slate-500">5. Penalty Shootout</span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full font-bold">
+                      DONE
+                    </span>
+                  </>
+                ) : currentStage.includes('Penalty') ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse shrink-0"></span>
+                    <span>5. Penalty Shootout (3 Kicks)</span>
+                    <span className="text-[9px] bg-indigo-600 text-white px-1.5 py-0.2 rounded-full font-bold">
+                      IN PLAY
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Target className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span>5. Penalty Shootout if Tied</span>
+                    {scoreA === scoreB && (
+                      <span className="text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded-full font-black uppercase">
+                        TIED
+                      </span>
+                    )}
+                  </>
+                )}
+              </span>
+              <span className="text-[10px] text-on-surface-variant font-medium">
+                {isShootoutConcluded
+                  ? 'Shootout decided'
+                  : currentStage.includes('Penalty')
+                  ? '3 penalty kicks per team in progress'
+                  : scoreA === scoreB
+                  ? 'Scores tied! Click to start official 3-kick shootout'
+                  : 'Active only if scores are tied'}
+              </span>
+            </button>
           </div>
 
           {/* Clock Adjustments Strip */}
@@ -2047,7 +2314,7 @@ export default function AdminLiveControlPage() {
         </div>
 
         {/* Right Column (5 cols): 3-Kick Penalty Shootout + Sudden Death Coin Toss (Conditional Tie-Breaker) */}
-        {(Boolean(selectedMatch?.shootout?.isShootout) || currentStage.includes('Penalty') || (isExtraTimeDone && scoreA === scoreB)) ? (
+        {(Boolean(selectedMatch?.shootout?.isShootout) || currentStage.includes('Penalty') || (isExtraTimeDone && scoreA === scoreB) || (scoreA === scoreB && isSecondHalfDone)) ? (
           <div id="penalty-shootout-console" className="lg:col-span-5 bg-surface-container-lowest p-4 sm:p-6 rounded-2xl border border-surface-container-high shadow-xs flex flex-col gap-4 animate-in fade-in">
             <div className="flex items-center justify-between pb-3 border-b border-surface-container-high">
               <div className="flex items-center gap-2">
@@ -2077,21 +2344,50 @@ export default function AdminLiveControlPage() {
               </span>
             </div>
 
+            {/* Shootout Activation Banner if tied and not yet in Penalty Shootout stage */}
+            {!currentStage.includes('Penalty') && selectedMatch?.status !== 'Penalty Shootout' && !isShootoutConcluded && (
+              <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between gap-3 text-xs animate-in fade-in">
+                <div>
+                  <div className="font-extrabold text-indigo-950 flex items-center gap-1.5">
+                    <span>⚡</span>
+                    <span>Ready for Penalty Shootout</span>
+                  </div>
+                  <div className="text-[11px] text-indigo-700">Scores are level ({scoreA} - {scoreB}). Click to activate official shootout.</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleStartPenaltyShootout}
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-lg shadow-xs transition-all active:scale-95 shrink-0 flex items-center gap-1"
+                >
+                  <Target className="w-3.5 h-3.5" />
+                  <span>Start Shootout</span>
+                </button>
+              </div>
+            )}
+
             {/* Shootout Decided Alert if winner after 3 kicks */}
             {hasShootoutWinner && (
               <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-black">
-                  <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>
-                    SHOOTOUT DECIDED! 🏆 {shootoutLeaderOrWinner || (penaltyScoreA > penaltyScoreB ? teamAName : teamBName)} wins {Math.max(penaltyScoreA, penaltyScoreB)} - {Math.min(penaltyScoreA, penaltyScoreB)}!
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-black">
+                    <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      SHOOTOUT CONCLUDED! 🏆 {shootoutLeaderOrWinner || (penaltyScoreA > penaltyScoreB ? teamAName : teamBName)} WINS ({Math.max(penaltyScoreA, penaltyScoreB)} - {Math.min(penaltyScoreA, penaltyScoreB)})!
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[10px] uppercase tracking-wider shrink-0">
+                    MATCH COMPLETED
                   </span>
                 </div>
+                <p className="text-[11px] text-emerald-800 font-medium">
+                  The match has automatically concluded and all tournament points and player records are recorded.
+                </p>
                 {selectedMatch?.status !== 'Completed' && (
                   <button
                     onClick={handleFinalizeMatch}
-                    className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider"
+                    className="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
                   >
-                    Finalize Match Victory
+                    Confirm Match Victory
                   </button>
                 )}
               </div>
@@ -2296,7 +2592,7 @@ export default function AdminLiveControlPage() {
             )}
 
             {/* 3-Kick Recorder Columns (Visible during regulation 3 kicks only) */}
-            {!regulationKicksComplete && !hasShootoutWinner && !isShootoutConcluded && (
+            {!regulationKicksComplete && !hasShootoutWinner && !isShootoutConcluded && selectedMatch?.status !== 'Completed' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Team A Kicks (Max 3) */}
                 <div className="bg-surface-container-low p-3.5 rounded-xl border border-surface-container flex flex-col gap-2.5">
@@ -2317,7 +2613,7 @@ export default function AdminLiveControlPage() {
                     <select
                       value={selectedKickerA}
                       onChange={(e) => setSelectedKickerA(e.target.value)}
-                      disabled={kicksA >= 3}
+                      disabled={kicksA >= 3 || hasShootoutWinner || isShootoutConcluded || selectedMatch?.status === 'Completed'}
                       className="w-full px-2.5 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer shadow-2xs truncate disabled:opacity-40"
                     >
                       {teamAPlayers.map((p) => (
@@ -2333,7 +2629,7 @@ export default function AdminLiveControlPage() {
                     <button
                       type="button"
                       onClick={() => handleRecordPenaltyKick('A', 'Goal')}
-                      disabled={kicksA >= 3}
+                      disabled={kicksA >= 3 || hasShootoutWinner || isShootoutConcluded || selectedMatch?.status === 'Completed'}
                       className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
                     >
                       ⚽ Goal
@@ -2341,7 +2637,7 @@ export default function AdminLiveControlPage() {
                     <button
                       type="button"
                       onClick={() => handleRecordPenaltyKick('A', 'Saved')}
-                      disabled={kicksA >= 3}
+                      disabled={kicksA >= 3 || hasShootoutWinner || isShootoutConcluded || selectedMatch?.status === 'Completed'}
                       className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
                     >
                       🧤 Saved
@@ -2349,7 +2645,7 @@ export default function AdminLiveControlPage() {
                     <button
                       type="button"
                       onClick={() => handleRecordPenaltyKick('A', 'Missed')}
-                      disabled={kicksA >= 3}
+                      disabled={kicksA >= 3 || hasShootoutWinner || isShootoutConcluded || selectedMatch?.status === 'Completed'}
                       className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
                     >
                       ❌ Missed
@@ -2376,7 +2672,7 @@ export default function AdminLiveControlPage() {
                     <select
                       value={selectedKickerB}
                       onChange={(e) => setSelectedKickerB(e.target.value)}
-                      disabled={kicksB >= 3}
+                      disabled={kicksB >= 3 || hasShootoutWinner || isShootoutConcluded || selectedMatch?.status === 'Completed'}
                       className="w-full px-2.5 py-2 bg-surface-container-lowest border border-surface-container-high rounded-xl text-xs font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer shadow-2xs truncate disabled:opacity-40"
                     >
                       {teamBPlayers.map((p) => (
@@ -2392,7 +2688,7 @@ export default function AdminLiveControlPage() {
                     <button
                       type="button"
                       onClick={() => handleRecordPenaltyKick('B', 'Goal')}
-                      disabled={kicksB >= 3}
+                      disabled={kicksB >= 3 || hasShootoutWinner || isShootoutConcluded || selectedMatch?.status === 'Completed'}
                       className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
                     >
                       ⚽ Goal
@@ -2400,7 +2696,7 @@ export default function AdminLiveControlPage() {
                     <button
                       type="button"
                       onClick={() => handleRecordPenaltyKick('B', 'Saved')}
-                      disabled={kicksB >= 3}
+                      disabled={kicksB >= 3 || hasShootoutWinner || isShootoutConcluded || selectedMatch?.status === 'Completed'}
                       className="py-1.5 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
                     >
                       🧤 Saved
@@ -2408,7 +2704,7 @@ export default function AdminLiveControlPage() {
                     <button
                       type="button"
                       onClick={() => handleRecordPenaltyKick('B', 'Missed')}
-                      disabled={kicksB >= 3}
+                      disabled={kicksB >= 3 || hasShootoutWinner || isShootoutConcluded || selectedMatch?.status === 'Completed'}
                       className="py-1.5 px-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-xs transition-all active:scale-95 disabled:opacity-40"
                     >
                       ❌ Missed

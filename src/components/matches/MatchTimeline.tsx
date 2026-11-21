@@ -6,14 +6,17 @@ interface MatchTimelineProps {
 }
 
 export const MatchTimeline: React.FC<MatchTimelineProps> = ({ timeline }) => {
-  // If timeline has events, sort them
-  const events = timeline && timeline.length > 0 ? timeline : [
-    { id: '1', type: 'GOAL_SCORED', matchTime: "58'", title: 'Arjun N.', detail: { description: '(Alpha FC)' } },
-    { id: '2', type: 'YELLOW_CARD', matchTime: "46'", title: 'Rohan K.', detail: { description: '(Beta United)' } },
-    { id: '3', type: 'SUBSTITUTION', matchTime: "42'", title: 'Aman S. in, Vikas T. out', detail: { description: '(Alpha FC)' } },
-    { id: '4', type: 'GOAL_SCORED', matchTime: "28'", title: 'Karan M.', detail: { description: '(Beta United)' } },
-    { id: '5', type: 'GOAL_SCORED', matchTime: "12'", title: 'Arjun N.', detail: { description: '(Alpha FC)' } },
-  ];
+  const events = Array.isArray(timeline) ? timeline : [];
+
+  if (events.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col items-center justify-center text-center py-8">
+        <span className="text-2xl mb-2">⏱️</span>
+        <p className="text-xs font-bold text-slate-700">No match events logged</p>
+        <p className="text-[11px] text-slate-400 mt-0.5">Goals, cards, and substitutions will appear here chronologically.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col gap-3 select-none">

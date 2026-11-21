@@ -22,13 +22,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const matchesCount = stats?.totalMatches ?? 24;
   const goalsCount = stats?.totalGoals ?? 56;
 
-  // Live match details fallback if demoing
-  const liveTeamA = liveMatch?.teamA?.name || 'Alpha FC';
-  const liveTeamB = liveMatch?.teamB?.name || 'Beta United';
-  const liveScoreA = liveMatch?.score?.teamA ?? liveMatch?.teamAScore ?? 2;
-  const liveScoreB = liveMatch?.score?.teamB ?? liveMatch?.teamBScore ?? 1;
-  const liveStage = liveMatch?.timer?.currentStage || liveMatch?.currentStage || 'Second Half';
-  const liveTime = liveMatch?.timer?.remainingTime !== undefined ? formatTime(liveMatch.timer.remainingTime) : '02:36';
+  // Live match details if active
+  const liveTeamA = liveMatch?.teamA?.name || 'Team A';
+  const liveTeamB = liveMatch?.teamB?.name || 'Team B';
+  const liveScoreA = liveMatch?.score?.teamA ?? liveMatch?.teamAScore ?? 0;
+  const liveScoreB = liveMatch?.score?.teamB ?? liveMatch?.teamBScore ?? 0;
+  const liveStage = liveMatch?.timer?.currentStage || liveMatch?.currentStage || 'First Half';
+  const liveTime = liveMatch?.timer?.remainingTime !== undefined ? formatTime(liveMatch.timer.remainingTime) : '00:00';
   const livePenA = liveMatch?.shootout?.teamAPenaltyScore ?? 0;
   const livePenB = liveMatch?.shootout?.teamBPenaltyScore ?? 0;
   const hasLivePenalties = Boolean(
@@ -49,10 +49,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             ? liveTeamB
             : null;
 
-  // Upcoming fixture fallback if demoing
-  const upcomingTeamA = upcomingMatch?.teamA?.name || 'Delta FC';
-  const upcomingTeamB = upcomingMatch?.teamB?.name || 'Gamma SC';
-  const upcomingTimeStr = upcomingMatch?.matchTime || 'Tomorrow • 04:00 PM';
+  // Upcoming fixture if scheduled
+  const upcomingTeamA = upcomingMatch?.teamA?.name || 'Team A';
+  const upcomingTeamB = upcomingMatch?.teamB?.name || 'Team B';
+  const upcomingTimeStr = upcomingMatch?.matchTime || 'Upcoming';
 
   return (
     <div className="w-full flex flex-col gap-6 mb-12 select-none animate-in fade-in duration-300">
@@ -174,151 +174,207 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       {/* 3. FEATURED MATCH CARDS ROW (LIVE MATCH NOW + UPCOMING FIXTURE) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Left: Live Match Now Card */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-400/60 transition-all">
-          {/* Card Top Strip */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-                Live Match Now
-              </span>
-            </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500 text-white font-extrabold text-[10px] uppercase tracking-wider shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-              LIVE
-            </span>
-          </div>
-
-          {/* Teams & Score Display */}
-          <div className="flex items-center justify-between py-4 px-2">
-            {/* Team A */}
-            <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-              <div className={`w-12 h-12 rounded-xl bg-slate-100 border flex items-center justify-center font-black text-sm overflow-hidden shrink-0 shadow-xs ${
-                liveWinnerName === liveTeamA ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
-              }`}>
-                {liveMatch?.teamA?.logo ? (
-                  <img src={liveMatch.teamA.logo} alt={liveTeamA} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{(liveTeamA.slice(0, 2) || 'A').toUpperCase()}</span>
-                )}
+        {liveMatch ? (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-400/60 transition-all">
+            {/* Card Top Strip */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                  Live Match Now
+                </span>
               </div>
-              <span className={`text-xs sm:text-sm truncate max-w-[120px] text-center flex items-center justify-center gap-1 ${
-                liveWinnerName === liveTeamA ? 'font-black text-emerald-700' : 'font-bold text-slate-900'
-              }`}>
-                {liveWinnerName === liveTeamA && <span>🏆</span>}
-                <span>{liveTeamA}</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500 text-white font-extrabold text-[10px] uppercase tracking-wider shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                LIVE
               </span>
             </div>
 
-            {/* Score & Stage Pill */}
-            <div className="flex flex-col items-center justify-center px-4">
-              <div className="flex items-center gap-3 font-black text-2xl sm:text-3xl text-slate-900 tracking-tight tabular-nums">
-                <span>{liveScoreA}</span>
-                <span className="text-slate-300 font-light">-</span>
-                <span>{liveScoreB}</span>
-              </div>
-              {hasLivePenalties && (
-                <div className="mt-1 px-3 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-800 text-[11px] font-extrabold flex items-center gap-1 shadow-2xs">
-                  <span>🥅</span>
-                  <span>PK: {livePenA} - {livePenB}</span>
-                  {liveWinnerName && (
-                    <span className="text-emerald-700 font-black ml-0.5">({liveWinnerName} Won)</span>
+            {/* Teams & Score Display */}
+            <div className="flex items-center justify-between py-4 px-2">
+              {/* Team A */}
+              <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                <div className={`w-12 h-12 rounded-xl bg-slate-100 border flex items-center justify-center font-black text-sm overflow-hidden shrink-0 shadow-xs ${
+                  liveWinnerName === liveTeamA ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
+                }`}>
+                  {liveMatch?.teamA?.logo ? (
+                    <img src={liveMatch.teamA.logo} alt={liveTeamA} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{(liveTeamA.slice(0, 2) || 'A').toUpperCase()}</span>
                   )}
                 </div>
-              )}
-              <div className="mt-1 px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
-                {liveStage} • {liveTime}
+                <span className={`text-xs sm:text-sm truncate max-w-[120px] text-center flex items-center justify-center gap-1 ${
+                  liveWinnerName === liveTeamA ? 'font-black text-emerald-700' : 'font-bold text-slate-900'
+                }`}>
+                  {liveWinnerName === liveTeamA && <span>🏆</span>}
+                  <span>{liveTeamA}</span>
+                </span>
+              </div>
+
+              {/* Score & Stage Pill */}
+              <div className="flex flex-col items-center justify-center px-4">
+                <div className="flex items-center gap-3 font-black text-2xl sm:text-3xl text-slate-900 tracking-tight tabular-nums">
+                  <span>{liveScoreA}</span>
+                  <span className="text-slate-300 font-light">-</span>
+                  <span>{liveScoreB}</span>
+                </div>
+                {hasLivePenalties && (
+                  <div className="mt-1 px-3 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-800 text-[11px] font-extrabold flex items-center gap-1 shadow-2xs">
+                    <span>🥅</span>
+                    <span>PK: {livePenA} - {livePenB}</span>
+                    {liveWinnerName && (
+                      <span className="text-emerald-700 font-black ml-0.5">({liveWinnerName} Won)</span>
+                    )}
+                  </div>
+                )}
+                <div className="mt-1 px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+                  {liveStage} • {liveTime}
+                </div>
+              </div>
+
+              {/* Team B */}
+              <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                <div className={`w-12 h-12 rounded-xl bg-slate-100 border flex items-center justify-center font-black text-sm overflow-hidden shrink-0 shadow-xs ${
+                  liveWinnerName === liveTeamB ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
+                }`}>
+                  {liveMatch?.teamB?.logo ? (
+                    <img src={liveMatch.teamB.logo} alt={liveTeamB} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{(liveTeamB.slice(0, 2) || 'B').toUpperCase()}</span>
+                  )}
+                </div>
+                <span className={`text-xs sm:text-sm truncate max-w-[120px] text-center flex items-center justify-center gap-1 ${
+                  liveWinnerName === liveTeamB ? 'font-black text-emerald-700' : 'font-bold text-slate-900'
+                }`}>
+                  <span>{liveTeamB}</span>
+                  {liveWinnerName === liveTeamB && <span>🏆</span>}
+                </span>
               </div>
             </div>
 
-            {/* Team B */}
-            <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-              <div className={`w-12 h-12 rounded-xl bg-slate-100 border flex items-center justify-center font-black text-sm overflow-hidden shrink-0 shadow-xs ${
-                liveWinnerName === liveTeamB ? 'border-emerald-500 ring-2 ring-emerald-500/40 text-emerald-700' : 'border-slate-200 text-slate-800'
-              }`}>
-                {liveMatch?.teamB?.logo ? (
-                  <img src={liveMatch.teamB.logo} alt={liveTeamB} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{(liveTeamB.slice(0, 2) || 'B').toUpperCase()}</span>
-                )}
+            {/* Action Link */}
+            <Link
+              href={`/matches/${liveMatch._id}`}
+              className="w-full mt-1 py-2 text-center text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
+            >
+              Open Live Match Center →
+            </Link>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-400/60 transition-all min-h-[190px]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                  Live Match Desk
+                </span>
               </div>
-              <span className={`text-xs sm:text-sm truncate max-w-[120px] text-center flex items-center justify-center gap-1 ${
-                liveWinnerName === liveTeamB ? 'font-black text-emerald-700' : 'font-bold text-slate-900'
-              }`}>
-                <span>{liveTeamB}</span>
-                {liveWinnerName === liveTeamB && <span>🏆</span>}
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-extrabold text-[10px] uppercase tracking-wider">
+                OFF AIR
               </span>
             </div>
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <p className="text-xs font-bold text-slate-700">No Live Matches Underway</p>
+              <p className="text-[11px] text-slate-400 mt-1 max-w-xs">
+                Check upcoming fixtures or review tournament standings below.
+              </p>
+            </div>
+            <Link
+              href="/fixtures"
+              className="w-full mt-1 py-2 text-center text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
+            >
+              View Tournament Fixtures →
+            </Link>
           </div>
-
-          {/* Action Link */}
-          <Link
-            href={liveMatch ? `/matches/${liveMatch._id}` : '/live'}
-            className="w-full mt-1 py-2 text-center text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
-          >
-            Open Live Match Center →
-          </Link>
-        </div>
+        )}
 
         {/* Right: Upcoming Fixture Card */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-400/60 transition-all">
-          {/* Card Top Strip */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-                Upcoming Fixture
-              </span>
-            </div>
-            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
-              {upcomingTimeStr}
-            </span>
-          </div>
-
-          {/* Teams vs Display */}
-          <div className="flex items-center justify-between py-4 px-2">
-            {/* Team A */}
-            <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center font-black text-emerald-800 text-sm overflow-hidden shrink-0 shadow-xs">
-                {upcomingMatch?.teamA?.logo ? (
-                  <img src={upcomingMatch.teamA.logo} alt={upcomingTeamA} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{(upcomingTeamA.slice(0, 2) || 'A').toUpperCase()}</span>
-                )}
+        {upcomingMatch ? (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-400/60 transition-all">
+            {/* Card Top Strip */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                  Upcoming Fixture
+                </span>
               </div>
-              <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
-                {upcomingTeamA}
+              <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                {upcomingTimeStr}
               </span>
             </div>
 
-            {/* VS Pill */}
-            <div className="flex flex-col items-center justify-center px-4">
-              <span className="text-sm font-black text-slate-400 tracking-wider">VS</span>
-            </div>
-
-            {/* Team B */}
-            <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-              <div className="w-12 h-12 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center font-black text-sky-800 text-sm overflow-hidden shrink-0 shadow-xs">
-                {upcomingMatch?.teamB?.logo ? (
-                  <img src={upcomingMatch.teamB.logo} alt={upcomingTeamB} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{(upcomingTeamB.slice(0, 2) || 'B').toUpperCase()}</span>
-                )}
+            {/* Teams vs Display */}
+            <div className="flex items-center justify-between py-4 px-2">
+              {/* Team A */}
+              <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center font-black text-emerald-800 text-sm overflow-hidden shrink-0 shadow-xs">
+                  {upcomingMatch?.teamA?.logo ? (
+                    <img src={upcomingMatch.teamA.logo} alt={upcomingTeamA} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{(upcomingTeamA.slice(0, 2) || 'A').toUpperCase()}</span>
+                  )}
+                </div>
+                <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
+                  {upcomingTeamA}
+                </span>
               </div>
-              <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
-                {upcomingTeamB}
+
+              {/* VS Pill */}
+              <div className="flex flex-col items-center justify-center px-4">
+                <span className="text-sm font-black text-slate-400 tracking-wider">VS</span>
+              </div>
+
+              {/* Team B */}
+              <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center font-black text-sky-800 text-sm overflow-hidden shrink-0 shadow-xs">
+                  {upcomingMatch?.teamB?.logo ? (
+                    <img src={upcomingMatch.teamB.logo} alt={upcomingTeamB} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{(upcomingTeamB.slice(0, 2) || 'B').toUpperCase()}</span>
+                  )}
+                </div>
+                <span className="font-bold text-xs sm:text-sm text-slate-900 truncate max-w-[120px] text-center">
+                  {upcomingTeamB}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Link */}
+            <Link
+              href="/fixtures"
+              className="w-full mt-1 py-2 text-center text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
+            >
+              View All Upcoming Fixtures →
+            </Link>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-blue-400/60 transition-all min-h-[190px]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                  Upcoming Fixture
+                </span>
+              </div>
+              <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                SCHEDULE
               </span>
             </div>
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <p className="text-xs font-bold text-slate-700">No Upcoming Fixtures</p>
+              <p className="text-[11px] text-slate-400 mt-1 max-w-xs">
+                All tournament fixtures have concluded or are pending scheduling.
+              </p>
+            </div>
+            <Link
+              href="/fixtures"
+              className="w-full mt-1 py-2 text-center text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
+            >
+              View Full Schedule →
+            </Link>
           </div>
-
-          {/* Action Link */}
-          <Link
-            href="/fixtures"
-            className="w-full mt-1 py-2 text-center text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
-          >
-            View All Upcoming Fixtures →
-          </Link>
-        </div>
+        )}
       </div>
     </div>
   );

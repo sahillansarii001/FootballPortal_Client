@@ -131,6 +131,9 @@ export const adminService = {
     duration?: number
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
+      if (!matchId || matchId === 'undefined') {
+        return { success: false, error: 'Match ID is required' };
+      }
       return await fetchWithAuth(`${getApiBaseUrl()}/matches/${matchId}/timer/stage`, {
         method: 'POST',
         body: JSON.stringify({ stage, duration }),
@@ -241,6 +244,9 @@ export const adminService = {
     payload: { team?: string; teamId?: string; player?: string; playerId?: string; goalkeeper?: string; goalkeeperId?: string; outcome: string }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
+      if (!matchId || matchId === 'undefined') {
+        return { success: false, error: 'Match ID is required' };
+      }
       const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/penalties`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -352,6 +358,9 @@ export const adminService = {
     }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
+      if (!matchId || matchId === 'undefined') {
+        return { success: false, error: 'Match ID is required' };
+      }
       const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/finalize`, {
         method: 'POST',
         headers: getAuthHeaders(),
@@ -508,6 +517,9 @@ export const adminService = {
     }
   ): Promise<{ success: boolean; data?: any; error?: string; message?: string }> {
     try {
+      if (!matchId || matchId === 'undefined') {
+        return { success: false, error: 'Match ID is required' };
+      }
       const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),

@@ -239,69 +239,114 @@ export default function AdminSchedulePage() {
               </button>
             </div>
           ) : (
-            matches.map((match) => (
-              <div
-                key={match._id}
-                className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-container-low transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-surface-container text-on-surface flex items-center justify-center font-bold text-xs shrink-0 border border-surface-container-high">
-                    #{match.matchNumber || 1}
-                  </div>
-                  <div>
-                    <div className="font-headline-sm text-sm font-extrabold text-on-surface flex items-center gap-2">
-                      <span>{match.teamA?.name || 'Team A'}</span>
-                      <span className="text-on-surface-variant font-normal">vs</span>
-                      <span>{match.teamB?.name || 'Team B'}</span>
+            matches.map((match) => {
+              const isCompleted = match.status === 'Completed';
+              const isLive = match.status === 'Live' || match.status === 'Half-Time' || match.status === 'Penalty Shootout';
+              const scoreA = match.score?.teamA ?? match.teamAScore ?? 0;
+              const scoreB = match.score?.teamB ?? match.teamBScore ?? 0;
+              const penA = match.shootout?.teamAPenaltyScore ?? 0;
+              const penB = match.shootout?.teamBPenaltyScore ?? 0;
+              const hasShootout = Boolean(match.shootout?.isShootout || match.shootout?.isCompleted || penA > 0 || penB > 0);
+
+              const teamAName = match.teamA?.name || 'Team A';
+              const teamBName = match.teamB?.name || 'Team B';
+              const teamAId = typeof match.teamA === 'object' ? match.teamA?._id : match.teamA;
+              const teamBId = typeof match.teamB === 'object' ? match.teamB?._id : match.teamB;
+              const winnerId = typeof match.winner === 'object' ? match.winner?._id : match.winner;
+              const shootoutWinnerId = typeof match.shootout?.shootoutWinner === 'object' ? match.shootout?.shootoutWinner?._id : match.shootout?.shootoutWinner;
+
+              const isTeamAWinner = isCompleted && (
+                (winnerId && teamAId && String(winnerId) === String(teamAId)) ||
+                (shootoutWinnerId && teamAId && String(shootoutWinnerId) === String(teamAId)) ||
+                (scoreA > scoreB) ||
+                (hasShootout && penA > penB)
+              );
+              const isTeamBWinner = isCompleted && (
+                (winnerId && teamBId && String(winnerId) === String(teamBId)) ||
+                (shootoutWinnerId && teamBId && String(shootoutWinnerId) === String(teamBId)) ||
+                (scoreB > scoreA) ||
+                (hasShootout && penB > penA)
+              );
+              const winnerName = isTeamAWinner ? teamAName : isTeamBWinner ? teamBName : null;
+
+              return (
+                <div
+                  key={match._id}
+                  className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-container-low transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-surface-container text-on-surface flex items-center justify-center font-bold text-xs shrink-0 border border-surface-container-high">
+                      #{match.matchNumber || 1}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-on-surface-variant mt-1">
-                      <span>{formatDate(match.matchDate)} • {match.matchTime}</span>
-                      <span>•</span>
-                      <span>{match.venue || 'Stadium Field #1'}</span>
-                      <span>•</span>
-                      <span className="font-semibold text-primary-container">{match.stage}</span>
+                    <div>
+                      <div className="font-headline-sm text-sm font-extrabold text-on-surface flex items-center gap-2">
+                        <span className={isTeamAWinner ? 'text-emerald-700 font-black flex items-center gap-1' : ''}>
+                          {isTeamAWinner && <span>🏆</span>}
+                          <span>{teamAName}</span>
+                        </span>
+                        <span className="text-on-surface-variant font-normal">vs</span>
+                        <span className={isTeamBWinner ? 'text-emerald-700 font-black flex items-center gap-1' : ''}>
+                          <span>{teamBName}</span>
+                          {isTeamBWinner && <span>🏆</span>}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-on-surface-variant mt-1 flex-wrap">
+                        <span>{formatDate(match.matchDate)} • {match.matchTime}</span>
+                        <span>•</span>
+                        <span>{match.venue || 'Stadium Field #1'}</span>
+                        <span>•</span>
+                        <span className="font-semibold text-primary-container">{match.stage}</span>
+                        {isCompleted && (
+                          <>
+                            <span>•</span>
+                            <span className={winnerName ? 'text-emerald-700 font-extrabold flex items-center gap-1' : 'text-slate-500 font-medium'}>
+                              {winnerName ? `🏆 Winner: ${winnerName} ${hasShootout ? `(Pen: ${penA}-${penB})` : ''}` : 'Match Drawn (Full Time)'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span
+                      className={`px-3 py-1 rounded-full text-[11px] font-bold font-label-caps ${
+                        isLive
+                          ? 'bg-emerald-100 text-primary-container ring-1 ring-primary-container/30'
+                          : isCompleted
+                          ? 'bg-surface-container text-on-surface'
+                          : 'bg-primary-container/10 text-primary-container'
+                      }`}
+                    >
+                      {isCompleted ? (hasShootout ? `FINAL (Pen: ${penA}-${penB})` : 'FINAL') : match.status}
+                    </span>
+                    <span className="text-xs font-bold text-on-surface tabular-nums">
+                      {`${scoreA} - ${scoreB}`}
+                    </span>
+
+                    {/* Edit & Delete Action Buttons */}
+                    <div className="flex items-center gap-1.5 pl-2 border-l border-surface-container-high">
+                      <button
+                        onClick={() => handleOpenEditModal(match)}
+                        className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-primary-container transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
+                        title="Edit Match"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteMatch(match._id)}
+                        className="p-2 rounded-xl bg-surface-container hover:bg-error/15 text-on-surface hover:text-error transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
+                        title="Delete Match"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  <span
-                    className={`px-3 py-1 rounded-full text-[11px] font-bold font-label-caps ${
-                      match.status === 'Live'
-                        ? 'bg-emerald-100 text-primary-container ring-1 ring-primary-container/30'
-                        : match.status === 'Completed'
-                        ? 'bg-surface-container text-on-surface'
-                        : 'bg-primary-container/10 text-primary-container'
-                    }`}
-                  >
-                    {match.status}
-                  </span>
-                  <span className="text-xs font-bold text-on-surface tabular-nums">
-                    {match.score ? `${match.score.teamA} - ${match.score.teamB}` : '0 - 0'}
-                  </span>
-
-                  {/* Edit & Delete Action Buttons */}
-                  <div className="flex items-center gap-1.5 pl-2 border-l border-surface-container-high">
-                    <button
-                      onClick={() => handleOpenEditModal(match)}
-                      className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface hover:text-primary-container transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
-                      title="Edit Match"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteMatch(match._id)}
-                      className="p-2 rounded-xl bg-surface-container hover:bg-error/15 text-on-surface hover:text-error transition-all flex items-center gap-1 text-xs font-bold shadow-2xs"
-                      title="Delete Match"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

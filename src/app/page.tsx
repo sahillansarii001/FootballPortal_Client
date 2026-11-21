@@ -5,7 +5,6 @@ import { teamService } from '@/services/team.service';
 import { playerService } from '@/services/player.service';
 import { standingsService } from '@/services/standings.service';
 import { HeroSection } from '@/components/home/HeroSection';
-import { LiveMatchesSection } from '@/components/home/LiveMatchesSection';
 import { UpcomingFixtures } from '@/components/home/UpcomingFixtures';
 import { RecentResults } from '@/components/home/RecentResults';
 import { StandingsPreview } from '@/components/home/StandingsPreview';
@@ -66,9 +65,6 @@ export default async function HomePage() {
         liveMatch={activeLiveMatch}
         upcomingMatch={activeUpcomingMatch}
       />
-
-      {/* Live Broadcast Marquee Card (if active) */}
-      <LiveMatchesSection liveMatch={activeLiveMatch} />
 
       {/* Main Grid: Fixtures, Results, Standings & Top Scorers */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12" id="fixtures-table">
