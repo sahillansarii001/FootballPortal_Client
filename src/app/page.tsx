@@ -10,8 +10,6 @@ import { RecentResults } from '@/components/home/RecentResults';
 import { StandingsPreview } from '@/components/home/StandingsPreview';
 import { TopScorers } from '@/components/home/TopScorers';
 import { FeaturedTeams } from '@/components/home/FeaturedTeams';
-import { MediaFocusSection } from '@/components/home/MediaFocusSection';
-import { PressPassBanner } from '@/components/home/PressPassBanner';
 import { MOCK_OVERVIEW_STATS } from '@/services/mockData';
 
 export const dynamic = 'force-dynamic';
@@ -57,8 +55,8 @@ export default async function HomePage() {
   const activeUpcomingMatch = Array.isArray(upcomingMatches) && upcomingMatches.length > 0 ? upcomingMatches[0] : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Editorial Sports Hero Section with Atmospheric Photography */}
+    <div className="w-full">
+      {/* Full-Width Background Sports Hero Section */}
       <HeroSection
         stats={stats}
         tournamentName={tournamentName}
@@ -66,29 +64,25 @@ export default async function HomePage() {
         upcomingMatch={activeUpcomingMatch}
       />
 
-      {/* Main Grid: Fixtures, Results, Standings & Top Scorers */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12" id="fixtures-table">
-        {/* Left Column (7 cols): Upcoming Fixtures & Recent Results */}
-        <div className="lg:col-span-7 flex flex-col gap-8">
-          <UpcomingFixtures matches={upcomingMatches} />
-          <RecentResults results={completedMatches} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        {/* Main Grid: Fixtures, Results, Standings & Top Scorers */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12" id="fixtures-table">
+          {/* Left Column (7 cols): Upcoming Fixtures & Recent Results */}
+          <div className="lg:col-span-7 flex flex-col gap-8">
+            <UpcomingFixtures matches={upcomingMatches} />
+            <RecentResults results={completedMatches} />
+          </div>
+
+          {/* Right Column (5 cols): League Standings Preview & Top Scorers Spotlight */}
+          <div className="lg:col-span-5 flex flex-col gap-8">
+            <StandingsPreview standings={standings} />
+            <TopScorers scorers={scorers} />
+          </div>
         </div>
 
-        {/* Right Column (5 cols): League Standings Preview & Top Scorers Spotlight */}
-        <div className="lg:col-span-5 flex flex-col gap-8">
-          <StandingsPreview standings={standings} />
-          <TopScorers scorers={scorers} />
-        </div>
+        {/* Featured Championship Teams */}
+        <FeaturedTeams teams={teams} />
       </div>
-
-      {/* Featured Championship Teams */}
-      <FeaturedTeams teams={teams} />
-
-      {/* Tournament Media & Feature Stories */}
-      <MediaFocusSection />
-
-      {/* Operator Accreditation Quick-Action Drawer */}
-      <PressPassBanner />
     </div>
   );
 }

@@ -56,8 +56,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-6 mb-12 select-none animate-in fade-in duration-300">
-      {/* 1. HERO BANNER WITH STADIUM & SOCCER BALL (Screen 1 in Reference Image) */}
-      <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-r from-sky-100 via-emerald-50 to-blue-50 border border-slate-200/80 shadow-md">
+      {/* 1. FULL-WIDTH BACKGROUND HERO BANNER WITH STADIUM & SOCCER BALL */}
+      <div className="relative w-full overflow-hidden bg-gradient-to-r from-sky-100 via-emerald-50 to-blue-50 border-b border-slate-200/80">
         {/* Background Image: Stadium with soccer ball on grass turf */}
         <div
           className="absolute inset-0 bg-cover bg-right sm:bg-center opacity-90 transition-transform duration-1000"
@@ -67,16 +67,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         />
 
         {/* Crisp Gradient Overlay for Legibility */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-transparent sm:to-white/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/90 via-50% to-white/30" />
 
-        {/* Content Box */}
-        <div className="relative z-10 px-6 sm:px-12 py-10 sm:py-16 max-w-2xl flex flex-col justify-center">
+        {/* Content Box aligned with maximum container width */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 flex flex-col justify-center">
           {/* Headline Typography */}
-          <div className="flex flex-col">
+          <div className="flex flex-col max-w-2xl">
             <span className="font-serif italic text-slate-800 text-2xl sm:text-3xl font-bold tracking-tight">
               Inter College
             </span>
-            <h1 className="font-sans font-black text-3xl sm:text-5xl lg:text-5xl text-slate-900 tracking-tight leading-tight uppercase mt-0.5">
+            <h1 className="font-sans font-black text-3xl sm:text-5xl lg:text-6xl text-slate-900 tracking-tight leading-tight uppercase mt-0.5">
               Football Championship
             </h1>
             <span className="font-sans font-black text-5xl sm:text-6xl lg:text-7xl text-blue-600 tracking-tight leading-none mt-1">
@@ -115,6 +115,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Floating Container for Stat Cards & Featured Matches */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col gap-6 -mt-6 sm:-mt-8 relative z-20">
 
       {/* 2. FOUR FLOATING STAT CARDS IN A ROW */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -375,6 +378,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </Link>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
