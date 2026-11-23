@@ -18,13 +18,31 @@ export default function AdminSchedulePage() {
   const [showModal, setShowModal] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const getTodayDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Create Form State
   const [teamA, setTeamA] = useState('');
   const [teamB, setTeamB] = useState('');
-  const [matchDate, setMatchDate] = useState('2026-03-24');
-  const [matchTime, setMatchTime] = useState('14:00');
+  const [matchDate, setMatchDate] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
   const [venue, setVenue] = useState('Alliance National Field #1');
   const [stage, setStage] = useState('Group Stage');
+
+  const handleOpenCreateModal = () => {
+    setMatchDate(getTodayDateString());
+    setShowModal(true);
+  };
 
   // Edit Modal State
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
@@ -76,13 +94,19 @@ export default function AdminSchedulePage() {
       cleanDate = `${y}-${m}-${d}`;
     }
 
+    const todayStr = getTodayDateString();
+    if (cleanDate < todayStr) {
+      alert('Match date cannot be in the past. Matches must be scheduled for today or a future date.');
+      return;
+    }
+
     const res = await adminService.scheduleMatch({
       tournament: tId,
       tournamentId: tId,
       teamA,
       teamB,
       matchDate: cleanDate,
-      matchTime,
+      matchTime: '14:00',
       venue,
       stage,
       matchNumber: matches.length + 1,
@@ -100,7 +124,7 @@ export default function AdminSchedulePage() {
 
     const teamAObj = teams.find((t) => t._id === teamA);
     const teamBObj = teams.find((t) => t._id === teamB);
-    setSuccessMsg(`Fixture scheduled: ${teamAObj?.name || 'Team A'} vs ${teamBObj?.name || 'Team B'} on ${cleanDate} at ${matchTime}!`);
+    setSuccessMsg(`Fixture scheduled: ${teamAObj?.name || 'Team A'} vs ${teamBObj?.name || 'Team B'} on ${cleanDate}!`);
     setTimeout(() => setSuccessMsg(null), 4000);
   };
 
@@ -197,7 +221,7 @@ export default function AdminSchedulePage() {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
+          onClick={handleOpenCreateModal}
           className="flex items-center gap-2 bg-primary-container hover:bg-primary text-on-primary px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
@@ -231,7 +255,7 @@ export default function AdminSchedulePage() {
                 Schedule tournament fixtures between registered teams.
               </p>
               <button
-                onClick={() => setShowModal(true)}
+                onClick={handleOpenCreateModal}
                 className="mt-2 flex items-center gap-2 bg-primary-container hover:bg-primary text-on-primary px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs"
               >
                 <Plus className="w-4 h-4" />
@@ -410,31 +434,21 @@ export default function AdminSchedulePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                    Match Date
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={matchDate}
-                    onChange={(e) => setMatchDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
-                    Kickoff Time
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={matchTime}
-                    onChange={(e) => setMatchTime(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
-                  />
-                </div>
+              <div>
+                <label className="block text-[11px] font-bold text-on-surface uppercase font-label-caps mb-1">
+                  Match Date
+                </label>
+                <input
+                  type="date"
+                  required
+                  min={getTodayDateString()}
+                  value={matchDate}
+                  onChange={(e) => setMatchDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Matches can only be scheduled for today or upcoming dates.
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
