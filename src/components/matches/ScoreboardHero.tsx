@@ -180,16 +180,22 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                       return tId === match.teamA?._id || (g.team as any)?.name === match.teamA?.name;
                     })
                     .slice(0, localScoreA)
-                    .map((g, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-xs text-slate-700 shadow-2xs transition-colors"
-                      >
-                        <span>⚽</span>
-                        <span className="font-bold text-slate-900">{g.player?.name || 'Goal'}</span>
-                        <span className="text-emerald-700 font-mono text-[11px] font-semibold">{g.matchTime}</span>
-                      </span>
-                    ))}
+                    .map((g, i) => {
+                      const isOG = g.detail?.goalType === 'Own Goal' || (g as any).goalType === 'Own Goal';
+                      return (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-xs text-slate-700 shadow-2xs transition-colors"
+                        >
+                          <span>⚽</span>
+                          <span className="font-bold text-slate-900">
+                            {g.player?.name || 'Goal'}
+                            {isOG && <span className="text-amber-600 font-extrabold ml-1 text-[11px]">(OG)</span>}
+                          </span>
+                          <span className="text-emerald-700 font-mono text-[11px] font-semibold">{g.matchTime}</span>
+                        </span>
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -323,16 +329,22 @@ export const ScoreboardHero: React.FC<ScoreboardHeroProps> = ({ match, isConnect
                       return tId === match.teamB?._id || (g.team as any)?.name === match.teamB?.name;
                     })
                     .slice(0, localScoreB)
-                    .map((g, i) => (
-                      <span
-                        key={i}
-                        className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-xs text-slate-700 shadow-2xs transition-colors"
-                      >
-                        <span>⚽</span>
-                        <span className="font-bold text-slate-900">{g.player?.name || 'Goal'}</span>
-                        <span className="text-blue-700 font-mono text-[11px] font-semibold">{g.matchTime}</span>
-                      </span>
-                    ))}
+                    .map((g, i) => {
+                      const isOG = g.detail?.goalType === 'Own Goal' || (g as any).goalType === 'Own Goal';
+                      return (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-xs text-slate-700 shadow-2xs transition-colors"
+                        >
+                          <span>⚽</span>
+                          <span className="font-bold text-slate-900">
+                            {g.player?.name || 'Goal'}
+                            {isOG && <span className="text-amber-600 font-extrabold ml-1 text-[11px]">(OG)</span>}
+                          </span>
+                          <span className="text-blue-700 font-mono text-[11px] font-semibold">{g.matchTime}</span>
+                        </span>
+                      );
+                    })}
                 </div>
               )}
             </div>

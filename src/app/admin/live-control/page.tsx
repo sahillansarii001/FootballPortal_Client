@@ -68,6 +68,7 @@ export default function AdminLiveControlPage() {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalTeam, setGoalTeam] = useState<'A' | 'B'>('A');
   const [goalPlayerName, setGoalPlayerName] = useState('');
+  const [goalType, setGoalType] = useState('Normal Goal');
   const [goalMinute, setGoalMinute] = useState('02:30 (1H)');
   const [matchGoals, setMatchGoals] = useState<any[]>([]);
 
@@ -799,6 +800,7 @@ export default function AdminLiveControlPage() {
 
   const handleOpenGoalModal = async (team: 'A' | 'B') => {
     setGoalTeam(team);
+    setGoalType('Normal Goal');
     const rawTarget = team === 'A' ? selectedMatch?.teamA : selectedMatch?.teamB;
     const targetTeamId: string =
       typeof rawTarget === 'object' && rawTarget ? rawTarget._id : typeof rawTarget === 'string' ? rawTarget : '';
@@ -881,15 +883,19 @@ export default function AdminLiveControlPage() {
       goalMinute ||
       `${formatTime(remainingSeconds)} (${currentStage.includes('Second') ? '2H' : currentStage.includes('Extra') ? 'ET' : '1H'})`;
 
+    const isOwnGoal = goalType === 'Own Goal';
     const players = goalTeam === 'A' ? teamAPlayers : teamBPlayers;
-    const matchedPlayer = players.find((p) => p.name === goalPlayerName);
+    const opponentPlayers = goalTeam === 'A' ? teamBPlayers : teamAPlayers;
+    const allCombined = [...players, ...opponentPlayers];
+    const matchedPlayer = allCombined.find((p) => p.name === goalPlayerName);
 
     // Save goal and sync score
     const res = await adminService.recordGoal(selectedMatch._id, {
       teamId,
       playerId: matchedPlayer?._id,
+      beneficiaryTeam: teamId,
       minute: calculatedMinute,
-      type: 'Normal Goal',
+      type: goalType,
     });
     await adminService.updateScore(selectedMatch._id, newScoreA, newScoreB);
 
@@ -904,13 +910,13 @@ export default function AdminLiveControlPage() {
         team: { _id: teamId, name: teamName },
         player: matchedPlayer || { name: goalPlayerName, jerseyNumber: 10 },
         matchTime: calculatedMinute,
-        detail: { goalType: 'Normal Goal' },
+        detail: { goalType },
         timestamp: new Date().toISOString()
       };
       setMatchGoals((prev) => [...prev, fallbackGoal]);
     }
 
-    showNotification(`Goal recorded for ${teamName} (${goalPlayerName || 'Athlete'} • ${calculatedMinute})!`);
+    showNotification(`${isOwnGoal ? 'Own Goal (OG)' : 'Goal'} recorded for ${teamName} (${goalPlayerName || 'Athlete'} • ${calculatedMinute})!`);
   };
 
   const handleDeleteGoal = async (goalId: string, teamId?: string) => {
@@ -1813,24 +1819,30 @@ export default function AdminLiveControlPage() {
                       Recorded Goals ({teamAGoals.length})
                     </span>
                     <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
-                      {teamAGoals.map((g, idx) => (
-                        <span
-                          key={g._id || idx}
-                          className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs"
-                        >
-                          <span>⚽</span>
-                          <span className="font-bold">{g.player?.name || 'Goal'}</span>
-                          <span className="text-slate-400 font-mono text-[11px]">({g.matchTime})</span>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteGoal(g._id, targetTeamAId)}
-                            className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
-                            title="Remove goal"
+                      {teamAGoals.map((g, idx) => {
+                        const isOG = g.detail?.goalType === 'Own Goal' || g.type === 'Own Goal' || g.goalType === 'Own Goal';
+                        return (
+                          <span
+                            key={g._id || idx}
+                            className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs"
                           >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </span>
-                      ))}
+                            <span>⚽</span>
+                            <span className="font-bold">
+                              {g.player?.name || 'Goal'}
+                              {isOG && <span className="text-amber-600 font-extrabold ml-1">(OG)</span>}
+                            </span>
+                            <span className="text-slate-400 font-mono text-[11px]">({g.matchTime})</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGoal(g._id, targetTeamAId)}
+                              className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
+                              title="Remove goal"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1887,24 +1899,30 @@ export default function AdminLiveControlPage() {
                       Recorded Goals ({teamBGoals.length})
                     </span>
                     <div className="flex flex-wrap gap-1.5 justify-center sm:justify-end">
-                      {teamBGoals.map((g, idx) => (
-                        <span
-                          key={g._id || idx}
-                          className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs"
-                        >
-                          <span>⚽</span>
-                          <span className="font-bold">{g.player?.name || 'Goal'}</span>
-                          <span className="text-slate-400 font-mono text-[11px]">({g.matchTime})</span>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteGoal(g._id, targetTeamBId)}
-                            className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
-                            title="Remove goal"
+                      {teamBGoals.map((g, idx) => {
+                        const isOG = g.detail?.goalType === 'Own Goal' || g.type === 'Own Goal' || g.goalType === 'Own Goal';
+                        return (
+                          <span
+                            key={g._id || idx}
+                            className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs"
                           >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </span>
-                      ))}
+                            <span>⚽</span>
+                            <span className="font-bold">
+                              {g.player?.name || 'Goal'}
+                              {isOG && <span className="text-amber-600 font-extrabold ml-1">(OG)</span>}
+                            </span>
+                            <span className="text-slate-400 font-mono text-[11px]">({g.matchTime})</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGoal(g._id, targetTeamBId)}
+                              className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
+                              title="Remove goal"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -2849,6 +2867,15 @@ export default function AdminLiveControlPage() {
                         #{p.jerseyNumber} - {p.name} ({p.position}) [{goalTeam === 'A' ? teamAName : teamBName}]
                       </option>
                     ))}
+                    {goalType === 'Own Goal' && (
+                      <optgroup label={`Opponent (${goalTeam === 'A' ? teamBName : teamAName}) - OG Deflection`}>
+                        {(goalTeam === 'A' ? teamBPlayers : teamAPlayers).map((p) => (
+                          <option key={p._id} value={`${p.name} (OG)`}>
+                            #{p.jerseyNumber} - {p.name} (OG) [{goalTeam === 'A' ? teamBName : teamAName}]
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
               </div>
@@ -2871,14 +2898,32 @@ export default function AdminLiveControlPage() {
                   <label className="block text-[10px] font-bold text-on-surface uppercase font-label-caps mb-1">
                     Goal Method
                   </label>
-                  <select className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container font-medium">
+                  <select
+                    value={goalType}
+                    onChange={(e) => setGoalType(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container font-medium cursor-pointer"
+                  >
                     <option value="Normal Goal">Normal Goal</option>
-                    <option value="Penalty Kick">Penalty Kick</option>
+                    <option value="Own Goal">⚽ Own Goal (OG)</option>
+                    <option value="Penalty Goal">Penalty Kick</option>
                     <option value="Free Kick">Free Kick</option>
                     <option value="Header">Header Strike</option>
                   </select>
                 </div>
               </div>
+
+              {/* Own Goal Notice */}
+              {goalType === 'Own Goal' && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 text-xs flex items-start gap-2">
+                  <span className="text-sm">⚠️</span>
+                  <div>
+                    <div className="font-bold">Own Goal (OG) Mode</div>
+                    <div className="text-[11px] text-amber-700 mt-0.5">
+                      +1 Goal will be awarded to <strong>{goalTeam === 'A' ? teamAName : teamBName}</strong>. Own goals do not count toward player Golden Boot awards.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Actions */}

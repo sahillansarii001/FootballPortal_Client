@@ -208,7 +208,7 @@ export const adminService = {
 
   async recordGoal(
     matchId: string,
-    payload: { teamId: string; playerId?: string; minute?: string; type?: string }
+    payload: { teamId: string; playerId?: string; minute?: string; type?: string; beneficiaryTeam?: string }
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const res = await fetch(`${getApiBaseUrl()}/matches/${matchId}/goal`, {
