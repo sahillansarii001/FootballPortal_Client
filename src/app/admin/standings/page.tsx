@@ -1,29 +1,56 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TableProperties, RefreshCw, Trophy, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { TableProperties, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { standingsService } from '@/services/standings.service';
 import { adminService } from '@/services/admin.service';
 import { tournamentService } from '@/services/tournament.service';
 import { StandingsTable } from '@/components/standings/StandingsTable';
 import { QualificationLegend } from '@/components/standings/QualificationLegend';
 import { TournamentStandingRow } from '@/types';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function AdminStandingsPage() {
   const [standings, setStandings] = useState<TournamentStandingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const { socket } = useSocket();
 
-  useEffect(() => {
-    async function loadStandings() {
-      setLoading(true);
+  const loadStandings = async () => {
+    try {
       const data = await standingsService.getStandings();
       setStandings(data);
+    } catch (err) {
+      console.error('Failed loading standings:', err);
+    } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadStandings();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRealtimeUpdate = (data: any) => {
+      if (Array.isArray(data)) {
+        setStandings(data);
+      } else {
+        loadStandings();
+      }
+    };
+
+    socket.on('standings:update', handleRealtimeUpdate);
+    socket.on('match:completed', loadStandings);
+
+    return () => {
+      socket.off('standings:update', handleRealtimeUpdate);
+      socket.off('match:completed', loadStandings);
+    };
+  }, [socket]);
 
   const handleRecalculate = async () => {
     setRecalculating(true);
@@ -51,14 +78,14 @@ export default function AdminStandingsPage() {
             </h1>
           </div>
           <p className="text-xs text-on-surface-variant font-medium mt-0.5">
-            Real-time automatic point calculations, goal difference rankings, and tournament bracket qualification.
+            Real-time automatic point calculations (Win = 2, Draw = 0, Loss = 0), goal difference rankings, and tournament tie-breakers.
           </p>
         </div>
 
         <button
           onClick={handleRecalculate}
           disabled={recalculating}
-          className="flex items-center gap-2 bg-primary-container hover:bg-primary text-on-primary px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 disabled:opacity-50"
+          className="flex items-center gap-2 bg-primary-container hover:bg-primary text-on-primary px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
         >
           <RefreshCw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
           <span>{recalculating ? 'Recalculating...' : 'Force Standings Recalculation'}</span>

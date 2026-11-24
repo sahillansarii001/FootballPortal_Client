@@ -568,6 +568,7 @@ export default function AdminSchedulePage() {
                   <input
                     type="date"
                     required
+                    min={getTodayDateString()}
                     value={editMatchDate}
                     onChange={(e) => setEditMatchDate(e.target.value)}
                     className="w-full px-3 py-2 bg-surface-container-low border border-surface-container-high rounded-xl text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container"

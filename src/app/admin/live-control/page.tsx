@@ -1828,13 +1828,15 @@ export default function AdminLiveControlPage() {
         </div>
       ) : (
         <>
-          {/* Main Scoreboard Card (Screen 8: Team A, Score 2 - 1, Second Half, 02:36 green pill, Team B) */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 sm:p-8 flex flex-col items-center gap-6">
-            <div className="w-full flex items-center justify-between gap-4">
-              {/* Team A (Home Team) */}
-              <div className="flex flex-col items-center sm:items-start gap-3 flex-1 text-center sm:text-left min-w-0">
-                <div className="flex flex-col items-center sm:flex-row sm:items-center gap-3 sm:gap-4">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
+          {/* Main Scoreboard Card with dedicated Mobile & Desktop Responsive Layouts */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-4 sm:p-8 flex flex-col items-center gap-5 sm:gap-6">
+            {/* 1. Mobile View (< 768px): Dedicated clean layout so buttons never collapse into 3 squeezed rows */}
+            <div className="flex md:hidden w-full flex-col gap-4">
+              {/* Mobile Header: Team A vs Team B with Center Score */}
+              <div className="flex items-center justify-between gap-2 bg-slate-50/70 p-3 rounded-2xl border border-slate-200/70">
+                {/* Team A Mini Crest & Name */}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-sm text-slate-800 shadow-2xs overflow-hidden shrink-0">
                     {selectedMatch?.teamA?.logo ? (
                       <img src={selectedMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
                     ) : (
@@ -1842,7 +1844,182 @@ export default function AdminLiveControlPage() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-base sm:text-2xl font-black text-slate-900 leading-tight truncate">
+                    <h3 className="text-xs font-black text-slate-900 truncate leading-tight">{teamAName}</h3>
+                    <span className="text-[10px] text-slate-500 font-semibold">Home</span>
+                  </div>
+                </div>
+
+                {/* Center Score & Clock */}
+                <div className="flex flex-col items-center justify-center px-2 shrink-0">
+                  <div className="text-2xl font-black text-slate-900 tracking-tight tabular-nums">
+                    {scoreA} - {scoreB}
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-500">
+                    {currentStage}
+                  </div>
+                  <div className="mt-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-mono font-bold text-xs tracking-wider">
+                    <span>{formatTime(remainingSeconds)}</span>
+                  </div>
+                </div>
+
+                {/* Team B Mini Crest & Name */}
+                <div className="flex items-center justify-end gap-2 min-w-0 flex-1 text-right">
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-black text-slate-900 truncate leading-tight">{teamBName}</h3>
+                    <span className="text-[10px] text-slate-500 font-semibold">Away</span>
+                  </div>
+                  <div className="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-black text-sm text-slate-800 shadow-2xs overflow-hidden shrink-0">
+                    {selectedMatch?.teamB?.logo ? (
+                      <img src={selectedMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{teamBName.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Action Controls: Two horizontal toolbars for Team A and Team B */}
+              <div className="grid grid-cols-1 gap-2.5">
+                {/* Team A Actions */}
+                <div className="bg-slate-50/90 p-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-2">
+                  <span className="text-xs font-black text-slate-800 truncate max-w-[100px]">{teamAName}:</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGoalModal('A', 'Normal Goal')}
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer"
+                      title={`Record normal goal for ${teamAName}`}
+                    >
+                      <span>⚽</span>
+                      <span>+ Goal</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGoalModal('A', 'Own Goal')}
+                      className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer"
+                      title={`Record own goal awarded to ${teamAName}`}
+                    >
+                      <span>🥅</span>
+                      <span>+ OG</span>
+                    </button>
+                    <div className="flex items-center gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickScoreAdjust('A', 1)}
+                        className="w-6 h-6 rounded bg-slate-50 hover:bg-emerald-50 text-emerald-700 font-black text-xs flex items-center justify-center active:scale-90"
+                        title={`+1 for ${teamAName}`}
+                      >
+                        +1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickScoreAdjust('A', -1)}
+                        className="w-6 h-6 rounded bg-slate-50 hover:bg-rose-50 text-rose-700 font-black text-xs flex items-center justify-center active:scale-90"
+                        title={`-1 for ${teamAName}`}
+                      >
+                        -1
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Team B Actions */}
+                <div className="bg-slate-50/90 p-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-2">
+                  <span className="text-xs font-black text-slate-800 truncate max-w-[100px]">{teamBName}:</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGoalModal('B', 'Normal Goal')}
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer"
+                      title={`Record normal goal for ${teamBName}`}
+                    >
+                      <span>⚽</span>
+                      <span>+ Goal</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGoalModal('B', 'Own Goal')}
+                      className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer"
+                      title={`Record own goal awarded to ${teamBName}`}
+                    >
+                      <span>🥅</span>
+                      <span>+ OG</span>
+                    </button>
+                    <div className="flex items-center gap-0.5 bg-white rounded-lg p-0.5 border border-slate-200 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickScoreAdjust('B', 1)}
+                        className="w-6 h-6 rounded bg-slate-50 hover:bg-emerald-50 text-emerald-700 font-black text-xs flex items-center justify-center active:scale-90"
+                        title={`+1 for ${teamBName}`}
+                      >
+                        +1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickScoreAdjust('B', -1)}
+                        className="w-6 h-6 rounded bg-slate-50 hover:bg-rose-50 text-rose-700 font-black text-xs flex items-center justify-center active:scale-90"
+                        title={`-1 for ${teamBName}`}
+                      >
+                        -1
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recorded Goals for Both on Mobile */}
+              {(teamAGoals.length > 0 || teamBGoals.length > 0) && (
+                <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 text-xs">
+                  {teamAGoals.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">{teamAName}:</span>
+                      {teamAGoals.map((g, idx) => {
+                        const isOG = g.detail?.goalType === 'Own Goal' || g.type === 'Own Goal' || g.goalType === 'Own Goal';
+                        return (
+                          <span key={g._id || idx} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs font-semibold text-slate-800">
+                            <span>⚽</span>
+                            <span>{g.player?.name || 'Goal'}{isOG && <span className="text-amber-600 font-bold ml-0.5">(OG)</span>}</span>
+                            <span className="text-slate-400 font-mono text-[10px]">({g.matchTime})</span>
+                            <button type="button" onClick={() => handleDeleteGoal(g._id, targetTeamAId)} className="text-slate-400 hover:text-rose-600 ml-0.5"><X className="w-3 h-3" /></button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {teamBGoals.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">{teamBName}:</span>
+                      {teamBGoals.map((g, idx) => {
+                        const isOG = g.detail?.goalType === 'Own Goal' || g.type === 'Own Goal' || g.goalType === 'Own Goal';
+                        return (
+                          <span key={g._id || idx} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs font-semibold text-slate-800">
+                            <span>⚽</span>
+                            <span>{g.player?.name || 'Goal'}{isOG && <span className="text-amber-600 font-bold ml-0.5">(OG)</span>}</span>
+                            <span className="text-slate-400 font-mono text-[10px]">({g.matchTime})</span>
+                            <button type="button" onClick={() => handleDeleteGoal(g._id, targetTeamBId)} className="text-slate-400 hover:text-rose-600 ml-0.5"><X className="w-3 h-3" /></button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Desktop View (>= 768px): Spacious, Symmetrical 3-Column Layout */}
+            <div className="hidden md:flex w-full items-center justify-between gap-6">
+              {/* Team A (Home Team) */}
+              <div className="flex flex-col items-start gap-3 flex-1 min-w-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
+                    {selectedMatch?.teamA?.logo ? (
+                      <img src={selectedMatch.teamA.logo} alt={teamAName} className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{teamAName.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-2xl font-black text-slate-900 leading-tight truncate">
                       {teamAName}
                     </h2>
                     <span className="text-xs text-slate-500 font-semibold">Home Team</span>
@@ -1850,7 +2027,7 @@ export default function AdminLiveControlPage() {
                 </div>
 
                 {/* Team A Direct Actions: Normal Goal, Own Goal & Quick Score Adjust */}
-                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start mt-1">
+                <div className="flex items-center gap-2 mt-1">
                   <button
                     type="button"
                     onClick={() => handleOpenGoalModal('A', 'Normal Goal')}
@@ -1891,13 +2068,13 @@ export default function AdminLiveControlPage() {
                   </div>
                 </div>
 
-                {/* Team A Recorded Goals Downward of Logo & Actions */}
+                {/* Team A Recorded Goals */}
                 {teamAGoals.length > 0 && (
-                  <div className="flex flex-col gap-1.5 mt-1 w-full max-w-xs items-center sm:items-start">
+                  <div className="flex flex-col gap-1.5 mt-1 w-full max-w-xs items-start">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       Recorded Goals ({teamAGoals.length})
                     </span>
-                    <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                    <div className="flex flex-wrap gap-1.5 justify-start">
                       {teamAGoals.map((g, idx) => {
                         const isOG = g.detail?.goalType === 'Own Goal' || g.type === 'Own Goal' || g.goalType === 'Own Goal';
                         return (
@@ -1928,11 +2105,11 @@ export default function AdminLiveControlPage() {
               </div>
 
               {/* Center: Score + Stage + Green Digital Clock Pill */}
-              <div className="flex flex-col items-center justify-center px-2 sm:px-6 shrink-0">
-                <div className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight tabular-nums">
+              <div className="flex flex-col items-center justify-center px-6 shrink-0">
+                <div className="text-6xl font-black text-slate-900 tracking-tight tabular-nums">
                   {scoreA} - {scoreB}
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-slate-500 mt-1">
+                <div className="text-sm font-bold text-slate-500 mt-1">
                   {currentStage}
                 </div>
                 <div className="mt-2.5 px-6 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-mono font-bold text-2xl tracking-wider shadow-2xs">
@@ -1941,9 +2118,9 @@ export default function AdminLiveControlPage() {
               </div>
 
               {/* Team B (Away Team) */}
-              <div className="flex flex-col items-center sm:items-end gap-3 flex-1 text-center sm:text-right min-w-0">
-                <div className="flex flex-col items-center sm:flex-row-reverse sm:items-center gap-3 sm:gap-4">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
+              <div className="flex flex-col items-end gap-3 flex-1 text-right min-w-0">
+                <div className="flex flex-row-reverse items-center gap-4">
+                  <div className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-black text-xl text-slate-800 shadow-2xs overflow-hidden shrink-0">
                     {selectedMatch?.teamB?.logo ? (
                       <img src={selectedMatch.teamB.logo} alt={teamBName} className="w-full h-full object-cover" />
                     ) : (
@@ -1951,33 +2128,24 @@ export default function AdminLiveControlPage() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-base sm:text-2xl font-black text-slate-900 leading-tight truncate">
+                    <h2 className="text-2xl font-black text-slate-900 leading-tight truncate">
                       {teamBName}
                     </h2>
                     <span className="text-xs text-slate-500 font-semibold">Away Team</span>
                   </div>
                 </div>
 
-                {/* Team B Direct Actions: Normal Goal, Own Goal & Quick Score Adjust */}
-                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end mt-1">
-                  <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-0.5 border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => handleQuickScoreAdjust('B', -1)}
-                      className="w-6 h-6 rounded-lg bg-white hover:bg-rose-50 text-rose-700 font-black text-xs flex items-center justify-center shadow-2xs transition-all active:scale-90"
-                      title={`Quick -1 score for ${teamBName}`}
-                    >
-                      -1
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickScoreAdjust('B', 1)}
-                      className="w-6 h-6 rounded-lg bg-white hover:bg-emerald-50 text-emerald-700 font-black text-xs flex items-center justify-center shadow-2xs transition-all active:scale-90"
-                      title={`Quick +1 score for ${teamBName}`}
-                    >
-                      +1
-                    </button>
-                  </div>
+                {/* Team B Direct Actions: Normal Goal, Own Goal & Quick Score Adjust (Identical left-to-right order for symmetry) */}
+                <div className="flex items-center gap-2 mt-1 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenGoalModal('B', 'Normal Goal')}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    title={`Record normal goal scored by ${teamBName}`}
+                  >
+                    <span>⚽</span>
+                    <span>+ Goal</span>
+                  </button>
 
                   <button
                     type="button"
@@ -1989,24 +2157,33 @@ export default function AdminLiveControlPage() {
                     <span>+ Own Goal</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleOpenGoalModal('B', 'Normal Goal')}
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
-                    title={`Record normal goal scored by ${teamBName}`}
-                  >
-                    <span>⚽</span>
-                    <span>+ Goal</span>
-                  </button>
+                  <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-0.5 border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickScoreAdjust('B', 1)}
+                      className="w-6 h-6 rounded-lg bg-white hover:bg-emerald-50 text-emerald-700 font-black text-xs flex items-center justify-center shadow-2xs transition-all active:scale-90"
+                      title={`Quick +1 score for ${teamBName}`}
+                    >
+                      +1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickScoreAdjust('B', -1)}
+                      className="w-6 h-6 rounded-lg bg-white hover:bg-rose-50 text-rose-700 font-black text-xs flex items-center justify-center shadow-2xs transition-all active:scale-90"
+                      title={`Quick -1 score for ${teamBName}`}
+                    >
+                      -1
+                    </button>
+                  </div>
                 </div>
 
-                {/* Team B Recorded Goals Downward of Logo & Actions */}
+                {/* Team B Recorded Goals */}
                 {teamBGoals.length > 0 && (
-                  <div className="flex flex-col gap-1.5 mt-1 w-full max-w-xs items-center sm:items-end">
+                  <div className="flex flex-col gap-1.5 mt-1 w-full max-w-xs items-end">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       Recorded Goals ({teamBGoals.length})
                     </span>
-                    <div className="flex flex-wrap gap-1.5 justify-center sm:justify-end">
+                    <div className="flex flex-wrap gap-1.5 justify-end">
                       {teamBGoals.map((g, idx) => {
                         const isOG = g.detail?.goalType === 'Own Goal' || g.type === 'Own Goal' || g.goalType === 'Own Goal';
                         return (
@@ -2039,7 +2216,9 @@ export default function AdminLiveControlPage() {
 
             {/* Timer Controls Row (When completed: START NEXT MATCH; otherwise Pause / Resume / End Match) */}
             <div className="flex items-center justify-center gap-3 sm:gap-4 pt-2 flex-wrap">
-              {selectedMatch?.status === 'Completed' || currentStage === 'Match Completed' ? (
+              {selectedMatch?.status?.toLowerCase() === 'completed' ||
+              currentStage?.toLowerCase().includes('completed') ||
+              selectedMatch?.isFinalized ? (
                 <button
                   type="button"
                   data-testid="start-next-match-btn"
