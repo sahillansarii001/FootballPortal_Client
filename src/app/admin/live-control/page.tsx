@@ -67,6 +67,7 @@ export default function AdminLiveControlPage() {
   // Modal / Form state for Goal Recording
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalTeam, setGoalTeam] = useState<'A' | 'B'>('A');
+  const [goalRosterTeam, setGoalRosterTeam] = useState<'A' | 'B'>('A');
   const [goalPlayerName, setGoalPlayerName] = useState('');
   const [goalType, setGoalType] = useState('Normal Goal');
   const [goalMinute, setGoalMinute] = useState('02:30 (1H)');
@@ -801,6 +802,7 @@ export default function AdminLiveControlPage() {
   const handleOpenGoalModal = async (team: 'A' | 'B', defaultType: string = 'Normal Goal') => {
     setGoalTeam(team);
     setGoalType(defaultType);
+    setGoalRosterTeam(team);
     const rawTarget = team === 'A' ? selectedMatch?.teamA : selectedMatch?.teamB;
     const targetTeamId: string =
       typeof rawTarget === 'object' && rawTarget ? rawTarget._id : typeof rawTarget === 'string' ? rawTarget : '';
@@ -932,7 +934,10 @@ export default function AdminLiveControlPage() {
     const opponentPlayers = goalTeam === 'A' ? teamBPlayers : teamAPlayers;
     const allCombined = [...players, ...opponentPlayers];
     const finalScorerName = (goalPlayerName || '').trim() || (isOwnGoal ? 'Opponent Deflection (OG)' : players[0]?.name || 'Team Scorer');
-    const matchedPlayer = allCombined.find((p) => p.name.toLowerCase() === finalScorerName.toLowerCase() || p.name === goalPlayerName);
+    const cleanPlayerName = finalScorerName.replace(/\s*\(OG\)$/i, '').trim();
+    const matchedPlayer = allCombined.find(
+      (p) => p.name.toLowerCase() === cleanPlayerName.toLowerCase() || p.name.toLowerCase() === finalScorerName.toLowerCase()
+    );
 
     // Save goal and sync score
     const res = await adminService.recordGoal(selectedMatch._id, {
@@ -2950,187 +2955,231 @@ export default function AdminLiveControlPage() {
             </div>
 
             {/* Scoring Team Banner & Prospective Score Preview */}
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-black text-base flex items-center justify-center shadow-xs">
                   {goalTeam === 'A' ? teamAName.slice(0, 2).toUpperCase() : teamBName.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase">
+                    +1 Goal Awarded To:
+                  </div>
                   <div className="text-sm font-black text-slate-900">
                     {goalTeam === 'A' ? teamAName : teamBName}
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium">
-                    Current Score: <strong className="text-slate-800">{scoreA} - {scoreB}</strong> &rarr; New:{' '}
+                    Current: <strong className="text-slate-800">{scoreA} - {scoreB}</strong> &rarr; New:{' '}
                     <strong className="text-emerald-700 font-black">
                       {goalTeam === 'A' ? scoreA + 1 : scoreA} - {goalTeam === 'B' ? scoreB + 1 : scoreB}
                     </strong>
                   </div>
                 </div>
               </div>
-              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
-                goalType === 'Own Goal' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-              }`}>
-                +1 Goal
-              </span>
+
+              {/* 1-Click Toggle for which team gets +1 score */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shrink-0">
+                <span className="text-[10px] font-bold text-slate-500 px-1.5">Score +1 to:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGoalTeam('A');
+                    if (goalType !== 'Own Goal') setGoalRosterTeam('A');
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    goalTeam === 'A' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {teamAName.split(' ')[0]}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGoalTeam('B');
+                    if (goalType !== 'Own Goal') setGoalRosterTeam('B');
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    goalTeam === 'B' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {teamBName.split(' ')[0]}
+                </button>
+              </div>
             </div>
 
-            {/* Scrollable Body */}
+            {/* Scrollable Body: Athletes Grid */}
             <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-              {goalType === 'Own Goal' ? (
-                /* Dedicated Own Goal View */
-                <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
-                    <span className="text-base shrink-0">⚠️</span>
-                    <div>
-                      <div className="font-bold text-amber-950">Own Goal (OG) Mode Activated</div>
-                      <div className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                        +1 Goal will be awarded to <strong>{goalTeam === 'A' ? teamAName : teamBName}</strong>.
-                        Conceded by opponent: <strong>{goalTeam === 'A' ? teamBName : teamAName}</strong>.
-                      </div>
-                    </div>
-                  </div>
-
+              {/* Own Goal Notice if Own Goal active */}
+              {goalType === 'Own Goal' && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                  <span className="text-base shrink-0">⚠️</span>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Conceded By (Opponent Player or Deflection):
-                    </label>
-                    <div className="grid grid-cols-1 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setGoalPlayerName('Opponent Deflection (OG)')}
-                        className={`p-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                          goalPlayerName === 'Opponent Deflection (OG)'
-                            ? 'bg-amber-100/70 border-amber-500 ring-2 ring-amber-400/40 text-amber-950'
-                            : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span>💥</span>
-                          <span>Opponent Deflection (Uncredited OG)</span>
-                        </span>
-                        {goalPlayerName === 'Opponent Deflection (OG)' && <span>✓</span>}
-                      </button>
-
-                      {/* Opponent Roster Selection */}
-                      {(goalTeam === 'A' ? teamBPlayers : teamAPlayers).map((p) => {
-                        const ogLabel = `${p.name} (OG)`;
-                        const isSel = goalPlayerName === ogLabel;
-                        return (
-                          <button
-                            type="button"
-                            key={p._id}
-                            onClick={() => setGoalPlayerName(ogLabel)}
-                            className={`p-2.5 rounded-xl border text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
-                              isSel
-                                ? 'bg-amber-100/70 border-amber-500 ring-2 ring-amber-400/40 font-bold text-amber-950'
-                                : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                            }`}
-                          >
-                            <span className="flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center font-bold text-[10px] text-slate-600">
-                                #{p.jerseyNumber}
-                              </span>
-                              <span>{p.name}</span>
-                              <span className="text-[10px] text-slate-400">({goalTeam === 'A' ? teamBName : teamAName})</span>
-                            </span>
-                            {isSel && <span className="font-bold">✓</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Regular Goal Scorer Selection View */
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                    <span>1. Click to Select Goalscorer ({goalTeam === 'A' ? teamAName : teamBName}):</span>
-                    <span className="text-[10px] text-emerald-700 font-bold">
-                      {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).length} Certified Athletes
-                    </span>
-                  </label>
-
-                  {/* Athlete Quick Select Cards */}
-                  {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).length === 0 ? (
-                    <div className="p-4 text-center rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
-                      Loading team roster... You can also type a player name below.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50/50">
-                      {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => {
-                        const isSelected = goalPlayerName === p.name;
-                        return (
-                          <div
-                            key={p._id}
-                            onClick={() => setGoalPlayerName(p.name)}
-                            className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center gap-2.5 ${
-                              isSelected
-                                ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-400/30 shadow-xs'
-                                : 'bg-white hover:bg-slate-50 border-slate-200'
-                            }`}
-                          >
-                            <div
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                                isSelected
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-slate-100 text-slate-600'
-                              }`}
-                            >
-                              #{p.jerseyNumber}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-black text-slate-900 truncate">
-                                {p.name}
-                              </div>
-                              <div className="text-[10px] text-emerald-700 truncate font-bold">
-                                {goalTeam === 'A' ? teamAName : teamBName} • {p.position}
-                              </div>
-                            </div>
-                            {isSelected && (
-                              <div className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                                ✓
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Manual / Direct Scorer Input & Dropdown */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                        Player Name (Editable)
-                      </label>
-                      <input
-                        type="text"
-                        value={goalPlayerName}
-                        onChange={(e) => setGoalPlayerName(e.target.value)}
-                        placeholder="e.g. Sami or Forward #10"
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                        Or Pick from Roster
-                      </label>
-                      <select
-                        value={goalPlayerName}
-                        onChange={(e) => setGoalPlayerName(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      >
-                        <option value="">-- Choose player --</option>
-                        {(goalTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
-                          <option key={p._id} value={p.name}>
-                            #{p.jerseyNumber} - {p.name} ({p.position})
-                          </option>
-                        ))}
-                      </select>
+                    <div className="font-bold text-amber-950">Own Goal (OG) Mode Active</div>
+                    <div className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                      +1 Goal will be awarded to <strong>{goalTeam === 'A' ? teamAName : teamBName}</strong>.
+                      Select the athlete below who scored or deflected into their own net.
                     </div>
                   </div>
                 </div>
               )}
+
+              {/* Explicit Team Roster Selector Tabs (Shows ONLY chosen team's certified athletes) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    {goalType === 'Own Goal' ? '1. Select Player Who Conceded OG / Deflection:' : '1. Click to Select Goalscorer:'}
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-700">
+                    {(goalRosterTeam === 'A' ? teamAPlayers : teamBPlayers).length} Certified Athletes
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGoalRosterTeam('A');
+                      if (teamAPlayers.length > 0) {
+                        setGoalPlayerName(goalType === 'Own Goal' ? `${teamAPlayers[0].name} (OG)` : teamAPlayers[0].name);
+                      }
+                    }}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      goalRosterTeam === 'A'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    <span>🛡️</span>
+                    <span className="truncate">{teamAName} {goalTeam === 'A' ? '(Scoring)' : '(Opponent)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGoalRosterTeam('B');
+                      if (teamBPlayers.length > 0) {
+                        setGoalPlayerName(goalType === 'Own Goal' ? `${teamBPlayers[0].name} (OG)` : teamBPlayers[0].name);
+                      }
+                    }}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      goalRosterTeam === 'B'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    <span>🛡️</span>
+                    <span className="truncate">{teamBName} {goalTeam === 'B' ? '(Scoring)' : '(Opponent)'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Own Goal quick deflection button if Own Goal mode */}
+              {goalType === 'Own Goal' && (
+                <button
+                  type="button"
+                  onClick={() => setGoalPlayerName('Opponent Deflection (OG)')}
+                  className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    goalPlayerName === 'Opponent Deflection (OG)'
+                      ? 'bg-amber-100/70 border-amber-500 ring-2 ring-amber-400/40 text-amber-950'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>💥</span>
+                    <span>Uncredited Opponent Deflection (OG)</span>
+                  </span>
+                  {goalPlayerName === 'Opponent Deflection (OG)' && <span>✓</span>}
+                </button>
+              )}
+
+              {/* Athlete Quick Select Cards (Exclusively showing the active team's players only) */}
+              {(goalRosterTeam === 'A' ? teamAPlayers : teamBPlayers).length === 0 ? (
+                <div className="p-4 text-center rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+                  No athletes found in roster for {goalRosterTeam === 'A' ? teamAName : teamBName}.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50/50">
+                  {(goalRosterTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => {
+                    const expectedName = goalType === 'Own Goal' ? `${p.name} (OG)` : p.name;
+                    const isSelected = goalPlayerName === expectedName || goalPlayerName === p.name;
+                    return (
+                      <div
+                        key={p._id}
+                        onClick={() => setGoalPlayerName(expectedName)}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex items-center gap-2.5 ${
+                          isSelected
+                            ? goalType === 'Own Goal'
+                              ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-400/30 shadow-xs'
+                              : 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-400/30 shadow-xs'
+                            : 'bg-white hover:bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                            isSelected
+                              ? goalType === 'Own Goal'
+                                ? 'bg-amber-600 text-white'
+                                : 'bg-emerald-600 text-white'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          #{p.jerseyNumber}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-black text-slate-900 truncate">
+                            {p.name} {goalType === 'Own Goal' && <span className="text-amber-600 font-extrabold">(OG)</span>}
+                          </div>
+                          <div className="text-[10px] text-slate-500 truncate font-semibold">
+                            {goalRosterTeam === 'A' ? teamAName : teamBName} • {p.position}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className={`w-4 h-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                            goalType === 'Own Goal' ? 'bg-amber-600' : 'bg-emerald-600'
+                          }`}>
+                            ✓
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Manual / Direct Scorer Input & Dropdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                    Selected Scorer Name (Editable)
+                  </label>
+                  <input
+                    type="text"
+                    value={goalPlayerName}
+                    onChange={(e) => setGoalPlayerName(e.target.value)}
+                    placeholder="e.g. Player name"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                    Or Choose from Dropdown
+                  </label>
+                  <select
+                    value={goalPlayerName}
+                    onChange={(e) => setGoalPlayerName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="">-- Choose athlete --</option>
+                    {(goalRosterTeam === 'A' ? teamAPlayers : teamBPlayers).map((p) => (
+                      <option key={p._id} value={goalType === 'Own Goal' ? `${p.name} (OG)` : p.name}>
+                        #{p.jerseyNumber} - {p.name} ({goalRosterTeam === 'A' ? teamAName : teamBName})
+                      </option>
+                    ))}
+                    {goalType === 'Own Goal' && (
+                      <option value="Opponent Deflection (OG)">Opponent Deflection (OG)</option>
+                    )}
+                  </select>
+                </div>
+              </div>
 
               {/* Goal Timestamp */}
               <div className="pt-1">
